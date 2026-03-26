@@ -1,0 +1,435 @@
+:root {
+  color-scheme: light;
+  --paper: #f4efe5;
+  --ink: #0f2430;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at top, rgba(42, 115, 134, 0.14), transparent 30%),
+    linear-gradient(180deg, #efe8dc 0%, var(--paper) 100%);
+}
+
+body.is-viewport-stage {
+  display: block;
+  overflow: hidden;
+}
+
+.app-shell {
+  width: 100vw;
+  height: 100dvh;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+body.is-viewport-stage .app-shell {
+  width: 100vw;
+  height: 100dvh;
+  padding: 0;
+}
+
+.workspace {
+  display: block;
+}
+
+.atlas-stage {
+  position: relative;
+  width: min(100vw, calc(100dvh * 1200 / 860));
+  aspect-ratio: 1200 / 860;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.atlas-stage.is-viewport-stage {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 1;
+}
+
+.atlas-stage.is-flat-projection {
+  cursor: grab;
+}
+
+.atlas-stage.is-dymaxion {
+  cursor: default;
+}
+
+.atlas-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.atlas-canvas,
+.atlas-overlay-canvas,
+.atlas-overlay {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.atlas-overlay-canvas,
+.atlas-overlay {
+  pointer-events: none;
+}
+
+.atlas-canvas {
+  z-index: 1;
+}
+
+.atlas-overlay-canvas,
+.atlas-overlay {
+  z-index: 2;
+}
+
+.month-trigger {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 96px;
+  z-index: 3;
+}
+
+.month-overlay {
+  position: fixed;
+  left: 28px;
+  right: 28px;
+  bottom: 18px;
+  z-index: 4;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.month-trigger:hover + .month-overlay,
+.month-overlay:hover,
+.month-overlay:focus-within {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.layer-trigger {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 104px;
+  height: 100dvh;
+  z-index: 4;
+}
+
+.atlas-earth-canvas {
+  -webkit-mask-image: var(--atlas-mask-image);
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-image: var(--atlas-mask-image);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+
+.atlas-stage.is-flat-projection .atlas-earth-canvas {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.atlas-stage.is-single-globe .atlas-earth-canvas {
+  -webkit-mask-image: var(--single-globe-mask-image);
+  mask-image: var(--single-globe-mask-image);
+}
+
+.frame {
+  fill: none;
+  stroke: rgba(8, 27, 38, 0.85);
+  stroke-width: 2;
+}
+
+.frame-dymaxion {
+  display: none;
+}
+
+.frame-single-globe {
+  display: none;
+}
+
+.atlas-overlay .frame-single-globe {
+  display: none;
+}
+
+.atlas-stage.is-flat-projection .frame-atlas {
+  display: none;
+}
+
+.atlas-stage.is-single-globe .frame-atlas {
+  display: none;
+}
+
+.atlas-stage.is-single-globe .frame-single-globe {
+  display: block;
+}
+
+.atlas-stage.is-dymaxion .frame-dymaxion {
+  display: block;
+}
+
+.layer-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  width: min(280px, calc(100vw - 32px));
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 251, 245, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 20px 48px rgba(7, 31, 43, 0.12);
+  backdrop-filter: blur(14px);
+  opacity: 0;
+  transform: translateX(calc(100% - 56px));
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.layer-trigger:hover + .layer-panel,
+.layer-panel:hover,
+.layer-panel:focus-within {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.panel-eyebrow {
+  margin: 0 0 14px;
+  color: rgba(15, 36, 48, 0.7);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.projection-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.projection-label {
+  margin: 0;
+  color: rgba(15, 36, 48, 0.62);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.projection-select-wrap {
+  position: relative;
+}
+
+.projection-select {
+  width: 100%;
+  padding: 10px 42px 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 36, 48, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(250, 245, 236, 0.94));
+  color: rgba(15, 36, 48, 0.78);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.projection-select-wrap::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid rgba(15, 36, 48, 0.55);
+  border-bottom: 2px solid rgba(15, 36, 48, 0.55);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+
+.projection-select:focus {
+  outline: none;
+  border-color: rgba(176, 108, 44, 0.75);
+  box-shadow: 0 0 0 3px rgba(179, 121, 70, 0.14);
+}
+
+.layer-list {
+  display: grid;
+  gap: 10px;
+}
+
+.layer-group {
+  display: grid;
+  gap: 10px;
+}
+
+.layer-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 36, 48, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.6);
+  color: #0f2430;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    opacity 180ms ease;
+}
+
+.layer-item:hover,
+.layer-item:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(15, 36, 48, 0.18);
+  outline: none;
+}
+
+.layer-item:not(.is-active) {
+  opacity: 0.56;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.layer-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.layer-copy strong,
+.layer-copy small {
+  display: block;
+}
+
+.layer-copy strong {
+  font-family: "Manrope", sans-serif;
+  font-size: 0.98rem;
+}
+
+.layer-copy small {
+  color: rgba(15, 36, 48, 0.6);
+  font-size: 0.82rem;
+}
+
+.layer-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  border: 1px solid rgba(15, 36, 48, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  display: grid;
+  place-items: center;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.layer-checkmark {
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(-45deg) translateY(-1px);
+  opacity: 0;
+}
+
+.layer-item.is-active .layer-checkbox {
+  background: linear-gradient(135deg, #0f6d8d 0%, #1d9ec0 100%);
+  border-color: rgba(15, 109, 141, 0.9);
+}
+
+.layer-item.is-active .layer-checkmark {
+  opacity: 1;
+}
+
+.month-slider {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+}
+
+.month-chip {
+  min-width: 0;
+  padding: 11px 0;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 250, 242, 0.36);
+  background: rgba(20, 34, 41, 0.42);
+  color: rgba(255, 248, 240, 0.8);
+  backdrop-filter: blur(10px);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.month-chip:hover,
+.month-chip:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(255, 243, 227, 0.56);
+  outline: none;
+}
+
+.month-chip.is-active {
+  border-color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.88);
+  color: rgba(15, 36, 48, 0.82);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 8px 18px rgba(7, 31, 43, 0.12);
+}
+
+@media (max-width: 900px) {
+  .month-slider {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}

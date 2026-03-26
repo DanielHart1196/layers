@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Layers Atlas Prototype</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4/dist/d3-geo-projection.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+    <script src="./atlas-dymaxion.js"></script>
+    <script src="./atlas-core.js"></script>
+    <script src="./atlas-adapters.js"></script>
+    <script src="./atlas-earth.js"></script>
+    <script src="./atlas-layers.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <div
+          class="atlas-stage"
+          id="atlasStage"
+          role="img"
+          aria-label="Double hemisphere world map with north and south pole insets"
+        >
+          <canvas
+            class="atlas-canvas atlas-earth-canvas"
+            id="atlasEarthCanvas"
+            width="1200"
+            height="860"
+          ></canvas>
+          <canvas
+            class="atlas-canvas atlas-overlay-canvas"
+            id="atlasOverlayCanvas"
+            width="1200"
+            height="860"
+          ></canvas>
+          <svg
+            class="atlas-overlay"
+            viewBox="0 0 1200 860"
+            aria-hidden="true"
+          >
+            <defs>
+              <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="18"
+                  stdDeviation="18"
+                  flood-color="#001722"
+                  flood-opacity="0.28"
+                />
+              </filter>
+            </defs>
+
+            <g class="atlas-shell" filter="url(#softShadow)">
+              <circle class="frame frame-single-globe" data-frame="single-globe" cx="600" cy="430" r="320" />
+              <circle class="frame frame-atlas" data-frame="atlas-0" cx="310" cy="430" r="290" />
+              <circle class="frame frame-atlas" data-frame="atlas-1" cx="890" cy="430" r="290" />
+              <circle class="frame frame-atlas" data-frame="atlas-2" cx="600" cy="140" r="120" />
+              <circle class="frame frame-atlas" data-frame="atlas-3" cx="600" cy="720" r="120" />
+              <rect class="frame frame-dymaxion" x="70" y="90" width="1060" height="680" rx="26" ry="26" />
+            </g>
+          </svg>
+
+          <div class="month-trigger" aria-hidden="true"></div>
+          <div class="month-overlay" aria-label="Month control">
+            <div class="month-slider" id="monthSlider" role="listbox" aria-label="Select month">
+              <button class="month-chip" data-month="01" type="button">01</button>
+              <button class="month-chip" data-month="02" type="button">02</button>
+              <button class="month-chip" data-month="03" type="button">03</button>
+              <button class="month-chip" data-month="04" type="button">04</button>
+              <button class="month-chip" data-month="05" type="button">05</button>
+              <button class="month-chip" data-month="06" type="button">06</button>
+              <button class="month-chip" data-month="07" type="button">07</button>
+              <button class="month-chip" data-month="08" type="button">08</button>
+              <button class="month-chip" data-month="09" type="button">09</button>
+              <button class="month-chip" data-month="10" type="button">10</button>
+              <button class="month-chip" data-month="11" type="button">11</button>
+              <button class="month-chip" data-month="12" type="button">12</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="layer-trigger" aria-hidden="true"></div>
+        <aside class="layer-panel" aria-label="Map layers">
+          <p class="panel-eyebrow">Layers</p>
+          <section class="projection-panel" aria-label="Projection">
+            <label class="projection-label" for="projectionSelect">Projection</label>
+            <div class="projection-select-wrap">
+              <select class="projection-select" id="projectionSelect" aria-label="Map projection">
+                <option value="azimuthal-equidistant" selected>Azimuthal Eqd</option>
+                <option value="orthographic">Globe</option>
+                <option value="mercator">Mercator</option>
+                <option value="natural-earth-ii">Natural Earth II</option>
+                <option value="goode-homolosine">Goode Homolosine</option>
+                <option value="waterman">Waterman Butterfly</option>
+              </select>
+            </div>
+          </section>
+
+          <div class="layer-list">
+            <section class="layer-group layer-group-earth is-active">
+              <button class="layer-item is-active" data-layer-id="earth" type="button">
+                <span class="layer-checkbox" aria-hidden="true">
+                  <span class="layer-checkmark"></span>
+                </span>
+                <span class="layer-copy">
+                  <strong>Earth</strong>
+                  <small>Base globe imagery</small>
+                </span>
+              </button>
+            </section>
+
+            <button class="layer-item is-active" data-layer-id="borders" type="button">
+              <span class="layer-checkbox" aria-hidden="true">
+                <span class="layer-checkmark"></span>
+              </span>
+              <span class="layer-copy">
+                <strong>Borders</strong>
+                <small>Country outlines</small>
+              </span>
+            </button>
+            <button class="layer-item is-active" data-layer-id="graticule" type="button">
+              <span class="layer-checkbox" aria-hidden="true">
+                <span class="layer-checkmark"></span>
+              </span>
+              <span class="layer-copy">
+                <strong>Graticule</strong>
+                <small>Latitude and longitude grid</small>
+              </span>
+            </button>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <script src="./countries.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
