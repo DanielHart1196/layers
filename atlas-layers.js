@@ -134,7 +134,9 @@
     }
 
     function createSceneAdapter(scene) {
-      return window.AtlasAdapters.createAdapter(scene, overlayContext, worldDataRef());
+      return window.AtlasAdapters.createAdapter(scene, overlayContext, worldDataRef(), {
+        isInteracting: Boolean(layerStateRef?.().isInteracting),
+      });
     }
 
     function getSourcePixels(image) {

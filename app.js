@@ -330,6 +330,7 @@ async function init() {
     layerStateRef: () => ({
       ...layerState,
       empireSublayers: empireLayerState,
+      isInteracting: uiState.isInteracting,
     }),
     earthTextureRef: () => earthTextureImage,
     pixelRatioRef: () => pixelRatio,

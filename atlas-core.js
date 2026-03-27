@@ -370,6 +370,10 @@
       ]);
     }
 
+    if (typeof options.precision === "number" && typeof projection.precision === "function") {
+      projection.precision(options.precision);
+    }
+
     return projection;
   }
 

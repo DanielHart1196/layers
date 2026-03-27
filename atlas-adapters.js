@@ -1,9 +1,13 @@
 (() => {
   const projectedPathCache = window.AtlasPathCache?.createProjectedPathCache?.() ?? null;
 
-  function createContinuousAdapter(scene, context) {
+  function createContinuousAdapter(scene, context, renderState = {}) {
     const baseProjection = window.AtlasCore.createProjection(scene, {
       disableClipExtent: scene.projectionKind === "mercator",
+      precision:
+        scene.projectionKind === "azimuthal-equidistant"
+        ? (renderState.isInteracting ? 2.4 : 0.35)
+        : undefined,
     });
     const usesViewportCameraTransform =
       scene.projectionKind === "natural-earth-ii" ||
@@ -71,14 +75,19 @@
       }
 
       const worldWidth = Math.max(1, Math.PI * 2 * sceneProjection.scale());
-      const repeatCount = Math.max(1, Math.ceil(sceneDefinition.width / Math.max(worldWidth, 1)) + 1);
+      const baseLeft = sceneDefinition.center[0] - worldWidth / 2;
+      const baseRight = sceneDefinition.center[0] + worldWidth / 2;
+      const viewportLeft = sceneDefinition.center[0] - sceneDefinition.width / 2;
+      const viewportRight = sceneDefinition.center[0] + sceneDefinition.width / 2;
+      const minIndex = Math.ceil((viewportLeft - baseRight) / worldWidth);
+      const maxIndex = Math.floor((viewportRight - baseLeft) / worldWidth);
       const offsets = [];
 
-      for (let index = -repeatCount; index <= repeatCount; index += 1) {
+      for (let index = minIndex; index <= maxIndex; index += 1) {
         offsets.push(index * worldWidth);
       }
 
-      return offsets;
+      return offsets.length ? offsets : [0];
     }
 
     function forEachWrappedPath(geometry, callback) {
@@ -297,12 +306,12 @@
     };
   }
 
-  function createAdapter(scene, context, worldData) {
+  function createAdapter(scene, context, worldData, renderState = {}) {
     if (scene.projectionKind === "dymaxion") {
       return createDymaxionAdapter(scene, context, worldData);
     }
 
-    return createContinuousAdapter(scene, context);
+    return createContinuousAdapter(scene, context, renderState);
   }
 
   function projectionSupportsRaster(projectionKind) {
