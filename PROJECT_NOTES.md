@@ -4,6 +4,13 @@
 - Path: `/data/data/com.termux/files/home/layers`
 - App is a static browser-based atlas prototype with projection switching, mobile-first gesture work, and layered raster/vector rendering.
 
+## Git / Remote Notes
+- Current primary branch: `main`
+- HTTPS push is working for this repo.
+- GitHub currently reports a redirect from the lowercase remote URL to:
+  - `https://github.com/DanielHart1196/layers.git`
+- If `git push` appears to hang in this environment, verify with a promptless retry before assuming auth is broken.
+
 ## Current Projection Model
 - `orthographic`, `azimuthal-equidistant`, and `mercator` behave like direct interactive projections.
 - `natural-earth-ii`, `goode-homolosine`, and `waterman` are viewport-based flat projections.
@@ -33,6 +40,15 @@
 - Flat projection raster performance is sensitive. Avoid returning to “rebuild everything on every zoom tick”.
 - `atlas-layers.js` owns flat raster prewarm behavior and integrates the flat renderer into overlay drawing.
 
+## Empire Layer State Model
+- `layerState.empires` is category visibility, not the canonical source of child preference truth.
+- Empire sublayer preferences live separately in `empireLayerState`.
+- Child selections should persist even if the parent `Empires` layer is turned off.
+- Child checkmarks should only render as active when:
+  - the parent `Empires` layer is on, and
+  - the stored child preference for that layer is on
+- Empire sublayers remain expandable/clickable even when the parent is off; clicking a child should be able to turn the parent back on.
+
 ## Vector Asset Direction
 - Long-term vector architecture should not depend on raw `world-atlas` topology objects directly in render code.
 - Normalized vector assets now have a dedicated scaffold:
@@ -59,12 +75,29 @@
 - UI controls like months, layers, refresh menu, and projection pill must be excluded from map zoom/drag capture.
 - `Azimuthal Eqd` depends on the full-screen workspace touch surface even though the visible map is circular.
 
+## Mercator Performance Notes
+- Mercator cost is heavily affected by horizontal wrap.
+- Optimizations that bypass wrapped drawing can silently break repetition.
+- Cached single-path rendering should not replace wrap-aware repeated draws unless the cache itself is wrap-aware.
+- Mercator wrap should be viewport-aware so only intersecting repeated copies are drawn.
+
+## Azimuthal Performance Notes
+- `Azimuthal Eqd` is sensitive to continuous live reprojection cost.
+- Current interaction tuning lowers projection precision during active drag/zoom, then returns to higher precision when settled.
+- If azimuthal performance regresses, inspect projection precision and interaction-state invalidation before changing data sources.
+
 ## Known Fragile Areas
 - Projection switcher swipe logic in `enableProjectionSwitcher()`
 - Flat projection raster/vector alignment
 - Mobile touch-action interactions and browser zoom suppression
 - Mercator drag feel near the poles
 - Month overlay and floating controls leaking events into map gestures
+- Empire parent/child state synchronization in the layers panel
+
+## Do Not Repeat
+- Do not casually reintroduce empire polygon LOD switching.
+- The previous naive Roman empire simplification introduced topology/fill regressions and wrong-looking colors at low zoom.
+- If empire performance work is revisited, prefer projection/render-path optimizations over naive polygon simplification.
 
 ## Editing Guidance
 - After JS edits, run `node --check` on changed files.
