@@ -1,10 +1,69 @@
 (() => {
+  const projectedPathCache = window.AtlasPathCache?.createProjectedPathCache?.() ?? null;
+
   function createContinuousAdapter(scene, context) {
-    const projection = window.AtlasCore.createProjection(scene, {
+    const baseProjection = window.AtlasCore.createProjection(scene, {
       disableClipExtent: scene.projectionKind === "mercator",
     });
-    const path = d3.geoPath(projection, context);
-    const wrapOffsets = getWrapOffsets(scene, projection);
+    const usesViewportCameraTransform =
+      scene.projectionKind === "natural-earth-ii" ||
+      scene.projectionKind === "goode-homolosine" ||
+      scene.projectionKind === "waterman";
+    const zoomScale = scene.zoomScale ?? 1;
+    const panX = scene.panOffset?.x ?? 0;
+    const panY = scene.panOffset?.y ?? 0;
+    const centerX = scene.center[0];
+    const centerY = scene.center[1];
+    const transformProjectedPoint = ([x, y]) => ([
+      ((x - centerX) * zoomScale) + centerX + panX,
+      ((y - centerY) * zoomScale) + centerY + panY,
+    ]);
+    const invertTransformedPoint = ([x, y]) => ([
+      ((x - centerX - panX) / zoomScale) + centerX,
+      ((y - centerY - panY) / zoomScale) + centerY,
+    ]);
+    const cameraProjection = usesViewportCameraTransform
+      ? createViewportCameraProjection(baseProjection, scene)
+      : baseProjection;
+    const path = d3.geoPath(cameraProjection, context);
+    const wrapOffsets = getWrapOffsets(scene, cameraProjection);
+
+    function createViewportCameraProjection(projection, sceneDefinition) {
+      return {
+        stream(outputStream) {
+          const transformedStream = {
+            point(x, y) {
+              const [tx, ty] = transformProjectedPoint([x, y]);
+              outputStream.point(tx, ty);
+            },
+            lineStart() {
+              outputStream.lineStart();
+            },
+            lineEnd() {
+              outputStream.lineEnd();
+            },
+            polygonStart() {
+              outputStream.polygonStart();
+            },
+            polygonEnd() {
+              outputStream.polygonEnd();
+            },
+            sphere() {
+              outputStream.sphere();
+            },
+          };
+
+          return projection.stream(transformedStream);
+        },
+        invert(point) {
+          if (typeof projection.invert !== "function") {
+            return null;
+          }
+
+          return projection.invert(invertTransformedPoint(point));
+        },
+      };
+    }
 
     function getWrapOffsets(sceneDefinition, sceneProjection) {
       if (sceneDefinition.projectionKind !== "mercator" || !sceneDefinition.width) {
@@ -33,6 +92,23 @@
       });
     }
 
+    function createCachedPath2D(geometry, variantKey = "default") {
+      if (!projectedPathCache || typeof Path2D === "undefined") {
+        return null;
+      }
+
+       if (wrapOffsets.length > 1) {
+        return null;
+      }
+
+      return projectedPathCache.getOrCreate(scene, geometry, variantKey, () => {
+        const path2d = new Path2D();
+        const cachedPath = d3.geoPath(cameraProjection, path2d);
+        cachedPath(geometry);
+        return path2d;
+      });
+    }
+
     return {
       kind: "continuous",
       isReady: true,
@@ -44,10 +120,19 @@
         return fallbackGeometry;
       },
       projectPoint([longitude, latitude]) {
-        return projection([longitude, latitude]);
+        const projected = baseProjection([longitude, latitude]);
+        if (!projected || !usesViewportCameraTransform) {
+          return projected;
+        }
+
+        return transformProjectedPoint(projected);
       },
       invertPoint(point) {
-        return projection.invert(point);
+        if (!usesViewportCameraTransform) {
+          return baseProjection.invert(point);
+        }
+
+        return baseProjection.invert(invertTransformedPoint(point));
       },
       traceGeometry(geometry) {
         forEachWrappedPath(geometry, (wrappedGeometry) => {
@@ -55,6 +140,13 @@
         });
       },
       fillGeometry(geometry, fillStyle, fillRule = "nonzero") {
+        const cachedPath = createCachedPath2D(geometry, `fill:${fillRule}`);
+        if (cachedPath) {
+          context.fillStyle = fillStyle;
+          context.fill(cachedPath, fillRule);
+          return;
+        }
+
         forEachWrappedPath(geometry, (wrappedGeometry) => {
           context.beginPath();
           path(wrappedGeometry);
@@ -63,6 +155,14 @@
         });
       },
       strokeGeometry(geometry, strokeStyle, lineWidth) {
+        const cachedPath = createCachedPath2D(geometry, "stroke");
+        if (cachedPath) {
+          context.strokeStyle = strokeStyle;
+          context.lineWidth = lineWidth;
+          context.stroke(cachedPath);
+          return;
+        }
+
         forEachWrappedPath(geometry, (wrappedGeometry) => {
           context.beginPath();
           path(wrappedGeometry);

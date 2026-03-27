@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "notes": "Normalized vector asset manifest. These assets are the long-term layer contract for runtime rendering and export; third-party sources should be transformed into this schema at build time.",
+  "layers": {
+    "landFill": {
+      "role": "fill",
+      "geometryTypes": ["Polygon", "MultiPolygon"],
+      "defaultFillRule": "evenodd",
+      "lods": {
+        "110m": {
+          "assetPath": "./data/vector/land.fill.110m.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1,
+          "canonical": false
+        },
+        "50m": {
+          "assetPath": "./data/vector/land.fill.50m.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1.25,
+          "canonical": false
+        },
+        "10m": {
+          "assetPath": "./data/vector/land.fill.10m.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 2.4,
+          "canonical": false
+        },
+        "canonical": {
+          "assetPath": "./data/vector/land.fill.canonical.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1,
+          "canonical": true
+        }
+      }
+    },
+    "countryBorders": {
+      "role": "stroke",
+      "geometryTypes": ["LineString", "MultiLineString", "GeometryCollection"],
+      "lods": {
+        "110m": {
+          "assetPath": "./data/vector/country.borders.110m.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1,
+          "canonical": false
+        },
+        "50m": {
+          "assetPath": "./data/vector/country.borders.50m.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1.15,
+          "canonical": false
+        },
+        "10m": {
+          "assetPath": "./data/vector/country.borders.10m.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 2.1,
+          "canonical": false
+        },
+        "canonical": {
+          "assetPath": "./data/vector/country.borders.canonical.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1,
+          "canonical": true
+        }
+      }
+    },
+    "coastlines": {
+      "role": "stroke",
+      "geometryTypes": ["LineString", "MultiLineString", "GeometryCollection"],
+      "lods": {
+        "50m": {
+          "assetPath": "./data/vector/coastlines.50m.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1,
+          "canonical": false
+        },
+        "10m": {
+          "assetPath": "./data/vector/coastlines.10m.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1.8,
+          "canonical": false
+        },
+        "canonical": {
+          "assetPath": "./data/vector/coastlines.canonical.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1,
+          "canonical": true
+        }
+      }
+    },
+    "empires": {
+      "role": "fill-stroke",
+      "geometryTypes": ["Polygon", "MultiPolygon"],
+      "defaultFillRule": "evenodd",
+      "lods": {
+        "raw": {
+          "assetPath": "./data/empires/roman_empire_ad_117_extent.geojson",
+          "sourceType": "normalized-geojson",
+          "minZoom": 1,
+          "canonical": false
+        }
+      }
+    }
+  },
+  "contracts": {
+    "coordinateSystem": "EPSG:4326",
+    "topologyValidated": true,
+    "windingNormalized": true,
+    "holeSemanticsValidated": true,
+    "exportUsesCanonical": true
+  }
+}

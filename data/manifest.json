@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "layers": {
+    "land": {
+      "lods": {
+        "110m": {
+          "kind": "topojson",
+          "source": "./data/raw/world-atlas/land-110m.json",
+          "minZoom": 1,
+          "notes": "Baseline runtime land fill source."
+        }
+      }
+    },
+    "borders": {
+      "lods": {
+        "110m": {
+          "kind": "topojson",
+          "source": "./data/raw/world-atlas/countries-110m.json",
+          "minZoom": 1,
+          "notes": "Baseline runtime country border source."
+        }
+      }
+    },
+    "empires": {
+      "lods": {
+        "raw": {
+          "kind": "geojson",
+          "minZoom": 1,
+          "source": "./data/empires/roman_empire_ad_117_extent.geojson",
+          "notes": "Normalized Roman Empire extent source."
+        }
+      }
+    }
+  },
+  "rendering": {
+    "vectorSceneGraph": true,
+    "projectedPathCache": {
+      "enabled": true,
+      "notes": "Projected Path2D cache for expensive projections and repeated vector draws."
+    }
+  }
+}

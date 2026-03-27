@@ -151,7 +151,7 @@
     return String(new Date().getUTCMonth() + 1).padStart(2, "0");
   }
 
-  function getResolvedScenes(sceneDefinitions, projectionState, rotationOffset) {
+  function getResolvedScenes(sceneDefinitions, projectionState, rotationOffset, zoomScale = 1, panOffset = { x: 0, y: 0 }) {
     const mercatorScene = createMercatorSceneDefinition(getViewDimensions("mercator"));
     const orthographicScene = createOrthographicSceneDefinition(getViewDimensions("orthographic"));
     const naturalEarthScene = createViewportFlatSceneDefinition(getViewDimensions("natural-earth-ii"));
@@ -172,13 +172,23 @@
         : sceneDefinitions;
 
     return activeSceneDefinitions.map((sceneDefinition) =>
-      resolveScene(sceneDefinition, projectionState, rotationOffset),
+      resolveScene(sceneDefinition, projectionState, rotationOffset, zoomScale, panOffset),
     );
   }
 
-  function resolveScene(sceneDefinition, projectionState, rotationOffset) {
+  function resolveScene(sceneDefinition, projectionState, rotationOffset, zoomScale = 1, panOffset = { x: 0, y: 0 }) {
+    const resolvedRadius = (
+      sceneDefinition.kind === "orthographic-main" &&
+      sceneDefinition.radius
+    )
+      ? sceneDefinition.radius * zoomScale
+      : sceneDefinition.radius;
+
     return {
       ...sceneDefinition,
+      radius: resolvedRadius,
+      zoomScale,
+      panOffset,
       rotate: getSceneRotate(sceneDefinition, rotationOffset),
       projectionKind: getSceneProjectionKind(sceneDefinition, projectionState),
     };
@@ -261,10 +271,18 @@
     const scaleFactor = scene.projectionKind === "azimuthal-equidistant"
       ? AZIMUTHAL_EQD_SCALE_FACTOR
       : 1;
+    const usesViewportCameraTransform =
+      scene.projectionKind === "natural-earth-ii" ||
+      scene.projectionKind === "goode-homolosine" ||
+      scene.projectionKind === "waterman";
 
     projection
       .translate(scene.center)
-      .scale((scene.projectionScale ?? scene.radius) * scaleFactor);
+      .scale(
+        (scene.projectionScale ?? scene.radius)
+        * scaleFactor
+        * (usesViewportCameraTransform ? 1 : (scene.zoomScale ?? 1)),
+      );
 
     if (scene.projectionKind === "mercator") {
       projection
@@ -331,6 +349,10 @@
         ],
         { type: "Sphere" },
       );
+
+      projection
+        .scale(projection.scale() * (usesViewportCameraTransform ? 1 : (scene.zoomScale ?? 1)))
+        .translate(scene.center);
     }
 
     if (

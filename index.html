@@ -16,6 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
     <script src="./atlas-dymaxion.js"></script>
     <script src="./atlas-core.js"></script>
+    <script src="./atlas-path-cache.js"></script>
     <script src="./atlas-adapters.js"></script>
     <script src="./atlas-earth.js"></script>
     <script src="./atlas-layers.js"></script>
@@ -68,73 +69,173 @@
             </g>
           </svg>
 
-          <div class="month-trigger" aria-hidden="true"></div>
-          <div class="month-overlay" aria-label="Month control">
-            <div class="month-slider" id="monthSlider" role="listbox" aria-label="Select month">
-              <button class="month-chip" data-month="01" type="button">01</button>
-              <button class="month-chip" data-month="02" type="button">02</button>
-              <button class="month-chip" data-month="03" type="button">03</button>
-              <button class="month-chip" data-month="04" type="button">04</button>
-              <button class="month-chip" data-month="05" type="button">05</button>
-              <button class="month-chip" data-month="06" type="button">06</button>
-              <button class="month-chip" data-month="07" type="button">07</button>
-              <button class="month-chip" data-month="08" type="button">08</button>
-              <button class="month-chip" data-month="09" type="button">09</button>
-              <button class="month-chip" data-month="10" type="button">10</button>
-              <button class="month-chip" data-month="11" type="button">11</button>
-              <button class="month-chip" data-month="12" type="button">12</button>
-            </div>
+        </div>
+
+        <button
+          class="month-menu-toggle"
+          id="monthMenuToggle"
+          type="button"
+          aria-label="Open month selector"
+          aria-controls="monthOverlay"
+          aria-expanded="false"
+        >
+          <svg class="month-menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M7 3h10v4.5l-3.15 3.15v2.45L16.6 16v5H7.4v-5l2.75-2.9v-2.45L7 7.5V3Z"
+            />
+          </svg>
+        </button>
+        <div class="month-trigger" aria-hidden="true"></div>
+        <div class="month-overlay" id="monthOverlay" aria-label="Month control">
+          <div class="month-slider" id="monthSlider" role="listbox" aria-label="Select month">
+            <button class="month-chip" data-month="01" type="button">01</button>
+            <button class="month-chip" data-month="02" type="button">02</button>
+            <button class="month-chip" data-month="03" type="button">03</button>
+            <button class="month-chip" data-month="04" type="button">04</button>
+            <button class="month-chip" data-month="05" type="button">05</button>
+            <button class="month-chip" data-month="06" type="button">06</button>
+            <button class="month-chip" data-month="07" type="button">07</button>
+            <button class="month-chip" data-month="08" type="button">08</button>
+            <button class="month-chip" data-month="09" type="button">09</button>
+            <button class="month-chip" data-month="10" type="button">10</button>
+            <button class="month-chip" data-month="11" type="button">11</button>
+            <button class="month-chip" data-month="12" type="button">12</button>
           </div>
         </div>
 
         <div class="layer-trigger" aria-hidden="true"></div>
-        <aside class="layer-panel" aria-label="Map layers">
-          <p class="panel-eyebrow">Layers</p>
-          <section class="projection-panel" aria-label="Projection">
-            <label class="projection-label" for="projectionSelect">Projection</label>
-            <div class="projection-select-wrap">
-              <select class="projection-select" id="projectionSelect" aria-label="Map projection">
-                <option value="azimuthal-equidistant" selected>Azimuthal Eqd</option>
-                <option value="orthographic">Globe</option>
-                <option value="mercator">Mercator</option>
-                <option value="natural-earth-ii">Natural Earth II</option>
-                <option value="goode-homolosine">Goode Homolosine</option>
-                <option value="waterman">Waterman Butterfly</option>
-              </select>
-            </div>
-          </section>
+        <button
+          class="layer-menu-toggle"
+          id="layerMenuToggle"
+          type="button"
+          aria-label="Open layers menu"
+          aria-controls="layerPanel"
+          aria-expanded="false"
+        >
+          <span class="layer-menu-toggle-bar"></span>
+          <span class="layer-menu-toggle-bar"></span>
+          <span class="layer-menu-toggle-bar"></span>
+        </button>
+        <div class="mobile-refresh" id="mobileRefresh">
+          <button
+            class="mobile-refresh-button"
+            id="mobileRefreshButton"
+            type="button"
+            aria-label="Refresh page"
+            aria-expanded="false"
+            aria-controls="mobileRefreshMenu"
+          >
+            <span class="mobile-refresh-icon" aria-hidden="true"></span>
+          </button>
+          <div class="mobile-refresh-menu" id="mobileRefreshMenu" role="menu" aria-label="Reload options">
+            <button class="mobile-refresh-menu-item" id="hardReloadButton" type="button" role="menuitem">
+              Hard reload
+            </button>
+            <button class="mobile-refresh-menu-item" id="clearCacheReloadButton" type="button" role="menuitem">
+              Clear cache reload
+            </button>
+          </div>
+        </div>
+        <div
+          class="projection-switcher"
+          id="projectionSwitcher"
+          role="button"
+          tabindex="0"
+          aria-label="Current projection. Swipe to change projection"
+        >
+          <span class="projection-switcher-track" id="projectionSwitcherTrack"></span>
+        </div>
+        <aside class="layer-panel" id="layerPanel" aria-label="Map layers">
+          <div class="layer-panel-header">
+            <p class="panel-eyebrow">Layers</p>
+            <button class="layer-panel-close" id="layerPanelClose" type="button" aria-label="Close layers menu">
+              <span></span>
+              <span></span>
+            </button>
+          </div>
+          <div class="layer-panel-scroll">
+            <section class="projection-panel" aria-label="Projection">
+              <label class="projection-label" for="projectionSelect">Projection</label>
+              <div class="projection-select-wrap">
+                <select class="projection-select" id="projectionSelect" aria-label="Map projection">
+                  <option value="azimuthal-equidistant" selected>Azimuthal Eqd</option>
+                  <option value="orthographic">Globe</option>
+                  <option value="mercator">Mercator</option>
+                  <option value="natural-earth-ii">Natural Earth II</option>
+                  <option value="goode-homolosine">Goode Homolosine</option>
+                  <option value="waterman">Waterman Butterfly</option>
+                </select>
+              </div>
+            </section>
 
-          <div class="layer-list">
-            <section class="layer-group layer-group-earth is-active">
-              <button class="layer-item is-active" data-layer-id="earth" type="button">
+            <div class="layer-list">
+              <section class="layer-group layer-group-earth is-active">
+                <button class="layer-item is-active" data-layer-id="earth" type="button">
+                  <span class="layer-checkbox" aria-hidden="true">
+                    <span class="layer-checkmark"></span>
+                  </span>
+                  <span class="layer-copy">
+                    <strong>Earth</strong>
+                    <small>Base globe imagery</small>
+                  </span>
+                </button>
+              </section>
+
+              <button class="layer-item is-active" data-layer-id="borders" type="button">
                 <span class="layer-checkbox" aria-hidden="true">
                   <span class="layer-checkmark"></span>
                 </span>
                 <span class="layer-copy">
-                  <strong>Earth</strong>
-                  <small>Base globe imagery</small>
+                  <strong>Borders</strong>
+                  <small>Country outlines</small>
                 </span>
               </button>
-            </section>
-
-            <button class="layer-item is-active" data-layer-id="borders" type="button">
-              <span class="layer-checkbox" aria-hidden="true">
-                <span class="layer-checkmark"></span>
-              </span>
-              <span class="layer-copy">
-                <strong>Borders</strong>
-                <small>Country outlines</small>
-              </span>
-            </button>
-            <button class="layer-item is-active" data-layer-id="graticule" type="button">
-              <span class="layer-checkbox" aria-hidden="true">
-                <span class="layer-checkmark"></span>
-              </span>
-              <span class="layer-copy">
-                <strong>Graticule</strong>
-                <small>Latitude and longitude grid</small>
-              </span>
-            </button>
+              <section class="layer-group layer-group-empires" id="empireLayerGroup">
+                <div class="layer-group-head">
+                  <button class="layer-item layer-item-group" data-layer-id="empires" type="button">
+                    <span class="layer-checkbox" aria-hidden="true">
+                      <span class="layer-checkmark"></span>
+                    </span>
+                    <span class="layer-copy">
+                      <strong>Empires</strong>
+                      <small>Peak territorial extent</small>
+                    </span>
+                    <span
+                      class="layer-group-toggle"
+                      id="empireGroupToggle"
+                      aria-label="Toggle empire sublayers"
+                      aria-controls="empireSubLayers"
+                      aria-expanded="false"
+                    >
+                      <span class="layer-group-chevron" aria-hidden="true"></span>
+                    </span>
+                  </button>
+                </div>
+                <div class="layer-sublist" id="empireSubLayers">
+                  <button class="layer-item layer-item-sub" data-empire-layer-id="roman" type="button">
+                    <span class="layer-checkbox" aria-hidden="true">
+                      <span class="layer-checkmark"></span>
+                    </span>
+                    <span class="layer-copy">
+                      <strong>Roman</strong>
+                      <small>AD 117 extent</small>
+                    </span>
+                  </button>
+                </div>
+              </section>
+              <button class="layer-item is-active" data-layer-id="graticule" type="button">
+                <span class="layer-checkbox" aria-hidden="true">
+                  <span class="layer-checkmark"></span>
+                </span>
+                <span class="layer-copy">
+                  <strong>Graticule</strong>
+                  <small>Latitude and longitude grid</small>
+                </span>
+              </button>
+            </div>
+          </div>
+          <div class="layer-panel-scrollbar" id="layerPanelScrollbar" aria-hidden="true">
+            <div class="layer-panel-scrollbar-thumb" id="layerPanelScrollbarThumb"></div>
           </div>
         </aside>
       </section>

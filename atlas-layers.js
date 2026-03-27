@@ -77,6 +77,7 @@
   function createOverlayLayerRenderers({
     overlayContext,
     worldDataRef,
+    manifestRef,
     layerStateRef,
     earthTextureRef,
     pixelRatioRef,
@@ -88,6 +89,49 @@
     const rasterBuildState = new Set();
     const flatRasterPrewarmState = new Set();
     const flatMapRenderer = window.AtlasEarth?.createFlatMapRenderer?.() ?? null;
+
+    function getSelectedLodKey(layerKey, scene) {
+      const manifest = manifestRef?.();
+      const manifestLayer = manifest?.layers?.[layerKey];
+      const lodEntries = manifestLayer?.lods
+        ? Object.entries(manifestLayer.lods)
+        : [];
+
+      if (!lodEntries.length) {
+        return null;
+      }
+
+      const zoomScale = scene?.zoomScale ?? 1;
+      const eligibleEntries = lodEntries
+        .filter(([, lodConfig]) => zoomScale >= (lodConfig?.minZoom ?? 1))
+        .sort((left, right) => (right[1]?.minZoom ?? 1) - (left[1]?.minZoom ?? 1));
+
+      if (eligibleEntries.length) {
+        return eligibleEntries[0][0];
+      }
+
+      const sortedEntries = lodEntries.sort((left, right) => (left[1]?.minZoom ?? 1) - (right[1]?.minZoom ?? 1));
+      return sortedEntries[0][0];
+    }
+
+    function getLayerGeometry(layerKey, scene, fallbackGeometry) {
+      const worldData = worldDataRef();
+      const layerSources = worldData?.layerSources?.[layerKey];
+      const selectedLod = getSelectedLodKey(layerKey, scene);
+
+      if (selectedLod && layerSources?.[selectedLod]) {
+        return layerSources[selectedLod];
+      }
+
+      if (layerSources) {
+        const firstAvailable = Object.values(layerSources).find(Boolean);
+        if (firstAvailable) {
+          return firstAvailable;
+        }
+      }
+
+      return fallbackGeometry;
+    }
 
     function createSceneAdapter(scene) {
       return window.AtlasAdapters.createAdapter(scene, overlayContext, worldDataRef());
@@ -249,8 +293,7 @@
       });
     }
 
-    function renderProjectedRaster(scene, adapter) {
-      const image = earthTextureRef();
+    function renderProjectedRaster(scene, adapter, image) {
       if (
         !image ||
         (
@@ -340,7 +383,7 @@
       overlayContext.fillStyle = "#2f7398";
       overlayContext.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
 
-      if (layerStateRef().earth && renderProjectedRaster(scene, adapter)) {
+      if (layerStateRef().earth && renderProjectedRaster(scene, adapter, earthTextureRef())) {
         return;
       }
 
@@ -349,7 +392,7 @@
         return;
       }
 
-      const landGeometry = adapter.resolveGeometry("land", worldDataRef().land);
+      const landGeometry = adapter.resolveGeometry("land", getLayerGeometry("land", scene, worldDataRef().land));
       adapter.fillGeometry(landGeometry, "#98b977", adapter.kind === "interrupted" ? "evenodd" : "nonzero");
     }
 
@@ -384,9 +427,32 @@
         return;
       }
 
-      const bordersGeometry = adapter.resolveGeometry("borders", worldDataRef().borders);
+      const bordersGeometry = adapter.resolveGeometry("borders", getLayerGeometry("borders", scene, worldDataRef().borders));
       adapter.strokeGeometry(bordersGeometry, "rgba(255, 255, 255, 0.36)", 0.8, {
         maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
+      });
+    }
+
+    function renderEmpiresLayer(scene) {
+      if (!layerStateRef().empires) {
+        return;
+      }
+
+      const adapter = createSceneAdapter(scene);
+      const empireLayerState = layerStateRef().empireSublayers ?? {};
+      const empireGeometries = Object.entries(empireLayerState)
+        .filter(([, isEnabled]) => isEnabled)
+        .map(([empireKey]) => worldDataRef()?.layerSources?.empires?.[empireKey])
+        .filter(Boolean);
+      if (!adapter.isReady || !adapter.canRenderLayer("land") || !empireGeometries.length) {
+        return;
+      }
+
+      empireGeometries.forEach((empiresGeometry) => {
+        adapter.fillGeometry(empiresGeometry, "rgba(196, 139, 53, 0.22)", adapter.kind === "interrupted" ? "evenodd" : "nonzero");
+        adapter.strokeGeometry(empiresGeometry, "rgba(176, 120, 37, 0.9)", 1.1, {
+          maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
+        });
       });
     }
 
@@ -417,7 +483,7 @@
 
         scheduleFlatRasterPrewarm(scene, image, pixelRatioRef?.() ?? 1);
       },
-      renderers: [renderFallbackLayer, renderGraticuleLayer, renderBordersLayer, renderProjectionFrame],
+      renderers: [renderFallbackLayer, renderEmpiresLayer, renderGraticuleLayer, renderBordersLayer, renderProjectionFrame],
     };
   }
 

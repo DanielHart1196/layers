@@ -186,6 +186,7 @@
 
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
     }
 
     function clear() {
@@ -226,13 +227,13 @@
           cropRatioLocation,
           scene.projectionKind === "mercator"
             ? 1
-            : scene.radius / (scene.projectionScale ?? scene.radius)
+            : scene.radius / ((scene.projectionScale ?? scene.radius) * (scene.zoomScale ?? 1))
         );
         gl.uniform2f(sceneSizeLocation, sceneWidth, sceneHeight);
         gl.uniform1f(
           mercatorScaleLocation,
           scene.projectionKind === "mercator"
-            ? (scene.projectionScale ?? scene.radius ?? 1)
+            ? ((scene.projectionScale ?? scene.radius ?? 1) * (scene.zoomScale ?? 1))
             : 1,
         );
         gl.uniform1f(
@@ -269,6 +270,12 @@
       if (!gl) {
         console.error("WebGL not available; flat raster rendering will fall back to CPU overlay.");
         return {
+          hasMesh() {
+            return false;
+          },
+          prepare() {
+            return null;
+          },
           render() {
             return null;
           },
@@ -282,11 +289,16 @@
       attribute vec2 a_uv;
       varying vec2 v_uv;
       uniform vec2 u_viewSize;
+      uniform float u_zoomScale;
+      uniform vec2 u_panOffset;
 
       void main() {
+        vec2 centered = a_position - (u_viewSize * 0.5);
+        vec2 scaled = centered * u_zoomScale;
+        vec2 screen = scaled + (u_viewSize * 0.5) + u_panOffset;
         vec2 clip = vec2(
-          (a_position.x / u_viewSize.x) * 2.0 - 1.0,
-          1.0 - (a_position.y / u_viewSize.y) * 2.0
+          (screen.x / u_viewSize.x) * 2.0 - 1.0,
+          1.0 - (screen.y / u_viewSize.y) * 2.0
         );
         v_uv = a_uv;
         gl_Position = vec4(clip, 0.0, 1.0);
@@ -311,6 +323,8 @@
       const uvLocation = gl.getAttribLocation(program, "a_uv");
       const viewSizeLocation = gl.getUniformLocation(program, "u_viewSize");
       const textureLocation = gl.getUniformLocation(program, "u_texture");
+      const zoomScaleLocation = gl.getUniformLocation(program, "u_zoomScale");
+      const panOffsetLocation = gl.getUniformLocation(program, "u_panOffset");
 
       const positionBuffer = gl.createBuffer();
       const uvBuffer = gl.createBuffer();
@@ -359,21 +373,33 @@
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
       }
 
-      function getMeshProfile(projectionKind) {
+      function getMeshProfile(projectionKind, pixelRatio = 1) {
+        const densityFactor = Math.min(Math.max(pixelRatio, 1), 2);
+
         if (projectionKind === "waterman") {
           return {
-            lonStep: 2.5,
-            latStep: 2.5,
+            lonStep: 2.25 / densityFactor,
+            latStep: 2.25 / densityFactor,
             edgeLimit: 90,
             seamTolerance: 18,
           };
         }
 
         if (projectionKind === "goode-homolosine") {
-          return { lonStep: 3, latStep: 3, edgeLimit: 110, seamTolerance: 20 };
+          return {
+            lonStep: 2.75 / densityFactor,
+            latStep: 2.75 / densityFactor,
+            edgeLimit: 110,
+            seamTolerance: 20,
+          };
         }
 
-        return { lonStep: 3.5, latStep: 3.5, edgeLimit: 120, seamTolerance: 24 };
+        return {
+          lonStep: 3 / densityFactor,
+          latStep: 3 / densityFactor,
+          edgeLimit: 120,
+          seamTolerance: 24,
+        };
       }
 
       function buildMeshCacheKey(scene, pixelRatio) {
@@ -383,6 +409,7 @@
           scene.height ?? scene.radius ?? 0,
           scene.center[0],
           scene.center[1],
+          scene.projectionScale ?? scene.radius ?? 0,
           pixelRatio,
         ].join("|");
       }
@@ -483,40 +510,18 @@
         };
       }
 
-      function appendTriangleIfValid(
-        projection,
-        positionData,
-        uvData,
-        pointA,
-        pointB,
-        pointC,
-        edgeLimit,
-        seamTolerance,
-        pixelRatio,
-      ) {
-        if (shouldSkipTriangle(
-          projection,
-          pointA,
-          pointB,
-          pointC,
-          edgeLimit,
-          seamTolerance,
-          pixelRatio,
-        )) {
-          return;
-        }
-
-        pushTriangle(positionData, uvData, pointA, pointB, pointC);
-      }
-
       function buildProjectedMesh(scene, pixelRatio) {
         const cacheKey = buildMeshCacheKey(scene, pixelRatio);
         if (meshCache.has(cacheKey)) {
           return meshCache.get(cacheKey);
         }
 
-        const projection = window.AtlasCore.createProjection(scene);
-        const { lonStep, latStep, edgeLimit, seamTolerance } = getMeshProfile(scene.projectionKind);
+        const baseScene = { ...scene, zoomScale: 1 };
+        const projection = window.AtlasCore.createProjection(baseScene);
+        const { lonStep, latStep, edgeLimit, seamTolerance } = getMeshProfile(
+          scene.projectionKind,
+          pixelRatio,
+        );
         const positionData = [];
         const uvData = [];
 
@@ -529,6 +534,7 @@
             const topRight = projectGridPoint(projection, nextLongitude, latitude, pixelRatio);
             const bottomLeft = projectGridPoint(projection, longitude, nextLatitude, pixelRatio);
             const bottomRight = projectGridPoint(projection, nextLongitude, nextLatitude, pixelRatio);
+
             if (!shouldSkipTriangle(
               projection,
               topLeft,
@@ -584,7 +590,6 @@
           Math.round((scene.height ?? window.AtlasCore.VIEW_HEIGHT) * pixelRatio),
         );
         setTexture(image);
-
         const mesh = buildProjectedMesh(scene, pixelRatio);
         if (!mesh.vertexCount) {
           return null;
@@ -612,6 +617,12 @@
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.useProgram(program);
         gl.uniform2f(viewSizeLocation, canvasElement.width, canvasElement.height);
+        gl.uniform1f(zoomScaleLocation, scene.zoomScale ?? 1);
+        gl.uniform2f(
+          panOffsetLocation,
+          (scene.panOffset?.x ?? 0) * pixelRatio,
+          (scene.panOffset?.y ?? 0) * pixelRatio,
+        );
 
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, mesh.positions, gl.STATIC_DRAW);
