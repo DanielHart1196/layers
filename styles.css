@@ -710,11 +710,12 @@ body:not(.is-earth-enabled) .month-overlay {
   font-weight: 700;
 }
 
-.projection-select-wrap {
+.projection-picker {
   position: relative;
+  z-index: 12;
 }
 
-.projection-select {
+.projection-picker-button {
   width: 100%;
   padding: 10px 42px 10px 14px;
   border-radius: 14px;
@@ -725,18 +726,20 @@ body:not(.is-earth-enabled) .month-overlay {
   font-family: "Manrope", sans-serif;
   font-size: 0.9rem;
   font-weight: 700;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
+  text-align: left;
   cursor: pointer;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
-    background 160ms ease;
+    background 160ms ease,
+    border-radius 180ms ease;
 }
 
-.projection-select-wrap::after {
-  content: "";
+.projection-picker-value {
+  display: block;
+}
+
+.projection-picker-chevron {
   position: absolute;
   right: 16px;
   top: 50%;
@@ -746,12 +749,80 @@ body:not(.is-earth-enabled) .month-overlay {
   border-bottom: 2px solid rgba(15, 36, 48, 0.55);
   transform: translateY(-65%) rotate(45deg);
   pointer-events: none;
+  transition: transform 180ms ease;
 }
 
-.projection-select:focus {
+.projection-picker-button:focus {
   outline: none;
   border-color: rgba(15, 36, 48, 0.1);
   box-shadow: none;
+}
+
+.projection-picker.is-open .projection-picker-button {
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.projection-picker.is-open .projection-picker-chevron {
+  transform: translateY(-35%) rotate(225deg);
+}
+
+.projection-picker-list {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  border: 1px solid rgba(15, 36, 48, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 16px 30px rgba(15, 36, 48, 0.08);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.projection-picker.is-open .projection-picker-list {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.projection-picker-option {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid rgba(15, 36, 48, 0.06);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.68);
+  color: rgba(15, 36, 48, 0.76);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.projection-picker-option.is-active {
+  border-color: rgba(15, 36, 48, 0.12);
+  background: linear-gradient(180deg, rgba(244, 238, 224, 0.95), rgba(237, 228, 208, 0.92));
+  color: rgba(15, 36, 48, 0.88);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .projection-picker-option:hover,
+  .projection-picker-button:hover {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(247, 239, 225, 0.98));
+  }
 }
 
 .layer-list {

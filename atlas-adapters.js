@@ -81,12 +81,13 @@
       const viewportRight = sceneDefinition.center[0] + sceneDefinition.width / 2;
       const minIndex = Math.ceil((viewportLeft - baseRight) / worldWidth);
       const maxIndex = Math.floor((viewportRight - baseLeft) / worldWidth);
-      const offsets = [];
+      const offsetSet = new Set([-worldWidth, 0, worldWidth]);
 
       for (let index = minIndex; index <= maxIndex; index += 1) {
-        offsets.push(index * worldWidth);
+        offsetSet.add(index * worldWidth);
       }
 
+      const offsets = Array.from(offsetSet).sort((left, right) => left - right);
       return offsets.length ? offsets : [0];
     }
 

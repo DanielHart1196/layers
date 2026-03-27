@@ -37,7 +37,11 @@ const projectionSwitcher = document.getElementById("projectionSwitcher");
 const projectionSwitcherTrack = document.getElementById("projectionSwitcherTrack");
 const layerButtons = Array.from(document.querySelectorAll(".layer-item"));
 const empireLayerButtons = Array.from(document.querySelectorAll("[data-empire-layer-id]"));
-const projectionSelect = document.getElementById("projectionSelect");
+const projectionPicker = document.getElementById("projectionPicker");
+const projectionPickerButton = document.getElementById("projectionPickerButton");
+const projectionPickerValue = document.getElementById("projectionPickerValue");
+const projectionPickerList = document.getElementById("projectionPickerList");
+const projectionOptionButtons = Array.from(document.querySelectorAll("[data-projection-option]"));
 const monthMenuToggle = document.getElementById("monthMenuToggle");
 const monthOverlay = document.querySelector(".month-overlay");
 const monthSlider = document.getElementById("monthSlider");
@@ -110,8 +114,12 @@ const temporalState = {
   selectedMonth: getDefaultMonth(),
 };
 
+function getDefaultProjection() {
+  return mobileLayerMenuMediaQuery.matches ? "orthographic" : "azimuthal-equidistant";
+}
+
 const projectionState = {
-  selectedProjection: "azimuthal-equidistant",
+  selectedProjection: getDefaultProjection(),
 };
 const zoomState = {
   scale: 1,
@@ -122,6 +130,7 @@ const uiState = {
   isEmpireGroupOpen: false,
   isBorderGroupOpen: false,
   isBorderColorPaletteOpen: false,
+  isProjectionMenuOpen: false,
   isInteracting: false,
 };
 const borderStyleState = {
@@ -149,6 +158,14 @@ const PROJECTION_SEQUENCE = [
   "orthographic",
   "azimuthal-equidistant",
 ];
+const PROJECTION_OPTIONS = [
+  { value: "orthographic", label: "Globe" },
+  { value: "azimuthal-equidistant", label: "Azimuthal Eqd" },
+  { value: "mercator", label: "Mercator" },
+  { value: "natural-earth-ii", label: "Natural Earth II" },
+  { value: "goode-homolosine", label: "Goode Homolosine" },
+  { value: "waterman", label: "Waterman Butterfly" },
+];
 let overlayLayerRenderers = [];
 
 const projectionSwitcherItems = PROJECTION_SEQUENCE.map((projectionKind) => {
@@ -168,7 +185,7 @@ function normalizeProjectionSelection(projectionKind) {
 }
 
 function getProjectionLabel(projectionKind) {
-  return projectionSelect?.querySelector(`option[value="${projectionKind}"]`)?.textContent ?? projectionKind;
+  return PROJECTION_OPTIONS.find((option) => option.value === projectionKind)?.label ?? projectionKind;
 }
 
 function getAdjacentProjection(direction = 1) {
@@ -226,12 +243,29 @@ function syncProjectionSwitcher() {
 
 function cycleProjection(direction = 1) {
   projectionState.selectedProjection = getAdjacentProjection(direction);
-  if (projectionSelect) {
-    projectionSelect.value = projectionState.selectedProjection;
-  }
   zoomState.scale = clampZoomScale(zoomState.scale);
+  syncProjectionPicker();
   syncProjectionSwitcher();
   handleResize();
+}
+
+function setProjectionMenuOpen(isOpen) {
+  uiState.isProjectionMenuOpen = Boolean(isOpen);
+  projectionPicker?.classList.toggle("is-open", uiState.isProjectionMenuOpen);
+  projectionPickerButton?.setAttribute("aria-expanded", uiState.isProjectionMenuOpen ? "true" : "false");
+}
+
+function syncProjectionPicker() {
+  const activeProjection = normalizeProjectionSelection(projectionState.selectedProjection);
+  if (projectionPickerValue) {
+    projectionPickerValue.textContent = getProjectionLabel(activeProjection);
+  }
+
+  projectionOptionButtons.forEach((button) => {
+    const isActive = button.dataset.projectionOption === activeProjection;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
 }
 
 function releaseLayerPanelFocusAfterPointerInteraction(target) {
@@ -1070,6 +1104,7 @@ function setLayerPanelOpen(isOpen) {
     showLayerPanelScrollbarTemporarily();
   } else {
     layerPanelScrollbar?.classList.remove("is-visible");
+    setProjectionMenuOpen(false);
   }
 
   if (!isOpen && mobileLayerMenuMediaQuery.matches) {
@@ -1935,7 +1970,7 @@ function enableLayerPanelToggle() {
 
   layerMenuToggle.addEventListener("click", () => {
     setLayerPanelOpen(true);
-    projectionSelect?.focus();
+    projectionPickerButton?.focus();
   });
 
   layerPanelClose.addEventListener("click", () => {
@@ -1967,21 +2002,59 @@ function enableLayerPanelToggle() {
 }
 
 function enableProjectionControls() {
-  if (!projectionSelect) {
+  if (!projectionPickerButton || !projectionPickerList) {
     return;
   }
 
   projectionState.selectedProjection = normalizeProjectionSelection(projectionState.selectedProjection);
-  projectionSelect.value = projectionState.selectedProjection;
+  syncProjectionPicker();
   syncProjectionSwitcher();
-  projectionSelect.addEventListener("change", () => {
-    projectionState.selectedProjection = normalizeProjectionSelection(projectionSelect.value);
-    projectionSelect.value = projectionState.selectedProjection;
-    zoomState.scale = clampZoomScale(zoomState.scale);
-    syncProjectionSwitcher();
-    releaseLayerPanelFocusAfterPointerInteraction(projectionSelect);
-    handleResize();
+
+  projectionPickerButton.addEventListener("click", () => {
+    setProjectionMenuOpen(!uiState.isProjectionMenuOpen);
   });
+
+  projectionOptionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setProjectionMenuOpen(false);
+      setProjectionFromPickerValue(button.dataset.projectionOption);
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!uiState.isProjectionMenuOpen) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+
+    if (projectionPicker?.contains(target)) {
+      return;
+    }
+
+    setProjectionMenuOpen(false);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !uiState.isProjectionMenuOpen) {
+      return;
+    }
+
+    setProjectionMenuOpen(false);
+    releaseLayerPanelFocusAfterPointerInteraction(projectionPickerButton);
+  });
+}
+
+function setProjectionFromPickerValue(projectionKind) {
+  projectionState.selectedProjection = normalizeProjectionSelection(projectionKind);
+  syncProjectionPicker();
+  zoomState.scale = clampZoomScale(zoomState.scale);
+  syncProjectionSwitcher();
+  releaseLayerPanelFocusAfterPointerInteraction(projectionPickerButton);
+  handleResize();
 }
 
 function enableProjectionSwitcher() {

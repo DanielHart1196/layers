@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Layers Atlas Prototype</title>
+    <title>Layers</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -155,16 +155,27 @@
           </div>
           <div class="layer-panel-scroll">
             <section class="projection-panel" aria-label="Projection">
-              <label class="projection-label" for="projectionSelect">Projection</label>
-              <div class="projection-select-wrap">
-                <select class="projection-select" id="projectionSelect" aria-label="Map projection">
-                  <option value="azimuthal-equidistant" selected>Azimuthal Eqd</option>
-                  <option value="orthographic">Globe</option>
-                  <option value="mercator">Mercator</option>
-                  <option value="natural-earth-ii">Natural Earth II</option>
-                  <option value="goode-homolosine">Goode Homolosine</option>
-                  <option value="waterman">Waterman Butterfly</option>
-                </select>
+              <p class="projection-label">Projection</p>
+              <div class="projection-picker" id="projectionPicker">
+                <button
+                  class="projection-picker-button"
+                  id="projectionPickerButton"
+                  type="button"
+                  aria-label="Choose projection"
+                  aria-controls="projectionPickerList"
+                  aria-expanded="false"
+                >
+                  <span class="projection-picker-value" id="projectionPickerValue">Globe</span>
+                  <span class="projection-picker-chevron" aria-hidden="true"></span>
+                </button>
+                <div class="projection-picker-list" id="projectionPickerList" role="listbox" aria-label="Map projection">
+                  <button class="projection-picker-option" type="button" role="option" data-projection-option="orthographic">Globe</button>
+                  <button class="projection-picker-option" type="button" role="option" data-projection-option="azimuthal-equidistant">Azimuthal Eqd</button>
+                  <button class="projection-picker-option" type="button" role="option" data-projection-option="mercator">Mercator</button>
+                  <button class="projection-picker-option" type="button" role="option" data-projection-option="natural-earth-ii">Natural Earth II</button>
+                  <button class="projection-picker-option" type="button" role="option" data-projection-option="goode-homolosine">Goode Homolosine</button>
+                  <button class="projection-picker-option" type="button" role="option" data-projection-option="waterman">Waterman Butterfly</button>
+                </div>
               </div>
             </section>
 
