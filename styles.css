@@ -61,7 +61,19 @@ body.is-viewport-stage .app-shell {
   user-select: none;
 }
 
+.boot-globe-poster {
+  display: none;
+}
+
 .atlas-stage.is-viewport-stage {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 1;
+}
+
+.is-mobile-default-globe .atlas-stage {
   position: fixed;
   inset: 0;
   width: 100vw;
@@ -103,6 +115,27 @@ body.is-viewport-stage .app-shell {
 .atlas-overlay-canvas,
 .atlas-overlay {
   z-index: 2;
+}
+
+.boot-stage-poster {
+  display: none;
+}
+
+.is-mobile-default-globe .boot-stage-poster {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background-image: var(--boot-stage-poster-image, none);
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+  z-index: 3;
+}
+
+.is-mobile-default-globe .atlas-canvas,
+.is-mobile-default-globe .atlas-overlay-canvas,
+.is-mobile-default-globe .atlas-overlay {
+  opacity: 0;
 }
 
 .month-trigger {
@@ -367,6 +400,26 @@ body:not(.is-earth-enabled) .month-overlay {
   min-height: 1.2em;
 }
 
+.projection-switcher-boot-label {
+  display: none;
+  position: static;
+  width: 100%;
+  text-align: center;
+  transform: none;
+}
+
+.is-mobile-default-globe .projection-switcher-boot-label {
+  display: block;
+}
+
+.is-mobile-default-globe .projection-switcher-label:not(.projection-switcher-boot-label) {
+  opacity: 0;
+}
+
+.projection-switcher.is-ready .projection-switcher-boot-label {
+  display: none;
+}
+
 .projection-switcher-label {
   position: absolute;
   top: 0;
@@ -452,6 +505,15 @@ body:not(.is-earth-enabled) .month-overlay {
 }
 
 .atlas-stage.is-single-globe .frame-single-globe {
+  display: block;
+}
+
+.is-mobile-default-globe .atlas-stage .frame-atlas,
+.is-mobile-default-globe .atlas-stage .frame-dymaxion {
+  display: none;
+}
+
+.is-mobile-default-globe .atlas-stage .frame-single-globe {
   display: block;
 }
 
@@ -603,6 +665,23 @@ body:not(.is-earth-enabled) .month-overlay {
 }
 
 @media (max-width: 800px) {
+  .projection-switcher {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+    pointer-events: none;
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      background 180ms ease;
+  }
+
+  body.is-mobile-projection-docked .projection-switcher {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+
   .month-menu-toggle {
     right: 18px;
     bottom: 10vh;

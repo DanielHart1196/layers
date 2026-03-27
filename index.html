@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Layers</title>
+    <script>
+      try {
+        const bootPosterImage = sessionStorage.getItem("atlas.bootViewportPoster");
+        if (bootPosterImage) {
+          document.documentElement.style.setProperty("--boot-stage-poster-image", `url("${bootPosterImage}")`);
+        }
+      } catch (error) {
+        // Ignore storage access failures during boot.
+      }
+
+      if (window.matchMedia && window.matchMedia("(max-width: 800px)").matches) {
+        document.documentElement.classList.add("is-mobile-default-globe");
+        document.documentElement.style.setProperty("--boot-globe-width", `${Math.max(1, Math.round(window.innerWidth || 1200))}`);
+        document.documentElement.style.setProperty("--boot-globe-height", `${Math.max(1, Math.round(window.innerHeight || 860))}`);
+        document.documentElement.style.setProperty(
+          "--boot-globe-radius",
+          `${Math.max(120, Math.min(window.innerWidth || 1200, window.innerHeight || 860) / 2 - 44)}`,
+        );
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -30,6 +50,7 @@
           role="img"
           aria-label="Double hemisphere world map with north and south pole insets"
         >
+          <div class="boot-stage-poster" aria-hidden="true"></div>
           <canvas
             class="atlas-canvas atlas-earth-canvas"
             id="atlasEarthCanvas"
@@ -68,6 +89,21 @@
               <rect class="frame frame-dymaxion" x="70" y="90" width="1060" height="680" rx="26" ry="26" />
             </g>
           </svg>
+          <script>
+            if (document.documentElement.classList.contains("is-mobile-default-globe")) {
+              const bootWidth = Number.parseFloat(document.documentElement.style.getPropertyValue("--boot-globe-width")) || 1200;
+              const bootHeight = Number.parseFloat(document.documentElement.style.getPropertyValue("--boot-globe-height")) || 860;
+              const bootRadius = Number.parseFloat(document.documentElement.style.getPropertyValue("--boot-globe-radius")) || 320;
+              const bootOverlay = document.currentScript.previousElementSibling;
+              const bootFrame = bootOverlay?.querySelector?.("[data-frame='single-globe']");
+              if (bootOverlay instanceof SVGElement && bootFrame instanceof SVGCircleElement) {
+                bootOverlay.setAttribute("viewBox", `0 0 ${bootWidth} ${bootHeight}`);
+                bootFrame.setAttribute("cx", String(bootWidth / 2));
+                bootFrame.setAttribute("cy", String(bootHeight / 2));
+                bootFrame.setAttribute("r", String(bootRadius));
+              }
+            }
+          </script>
 
         </div>
 
@@ -143,7 +179,9 @@
           tabindex="0"
           aria-label="Current projection. Swipe to change projection"
         >
-          <span class="projection-switcher-track" id="projectionSwitcherTrack"></span>
+          <span class="projection-switcher-track" id="projectionSwitcherTrack">
+            <span class="projection-switcher-label projection-switcher-boot-label" aria-hidden="true">Globe</span>
+          </span>
         </div>
         <aside class="layer-panel" id="layerPanel" aria-label="Map layers">
           <div class="layer-panel-header">

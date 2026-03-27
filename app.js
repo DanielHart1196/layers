@@ -82,6 +82,7 @@ let projectionSwipeDeltaX = 0;
 let projectionSwipeAnimating = false;
 let projectionSwipeSettleTimer = null;
 let interactionSettleTimer = null;
+let bootStagePosterSnapshotTimer = null;
 let layerScrollbarDragState = null;
 let layerScrollbarFadeTimer = null;
 let borderColorFieldDragState = null;
@@ -93,6 +94,7 @@ let borderColorRemoveTarget = null;
 let borderColorLongPressTriggered = false;
 const BORDER_COLOR_STORAGE_KEY = "atlas.border.customColors";
 const MAX_CUSTOM_BORDER_COLORS = 10;
+const BOOT_STAGE_POSTER_STORAGE_KEY = "atlas.bootViewportPoster";
 let customBorderColors = [];
 const flatProjectionPanOffsets = {
   "natural-earth-ii": { x: 0, y: 0 },
@@ -131,6 +133,7 @@ const uiState = {
   isBorderGroupOpen: false,
   isBorderColorPaletteOpen: false,
   isProjectionMenuOpen: false,
+  isProjectionSwitcherReady: false,
   isInteracting: false,
 };
 const borderStyleState = {
@@ -238,6 +241,8 @@ function syncProjectionSwitcher() {
     return;
   }
 
+  uiState.isProjectionSwitcherReady = true;
+  projectionSwitcher.classList.add("is-ready");
   renderProjectionSwitcher(0);
 }
 
@@ -342,6 +347,7 @@ function syncMobileMonthChrome() {
 
   document.body.classList.toggle("is-earth-enabled", monthsEnabled);
   document.body.classList.toggle("is-mobile-month-docked", monthsEnabled && isMobileViewport && isZoomedOut);
+  document.body.classList.toggle("is-mobile-projection-docked", isMobileViewport && isZoomedOut);
 
   if (!monthsEnabled || (isMobileViewport && isZoomedOut)) {
     setMonthOverlayOpen(false);
@@ -387,6 +393,7 @@ function enableMonthMenuToggle() {
 
 async function init() {
   customBorderColors = loadCustomBorderColors();
+  projectionState.selectedProjection = normalizeProjectionSelection(getDefaultProjection());
   syncMobileMonthChrome();
   syncStageChrome();
   configureCanvases();
@@ -415,6 +422,7 @@ async function init() {
     await refreshEarthTexture();
   }
   drawAtlas();
+  document.documentElement.classList.remove("is-mobile-default-globe");
   enableDragging();
   enableZoomControls();
   enableLayerPanelToggle();
@@ -585,6 +593,61 @@ function drawAtlas() {
   stage.classList.toggle("is-dymaxion", projectionState.selectedProjection === "dymaxion");
   drawEarthPass(scenes);
   drawOverlayPass(scenes);
+  scheduleBootStagePosterSnapshot();
+}
+
+function scheduleBootStagePosterSnapshot() {
+  if (bootStagePosterSnapshotTimer) {
+    clearTimeout(bootStagePosterSnapshotTimer);
+  }
+
+  bootStagePosterSnapshotTimer = window.setTimeout(() => {
+    bootStagePosterSnapshotTimer = null;
+    snapshotBootStagePoster();
+  }, 80);
+}
+
+function snapshotBootStagePoster() {
+  if (
+    projectionState.selectedProjection !== "orthographic" ||
+    zoomState.scale > 1.01 ||
+    layerState.earth ||
+    !overlayCanvas ||
+    !stage
+  ) {
+    return;
+  }
+
+  try {
+    const posterCanvas = document.createElement("canvas");
+    const stageRect = stage.getBoundingClientRect();
+    const posterWidth = Math.max(1, Math.round(stageRect.width));
+    const posterHeight = Math.max(1, Math.round(stageRect.height));
+    posterCanvas.width = posterWidth;
+    posterCanvas.height = posterHeight;
+    const context = posterCanvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+
+    context.drawImage(overlayCanvas, 0, 0, posterWidth, posterHeight);
+
+    const globeRadius = Number.parseFloat(singleGlobeFrameElement?.getAttribute("r") ?? "") || Math.max(120, Math.min(posterWidth, posterHeight) / 2 - 44);
+    const globeCenterX = Number.parseFloat(singleGlobeFrameElement?.getAttribute("cx") ?? "") || (posterWidth / 2);
+    const globeCenterY = Number.parseFloat(singleGlobeFrameElement?.getAttribute("cy") ?? "") || (posterHeight / 2);
+
+    context.strokeStyle = "rgba(8, 27, 38, 0.85)";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(globeCenterX, globeCenterY, globeRadius, 0, Math.PI * 2);
+    context.stroke();
+
+    const dataUrl = posterCanvas.toDataURL("image/webp", 0.82);
+    sessionStorage.setItem(BOOT_STAGE_POSTER_STORAGE_KEY, dataUrl);
+    document.documentElement.style.setProperty("--boot-stage-poster-image", `url("${dataUrl}")`);
+  } catch (error) {
+    console.warn("Unable to snapshot boot stage poster.", error);
+  }
 }
 
 function getResolvedScenes() {
