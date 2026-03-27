@@ -181,15 +181,121 @@
                 </button>
               </section>
 
-              <button class="layer-item is-active" data-layer-id="borders" type="button">
-                <span class="layer-checkbox" aria-hidden="true">
-                  <span class="layer-checkmark"></span>
-                </span>
-                <span class="layer-copy">
-                  <strong>Borders</strong>
-                  <small>Country outlines</small>
-                </span>
-              </button>
+              <section class="layer-group layer-group-borders" id="borderLayerGroup">
+                <div class="layer-group-head">
+                  <button class="layer-item layer-item-group is-active" data-layer-id="borders" type="button">
+                    <span class="layer-checkbox" aria-hidden="true">
+                      <span class="layer-checkmark"></span>
+                    </span>
+                    <span class="layer-copy">
+                      <strong>Borders</strong>
+                      <small>Country outlines</small>
+                    </span>
+                    <span
+                      class="layer-group-toggle"
+                      id="borderGroupToggle"
+                      aria-label="Toggle border controls"
+                      aria-controls="borderLayerControls"
+                      aria-expanded="false"
+                    >
+                      <span class="layer-group-chevron" aria-hidden="true"></span>
+                    </span>
+                  </button>
+                </div>
+                <div class="layer-sublist layer-sublist-controls" id="borderLayerControls">
+                  <label class="layer-control" for="borderWidthInput">
+                    <span class="layer-control-copy">
+                      <strong>Stroke Width</strong>
+                      <small id="borderWidthValue">0.8 px</small>
+                    </span>
+                    <input
+                      class="layer-range-input"
+                      id="borderWidthInput"
+                      type="range"
+                      min="0.4"
+                      max="3"
+                      step="0.1"
+                      value="0.8"
+                    />
+                  </label>
+                  <div class="layer-control layer-control-color">
+                    <div class="layer-control-copy">
+                      <strong>Line Color</strong>
+                      <small id="borderColorValue">#FFFFFF</small>
+                      <span class="layer-inline-color-dot" id="borderColorInlineDot" aria-hidden="true"></span>
+                    </div>
+                    <div class="layer-color-swatch-scroll">
+                      <div class="layer-color-swatch-row" id="borderColorSwatchRow" aria-label="Border color presets">
+                        <button
+                          class="layer-inline-color-button layer-inline-color-button-plus"
+                          id="borderColorSwatchButton"
+                          type="button"
+                          aria-label="Open custom border color picker"
+                          aria-controls="borderColorModal"
+                          aria-expanded="false"
+                        >
+                          <span class="layer-inline-color-plus" aria-hidden="true">+</span>
+                        </button>
+                        <div class="layer-inline-color-customs" id="borderColorCustoms"></div>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-border-color="#FFFFFF" aria-label="White"><span class="layer-inline-color-dot" style="--layer-active-color:#FFFFFF;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-border-color="#0F2430" aria-label="Black"><span class="layer-inline-color-dot" style="--layer-active-color:#0F2430;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-border-color="#D94B4B" aria-label="Red"><span class="layer-inline-color-dot" style="--layer-active-color:#D94B4B;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-border-color="#E58A2B" aria-label="Orange"><span class="layer-inline-color-dot" style="--layer-active-color:#E58A2B;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-border-color="#E5C84A" aria-label="Yellow"><span class="layer-inline-color-dot" style="--layer-active-color:#E5C84A;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-border-color="#5B8C5A" aria-label="Green"><span class="layer-inline-color-dot" style="--layer-active-color:#5B8C5A;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-border-color="#4B6ED9" aria-label="Blue"><span class="layer-inline-color-dot" style="--layer-active-color:#4B6ED9;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-border-color="#8C5BD6" aria-label="Purple"><span class="layer-inline-color-dot" style="--layer-active-color:#8C5BD6;" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                    <div class="layer-opacity-control">
+                      <label class="layer-opacity-label" for="borderOpacityInput">Opacity</label>
+                      <input
+                        class="layer-opacity-range"
+                        id="borderOpacityInput"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value="36"
+                      />
+                    </div>
+                    <div class="layer-color-panel" id="borderColorPanel" aria-hidden="true">
+                      <div
+                        class="layer-color-field"
+                        id="borderColorField"
+                        role="application"
+                        aria-label="Border color gradient field"
+                      >
+                        <span class="layer-color-field-handle" id="borderColorFieldHandle" aria-hidden="true"></span>
+                      </div>
+                      <div
+                        class="layer-color-hue-slider"
+                        id="borderColorHueSlider"
+                        role="slider"
+                        aria-label="Border hue slider"
+                      >
+                        <span class="layer-color-hue-handle" id="borderColorHueHandle" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-input-row">
+                        <input
+                          class="layer-hex-input"
+                          id="borderColorInput"
+                          type="text"
+                          inputmode="text"
+                          autocapitalize="characters"
+                          autocomplete="off"
+                          spellcheck="false"
+                          value="#FFFFFF"
+                          aria-label="Border line color hex code"
+                        />
+                        <button class="layer-color-add-button" id="borderColorAddButton" type="button">
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
               <section class="layer-group layer-group-empires" id="empireLayerGroup">
                 <div class="layer-group-head">
                   <button class="layer-item layer-item-group" data-layer-id="empires" type="button">

@@ -430,7 +430,14 @@
       }
 
       const bordersGeometry = adapter.resolveGeometry("borders", getLayerGeometry("borders", scene, worldDataRef().borders));
-      adapter.strokeGeometry(bordersGeometry, "rgba(255, 255, 255, 0.36)", 0.8, {
+      const borderStyle = layerStateRef().borderStyle ?? {};
+      const borderColor = borderStyle.color ?? "#ffffff";
+      const borderOpacity = Number.isFinite(borderStyle.opacity) ? borderStyle.opacity : 0.36;
+      const borderWidth = Number.isFinite(borderStyle.width) ? borderStyle.width : 0.8;
+      const borderStroke = borderColor.startsWith("#")
+        ? `${borderColor}${Math.round(borderOpacity * 255).toString(16).padStart(2, "0")}`
+        : borderColor;
+      adapter.strokeGeometry(bordersGeometry, borderStroke, borderWidth, {
         maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
       });
     }

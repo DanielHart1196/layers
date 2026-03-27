@@ -11,6 +11,23 @@ const layerPanelScrollbar = document.getElementById("layerPanelScrollbar");
 const layerPanelScrollbarThumb = document.getElementById("layerPanelScrollbarThumb");
 const empireLayerGroup = document.getElementById("empireLayerGroup");
 const empireGroupToggle = document.getElementById("empireGroupToggle");
+const borderLayerGroup = document.getElementById("borderLayerGroup");
+const borderGroupToggle = document.getElementById("borderGroupToggle");
+const borderWidthInput = document.getElementById("borderWidthInput");
+const borderWidthValue = document.getElementById("borderWidthValue");
+const borderOpacityInput = document.getElementById("borderOpacityInput");
+const borderColorInput = document.getElementById("borderColorInput");
+const borderColorValue = document.getElementById("borderColorValue");
+const borderColorInlineDot = document.getElementById("borderColorInlineDot");
+const borderColorSwatchButton = document.getElementById("borderColorSwatchButton");
+const borderColorCustoms = document.getElementById("borderColorCustoms");
+const borderColorPresetButtons = Array.from(document.querySelectorAll(".layer-inline-color-choice"));
+const borderColorPanel = document.getElementById("borderColorPanel");
+const borderColorField = document.getElementById("borderColorField");
+const borderColorFieldHandle = document.getElementById("borderColorFieldHandle");
+const borderColorHueSlider = document.getElementById("borderColorHueSlider");
+const borderColorHueHandle = document.getElementById("borderColorHueHandle");
+const borderColorAddButton = document.getElementById("borderColorAddButton");
 const mobileRefresh = document.getElementById("mobileRefresh");
 const mobileRefreshButton = document.getElementById("mobileRefreshButton");
 const mobileRefreshMenu = document.getElementById("mobileRefreshMenu");
@@ -63,6 +80,16 @@ let projectionSwipeSettleTimer = null;
 let interactionSettleTimer = null;
 let layerScrollbarDragState = null;
 let layerScrollbarFadeTimer = null;
+let borderColorFieldDragState = null;
+let borderColorHueDragState = null;
+let borderColorDuplicateFlashTimer = null;
+let borderColorDuplicateFlashButton = null;
+let borderColorRemovePressTimer = null;
+let borderColorRemoveTarget = null;
+let borderColorLongPressTriggered = false;
+const BORDER_COLOR_STORAGE_KEY = "atlas.border.customColors";
+const MAX_CUSTOM_BORDER_COLORS = 10;
+let customBorderColors = [];
 const flatProjectionPanOffsets = {
   "natural-earth-ii": { x: 0, y: 0 },
   "goode-homolosine": { x: 0, y: 0 },
@@ -93,7 +120,17 @@ const uiState = {
   isLayerPanelOpen: false,
   isMonthOverlayOpen: false,
   isEmpireGroupOpen: false,
+  isBorderGroupOpen: false,
+  isBorderColorPaletteOpen: false,
   isInteracting: false,
+};
+const borderStyleState = {
+  color: "#ffffff",
+  opacity: 0.36,
+  width: 0.8,
+  hue: 0,
+  saturation: 0,
+  value: 1,
 };
 const SUPPORTED_PROJECTIONS = new Set([
   "orthographic",
@@ -315,6 +352,7 @@ function enableMonthMenuToggle() {
 }
 
 async function init() {
+  customBorderColors = loadCustomBorderColors();
   syncMobileMonthChrome();
   syncStageChrome();
   configureCanvases();
@@ -330,6 +368,7 @@ async function init() {
     layerStateRef: () => ({
       ...layerState,
       empireSublayers: empireLayerState,
+      borderStyle: borderStyleState,
       isInteracting: uiState.isInteracting,
     }),
     earthTextureRef: () => earthTextureImage,
@@ -951,6 +990,17 @@ function enableLayerControls() {
       if (layerId === "empires" && empireGroupToggle && event.target instanceof Node && empireGroupToggle.contains(event.target)) {
         uiState.isEmpireGroupOpen = !uiState.isEmpireGroupOpen;
         syncEmpireGroupUi();
+        syncLayerPanelScrollbar();
+        showLayerPanelScrollbarTemporarily();
+        releaseLayerPanelFocusAfterPointerInteraction(button);
+        return;
+      }
+
+      if (layerId === "borders" && borderGroupToggle && event.target instanceof Node && borderGroupToggle.contains(event.target)) {
+        uiState.isBorderGroupOpen = !uiState.isBorderGroupOpen;
+        syncBorderGroupUi();
+        syncLayerPanelScrollbar();
+        showLayerPanelScrollbarTemporarily();
         releaseLayerPanelFocusAfterPointerInteraction(button);
         return;
       }
@@ -976,6 +1026,9 @@ function enableLayerControls() {
       }
       if (layerId === "empires") {
         syncEmpireGroupUi();
+      }
+      if (layerId === "borders") {
+        syncBorderGroupUi();
       }
       drawAtlas();
       releaseLayerPanelFocusAfterPointerInteraction(button);
@@ -1003,6 +1056,8 @@ function enableLayerControls() {
   });
 
   syncEmpireGroupUi();
+  enableBorderStyleControls();
+  syncBorderGroupUi();
 }
 
 function setLayerPanelOpen(isOpen) {
@@ -1174,6 +1229,580 @@ function syncEmpireGroupUi() {
     button.disabled = false;
     button.setAttribute("aria-disabled", "false");
   });
+}
+
+function formatBorderWidthLabel(width) {
+  return `${width.toFixed(1)} px`;
+}
+
+function clampOpacityPercent(value) {
+  return clamp(Number.parseInt(String(value ?? "0"), 10) || 0, 0, 100);
+}
+
+function normalizeHexColor(value) {
+  const trimmed = String(value ?? "").trim().toUpperCase();
+  const withHash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+  return /^#[0-9A-F]{6}$/.test(withHash) ? withHash : null;
+}
+
+function normalizeHexDraftValue(value) {
+  const trimmed = String(value ?? "").toUpperCase().replace(/[^0-9A-F#]/g, "");
+  const withoutHashes = trimmed.replace(/#/g, "");
+  return `#${withoutHashes.slice(0, 6)}`;
+}
+
+function loadCustomBorderColors() {
+  try {
+    const stored = window.localStorage?.getItem(BORDER_COLOR_STORAGE_KEY);
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map((color) => normalizeHexColor(color))
+      .filter(Boolean)
+      .slice(0, MAX_CUSTOM_BORDER_COLORS);
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveCustomBorderColors() {
+  try {
+    window.localStorage?.setItem(BORDER_COLOR_STORAGE_KEY, JSON.stringify(customBorderColors));
+  } catch (error) {
+    // Ignore persistence failures and keep the runtime state.
+  }
+}
+
+function clearBorderColorRemovePressTimer() {
+  if (borderColorRemovePressTimer !== null) {
+    window.clearTimeout(borderColorRemovePressTimer);
+    borderColorRemovePressTimer = null;
+  }
+}
+
+function hideCustomBorderColorRemoveButton() {
+  borderColorRemoveTarget?.classList.remove("is-remove-visible");
+  borderColorRemoveTarget = null;
+}
+
+function createCustomBorderColorButton(color) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "layer-inline-color-custom";
+
+  const button = document.createElement("button");
+  button.className = "layer-inline-color-button layer-inline-color-choice";
+  button.type = "button";
+  button.dataset.borderColor = color;
+  button.setAttribute("aria-label", `Custom color ${color}`);
+  wrapper.appendChild(button);
+
+  const dot = document.createElement("span");
+  dot.className = "layer-inline-color-dot";
+  dot.style.setProperty("--layer-active-color", color);
+  dot.setAttribute("aria-hidden", "true");
+  button.appendChild(dot);
+
+  const removeButton = document.createElement("button");
+  removeButton.className = "layer-inline-color-remove";
+  removeButton.type = "button";
+  removeButton.textContent = "−";
+  removeButton.setAttribute("aria-label", `Remove custom color ${color}`);
+  wrapper.appendChild(removeButton);
+
+  button.addEventListener("click", () => {
+    if (borderColorLongPressTriggered) {
+      borderColorLongPressTriggered = false;
+      return;
+    }
+
+    if (!setBorderColor(color)) {
+      return;
+    }
+
+    syncBorderGroupUi();
+    drawAtlas();
+  });
+
+  const startLongPress = () => {
+    clearBorderColorRemovePressTimer();
+    borderColorLongPressTriggered = false;
+    borderColorRemovePressTimer = window.setTimeout(() => {
+      if (borderColorRemoveTarget && borderColorRemoveTarget !== wrapper) {
+        borderColorRemoveTarget.classList.remove("is-remove-visible");
+      }
+      borderColorRemoveTarget = wrapper;
+      borderColorRemoveTarget.classList.add("is-remove-visible");
+      borderColorLongPressTriggered = true;
+      borderColorRemovePressTimer = null;
+    }, 300);
+  };
+
+  const cancelLongPress = () => {
+    clearBorderColorRemovePressTimer();
+  };
+
+  button.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+    startLongPress();
+  });
+  button.addEventListener("pointerup", cancelLongPress);
+  button.addEventListener("pointerleave", cancelLongPress);
+  button.addEventListener("pointercancel", cancelLongPress);
+  button.addEventListener("touchstart", startLongPress, { passive: true });
+  button.addEventListener("touchend", cancelLongPress, { passive: true });
+  button.addEventListener("touchcancel", cancelLongPress, { passive: true });
+  button.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+  });
+
+  removeButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    customBorderColors = customBorderColors.filter((entry) => entry !== color);
+    saveCustomBorderColors();
+    hideCustomBorderColorRemoveButton();
+    renderCustomBorderColors();
+    syncBorderGroupUi();
+  });
+
+  return wrapper;
+}
+
+function renderCustomBorderColors() {
+  if (!borderColorCustoms) {
+    return;
+  }
+
+  borderColorCustoms.replaceChildren(
+    ...customBorderColors.map((color) => createCustomBorderColorButton(color)),
+  );
+}
+
+function revealCustomBorderColor(color) {
+  const matchingButton = borderColorCustoms?.querySelector(
+    `.layer-inline-color-choice[data-border-color="${color}"]`,
+  );
+
+  if (!(matchingButton instanceof HTMLElement)) {
+    return null;
+  }
+
+  matchingButton.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest",
+    inline: "center",
+  });
+
+  return matchingButton;
+}
+
+function revealBorderPresetColor(color) {
+  const matchingButton = borderColorPresetButtons.find(
+    (button) => button.dataset.borderColor?.toUpperCase() === color.toUpperCase(),
+  );
+
+  if (!matchingButton) {
+    return null;
+  }
+
+  matchingButton.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest",
+    inline: "center",
+  });
+
+  return matchingButton;
+}
+
+function flashBorderDuplicateDefault(button) {
+  if (!button) {
+    return;
+  }
+
+  if (borderColorDuplicateFlashTimer !== null) {
+    window.clearTimeout(borderColorDuplicateFlashTimer);
+    borderColorDuplicateFlashTimer = null;
+  }
+  if (borderColorDuplicateFlashButton) {
+    borderColorDuplicateFlashButton.classList.remove("is-duplicate-flash");
+  }
+
+  borderColorDuplicateFlashButton = button;
+  borderColorDuplicateFlashButton.classList.add("is-duplicate-flash");
+
+  borderColorDuplicateFlashTimer = window.setTimeout(() => {
+    borderColorDuplicateFlashButton?.classList.remove("is-duplicate-flash");
+    borderColorDuplicateFlashButton = null;
+    borderColorDuplicateFlashTimer = null;
+  }, 820);
+}
+
+function hsvToHex(hue, saturation, value) {
+  const h = ((hue % 360) + 360) % 360;
+  const s = clamp(saturation, 0, 1);
+  const v = clamp(value, 0, 1);
+  const chroma = v * s;
+  const hueSection = h / 60;
+  const x = chroma * (1 - Math.abs((hueSection % 2) - 1));
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+
+  if (hueSection >= 0 && hueSection < 1) {
+    red = chroma;
+    green = x;
+  } else if (hueSection < 2) {
+    red = x;
+    green = chroma;
+  } else if (hueSection < 3) {
+    green = chroma;
+    blue = x;
+  } else if (hueSection < 4) {
+    green = x;
+    blue = chroma;
+  } else if (hueSection < 5) {
+    red = x;
+    blue = chroma;
+  } else {
+    red = chroma;
+    blue = x;
+  }
+
+  const match = v - chroma;
+  const toHex = (channel) => Math.round((channel + match) * 255).toString(16).padStart(2, "0");
+  return `#${toHex(red)}${toHex(green)}${toHex(blue)}`.toUpperCase();
+}
+
+function hexToHsv(hexColor) {
+  const normalized = normalizeHexColor(hexColor);
+  if (!normalized) {
+    return null;
+  }
+
+  const red = Number.parseInt(normalized.slice(1, 3), 16) / 255;
+  const green = Number.parseInt(normalized.slice(3, 5), 16) / 255;
+  const blue = Number.parseInt(normalized.slice(5, 7), 16) / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+
+  if (delta !== 0) {
+    if (max === red) {
+      hue = 60 * (((green - blue) / delta) % 6);
+    } else if (max === green) {
+      hue = 60 * (((blue - red) / delta) + 2);
+    } else {
+      hue = 60 * (((red - green) / delta) + 4);
+    }
+  }
+
+  if (hue < 0) {
+    hue += 360;
+  }
+
+  return {
+    hue,
+    saturation: max === 0 ? 0 : delta / max,
+    value: max,
+  };
+}
+
+function setBorderColor(colorHex) {
+  const normalizedColor = normalizeHexColor(colorHex);
+  if (!normalizedColor) {
+    return false;
+  }
+
+  const hsv = hexToHsv(normalizedColor);
+  borderStyleState.color = normalizedColor;
+  if (hsv) {
+    borderStyleState.hue = hsv.hue;
+    borderStyleState.saturation = hsv.saturation;
+    borderStyleState.value = hsv.value;
+  }
+  return true;
+}
+
+function setBorderColorFromField(clientX, clientY) {
+  if (!borderColorField) {
+    return;
+  }
+
+  const rect = borderColorField.getBoundingClientRect();
+  const relativeX = clamp((clientX - rect.left) / rect.width, 0, 1);
+  const relativeY = clamp((clientY - rect.top) / rect.height, 0, 1);
+  borderStyleState.saturation = relativeX;
+  borderStyleState.value = 1 - relativeY;
+  borderStyleState.color = hsvToHex(
+    borderStyleState.hue,
+    borderStyleState.saturation,
+    borderStyleState.value,
+  );
+}
+
+function setBorderColorFromHueSlider(clientX) {
+  if (!borderColorHueSlider) {
+    return;
+  }
+
+  const rect = borderColorHueSlider.getBoundingClientRect();
+  const relativeX = clamp((clientX - rect.left) / rect.width, 0, 1);
+  borderStyleState.hue = relativeX * 360;
+  borderStyleState.color = hsvToHex(
+    borderStyleState.hue,
+    borderStyleState.saturation,
+    borderStyleState.value,
+  );
+}
+
+function syncBorderGroupUi() {
+  const bordersButton = document.querySelector('[data-layer-id="borders"]');
+
+  borderLayerGroup?.classList.toggle("is-active", layerState.borders);
+  borderLayerGroup?.classList.toggle("is-open", uiState.isBorderGroupOpen);
+  borderGroupToggle?.setAttribute("aria-expanded", String(uiState.isBorderGroupOpen));
+  bordersButton?.classList.toggle("is-active", layerState.borders);
+
+  if (borderWidthInput) {
+    borderWidthInput.value = String(borderStyleState.width);
+  }
+  if (borderWidthValue) {
+    borderWidthValue.textContent = formatBorderWidthLabel(borderStyleState.width);
+  }
+  const borderOpacityPercent = Math.round(clamp(borderStyleState.opacity, 0, 1) * 100);
+  if (borderOpacityInput) {
+    borderOpacityInput.value = String(borderOpacityPercent);
+  }
+  if (borderColorInput) {
+    borderColorInput.value = borderStyleState.color.toUpperCase();
+  }
+  if (borderColorValue) {
+    borderColorValue.textContent = borderStyleState.color.toUpperCase();
+  }
+  borderColorInlineDot?.style.setProperty("--layer-active-color", borderStyleState.color);
+  borderColorFieldHandle?.style.setProperty("--layer-active-color", borderStyleState.color);
+  borderColorField?.style.setProperty("--layer-color-field-hue", hsvToHex(borderStyleState.hue, 1, 1));
+  borderColorField?.style.setProperty("--layer-color-field-x", `${clamp(borderStyleState.saturation, 0, 1) * 100}%`);
+  borderColorField?.style.setProperty("--layer-color-field-y", `${(1 - clamp(borderStyleState.value, 0, 1)) * 100}%`);
+  borderColorHueHandle?.style.setProperty("--layer-color-field-hue", hsvToHex(borderStyleState.hue, 1, 1));
+  borderColorHueSlider?.style.setProperty("--layer-color-hue-x", `${(borderStyleState.hue / 360) * 100}%`);
+  borderColorSwatchButton?.setAttribute("aria-expanded", String(uiState.isBorderColorPaletteOpen));
+  borderColorPanel?.closest(".layer-control-color")?.classList.toggle("is-panel-open", uiState.isBorderColorPaletteOpen);
+  borderColorPanel?.setAttribute("aria-hidden", String(!uiState.isBorderColorPaletteOpen));
+  borderColorPresetButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.borderColor?.toUpperCase() === borderStyleState.color.toUpperCase());
+  });
+  borderColorCustoms?.querySelectorAll(".layer-inline-color-choice").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.borderColor?.toUpperCase() === borderStyleState.color.toUpperCase());
+  });
+}
+
+function enableBorderStyleControls() {
+  renderCustomBorderColors();
+
+  borderWidthInput?.addEventListener("input", () => {
+    const nextWidth = Number.parseFloat(borderWidthInput.value);
+    if (!Number.isFinite(nextWidth)) {
+      return;
+    }
+
+    borderStyleState.width = nextWidth;
+    syncBorderGroupUi();
+    drawAtlas();
+  });
+
+  const applyBorderOpacityPercent = (value) => {
+    const nextPercent = clampOpacityPercent(value);
+    borderStyleState.opacity = nextPercent / 100;
+    syncBorderGroupUi();
+    drawAtlas();
+  };
+
+  borderOpacityInput?.addEventListener("input", () => {
+    applyBorderOpacityPercent(borderOpacityInput.value);
+  });
+
+  borderColorInput?.addEventListener("input", () => {
+    const draftValue = normalizeHexDraftValue(borderColorInput.value);
+    borderColorInput.value = draftValue;
+    const normalizedColor = normalizeHexColor(draftValue);
+    if (!normalizedColor) {
+      return;
+    }
+
+    setBorderColor(normalizedColor);
+    syncBorderGroupUi();
+    drawAtlas();
+  });
+
+  borderColorInput?.addEventListener("blur", () => {
+    borderColorInput.value = borderStyleState.color.toUpperCase();
+  });
+
+  borderColorSwatchButton?.addEventListener("click", () => {
+    uiState.isBorderColorPaletteOpen = !uiState.isBorderColorPaletteOpen;
+    syncBorderGroupUi();
+    syncLayerPanelScrollbar();
+    showLayerPanelScrollbarTemporarily();
+  });
+
+  borderColorPresetButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!setBorderColor(button.dataset.borderColor)) {
+        return;
+      }
+
+      syncBorderGroupUi();
+      drawAtlas();
+    });
+  });
+
+  borderColorField?.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    borderColorFieldDragState = { pointerId: event.pointerId };
+    borderColorField.setPointerCapture?.(event.pointerId);
+    if (layerPanelScroll) {
+      layerPanelScroll.style.overflowY = "hidden";
+    }
+    setBorderColorFromField(event.clientX, event.clientY);
+    syncBorderGroupUi();
+    drawAtlas();
+  });
+
+  borderColorField?.addEventListener("pointermove", (event) => {
+    if (!borderColorFieldDragState || event.pointerId !== borderColorFieldDragState.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    setBorderColorFromField(event.clientX, event.clientY);
+    syncBorderGroupUi();
+    drawAtlas();
+  });
+
+  const endBorderColorFieldDrag = (event) => {
+    if (!borderColorFieldDragState || event.pointerId !== borderColorFieldDragState.pointerId) {
+      return;
+    }
+
+    borderColorField.releasePointerCapture?.(event.pointerId);
+    borderColorFieldDragState = null;
+    if (layerPanelScroll) {
+      layerPanelScroll.style.overflowY = "";
+    }
+  };
+
+  borderColorField?.addEventListener("pointerup", endBorderColorFieldDrag);
+  borderColorField?.addEventListener("pointercancel", endBorderColorFieldDrag);
+
+  borderColorHueSlider?.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    borderColorHueDragState = { pointerId: event.pointerId };
+    borderColorHueSlider.setPointerCapture?.(event.pointerId);
+    setBorderColorFromHueSlider(event.clientX);
+    syncBorderGroupUi();
+    drawAtlas();
+  });
+
+  borderColorHueSlider?.addEventListener("pointermove", (event) => {
+    if (!borderColorHueDragState || event.pointerId !== borderColorHueDragState.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    setBorderColorFromHueSlider(event.clientX);
+    syncBorderGroupUi();
+    drawAtlas();
+  });
+
+  const endBorderColorHueDrag = (event) => {
+    if (!borderColorHueDragState || event.pointerId !== borderColorHueDragState.pointerId) {
+      return;
+    }
+
+    borderColorHueSlider.releasePointerCapture?.(event.pointerId);
+    borderColorHueDragState = null;
+  };
+
+  borderColorHueSlider?.addEventListener("pointerup", endBorderColorHueDrag);
+  borderColorHueSlider?.addEventListener("pointercancel", endBorderColorHueDrag);
+
+  borderColorAddButton?.addEventListener("click", () => {
+    const normalizedColor = normalizeHexColor(borderStyleState.color);
+    if (!normalizedColor) {
+      return;
+    }
+
+    const matchingPresetButton = revealBorderPresetColor(normalizedColor);
+    if (matchingPresetButton) {
+      flashBorderDuplicateDefault(matchingPresetButton);
+      return;
+    }
+
+    customBorderColors = [
+      normalizedColor,
+      ...customBorderColors.filter((color) => color !== normalizedColor),
+    ].slice(0, MAX_CUSTOM_BORDER_COLORS);
+    saveCustomBorderColors();
+    renderCustomBorderColors();
+    syncBorderGroupUi();
+
+    const matchingCustomButton = revealCustomBorderColor(normalizedColor);
+    if (matchingCustomButton) {
+      flashBorderDuplicateDefault(matchingCustomButton);
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!uiState.isBorderColorPaletteOpen) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+
+    const colorControl = borderColorPanel?.closest(".layer-control-color");
+    if (colorControl?.contains(target)) {
+      return;
+    }
+
+    uiState.isBorderColorPaletteOpen = false;
+    syncBorderGroupUi();
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+
+    if (borderColorRemoveTarget?.contains(target)) {
+      return;
+    }
+
+    hideCustomBorderColorRemoveButton();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && uiState.isBorderColorPaletteOpen) {
+      uiState.isBorderColorPaletteOpen = false;
+      syncBorderGroupUi();
+    }
+  });
+
 }
 
 function clearRefreshMenuPressTimer() {

@@ -783,6 +783,28 @@ body:not(.is-earth-enabled) .month-overlay {
   background: rgba(255, 255, 255, 0.34);
 }
 
+.layer-group-borders {
+  gap: 0;
+  padding: 0;
+  border: 1px solid rgba(15, 36, 48, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.6);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    opacity 180ms ease;
+}
+
+.layer-group-borders:not(.is-active) {
+  opacity: 0.56;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.layer-group-borders:not(.is-open) .layer-item-group {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
 .layer-group-empires:not(.is-open) .layer-item-group {
   padding-top: 12px;
   padding-bottom: 12px;
@@ -845,6 +867,14 @@ body:not(.is-earth-enabled) .month-overlay {
   padding-bottom: 10px;
 }
 
+.layer-sublist-controls {
+  gap: 10px;
+}
+
+.layer-group-borders.is-open .layer-sublist-controls {
+  max-height: 460px;
+}
+
 .layer-item {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
@@ -878,6 +908,11 @@ body:not(.is-earth-enabled) .month-overlay {
   border-bottom-right-radius: 10px;
 }
 
+.layer-group-borders.is-open .layer-item-group {
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
 .layer-item:hover,
 .layer-item:focus-visible {
   transform: translateY(-1px);
@@ -898,6 +933,381 @@ body:not(.is-earth-enabled) .month-overlay {
 
 .layer-group-empires.is-disabled .layer-item-sub {
   opacity: 0.5;
+}
+
+.layer-control {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 36, 48, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.layer-control-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.layer-control-copy strong,
+.layer-control-copy small {
+  display: block;
+}
+
+.layer-control-copy strong {
+  font-family: "Manrope", sans-serif;
+  font-size: 0.92rem;
+}
+
+.layer-control-copy small {
+  color: rgba(15, 36, 48, 0.6);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.layer-range-input {
+  width: 100%;
+  margin: 0;
+  accent-color: #0f6d8d;
+}
+
+.layer-control-color {
+  gap: 12px;
+}
+
+.layer-control-color .layer-control-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.layer-inline-color-dot {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 36, 48, 0.14);
+  background: var(--layer-active-color, #ffffff);
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.layer-inline-color-button {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  vertical-align: middle;
+}
+
+.layer-inline-color-choice::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 36, 48, 0.22);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.layer-inline-color-button:focus-visible {
+  outline: none;
+}
+
+.layer-inline-color-button .layer-inline-color-dot {
+  width: 22px;
+  height: 22px;
+}
+
+.layer-inline-color-button-plus {
+  padding: 0;
+  justify-content: flex-start;
+}
+
+.layer-inline-color-plus {
+  color: rgba(15, 36, 48, 0.72);
+  font-family: "Manrope", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px dashed rgba(15, 36, 48, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  transition: transform 160ms ease;
+  transform: rotate(0deg);
+}
+
+.layer-control-color.is-panel-open .layer-inline-color-plus {
+  transform: rotate(45deg);
+}
+
+.layer-control-color .layer-control-copy strong {
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+.layer-control-color .layer-control-copy small {
+  display: inline-block;
+  min-width: 74px;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.layer-hex-input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 36, 48, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  color: rgba(15, 36, 48, 0.82);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.layer-hex-input:focus {
+  outline: none;
+  border-color: rgba(15, 36, 48, 0.24);
+}
+
+.layer-color-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.layer-color-swatch-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-left: 0;
+  padding-right: 4px;
+  padding-top: 24px;
+  padding-bottom: 2px;
+  margin-top: -24px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: auto;
+}
+
+.layer-color-swatch-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.layer-color-swatch-row {
+  display: flex;
+  width: max-content;
+  gap: 2px;
+  overflow: visible;
+}
+
+.layer-opacity-control {
+  display: grid;
+  gap: 8px;
+}
+
+.layer-opacity-label {
+  color: rgba(15, 36, 48, 0.72);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.layer-opacity-range {
+  width: 100%;
+  margin: 0;
+  accent-color: #0f6d8d;
+}
+
+.layer-inline-color-customs {
+  display: flex;
+  gap: 2px;
+}
+
+.layer-inline-color-custom {
+  position: relative;
+}
+
+.layer-inline-color-remove {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #d94b4b;
+  color: rgba(255, 255, 255, 0.96);
+  font-family: "Manrope", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  transform: translate(-50%, -14px);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.layer-inline-color-custom.is-remove-visible .layer-inline-color-remove {
+  opacity: 1;
+  transform: translate(-50%, -22px);
+  pointer-events: auto;
+}
+
+.layer-inline-color-choice.is-active .layer-inline-color-dot {
+  border-color: rgba(15, 36, 48, 0.62);
+}
+
+.layer-inline-color-choice.is-active::after {
+  opacity: 1;
+}
+
+.layer-inline-color-choice.is-duplicate-flash::after {
+  opacity: 1;
+  border-color: rgba(91, 140, 90, 0.92);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 0 0 1px rgba(91, 140, 90, 0.28);
+}
+
+.layer-color-panel {
+  display: grid;
+  gap: 12px;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    max-height 160ms ease,
+    padding-top 160ms ease;
+}
+
+.layer-control-color.is-panel-open .layer-color-panel {
+  opacity: 1;
+  pointer-events: auto;
+  max-height: 340px;
+  padding-top: 8px;
+}
+
+.layer-color-add-button {
+  padding: 8px 14px;
+  border: 1px solid rgba(15, 36, 48, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(15, 36, 48, 0.82);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.layer-color-field {
+  position: relative;
+  width: 100%;
+  height: 112px;
+  border: 1px solid rgba(15, 36, 48, 0.14);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 100%),
+    linear-gradient(90deg, rgba(255, 255, 255, 1) 0%, var(--layer-color-field-hue, #ff0000) 100%);
+  cursor: pointer;
+  touch-action: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.layer-color-field:hover,
+.layer-color-field:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(15, 36, 48, 0.24);
+}
+
+.layer-color-field-handle {
+  position: absolute;
+  left: var(--layer-color-field-x, 100%);
+  top: var(--layer-color-field-y, 0%);
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  background: var(--layer-active-color, #ffffff);
+  box-shadow: 0 0 0 1px rgba(15, 36, 48, 0.22), 0 6px 12px rgba(7, 31, 43, 0.16);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.layer-color-field:focus-visible,
+.layer-inline-color-button:focus-visible {
+  outline: none;
+}
+
+.layer-color-hue-slider {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  border: 1px solid rgba(15, 36, 48, 0.14);
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    #ff0000 0%,
+    #ffff00 17%,
+    #00ff00 33%,
+    #00ffff 50%,
+    #0000ff 67%,
+    #ff00ff 83%,
+    #ff0000 100%
+  );
+  touch-action: none;
+}
+
+.layer-color-hue-handle {
+  position: absolute;
+  left: var(--layer-color-hue-x, 0%);
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  background: var(--layer-color-field-hue, #ff0000);
+  box-shadow: 0 0 0 1px rgba(15, 36, 48, 0.22), 0 4px 10px rgba(7, 31, 43, 0.16);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .layer-inline-color-button:hover {
+    transform: translateY(-1px);
+  }
 }
 
 .layer-copy {
