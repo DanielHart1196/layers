@@ -49,6 +49,78 @@
   - the stored child preference for that layer is on
 - Empire sublayers remain expandable/clickable even when the parent is off; clicking a child should be able to turn the parent back on.
 
+## Borders Style Model
+- Borders are no longer just a boolean layer toggle; they also carry style state in `borderStyleState`.
+- Current border style fields:
+  - `color`
+  - `width`
+  - `opacity`
+  - `hue`
+  - `saturation`
+  - `value`
+- `atlas-layers.js` reads `borderStyleState` through `layerStateRef().borderStyle`.
+- The visible `Borders` section in the layer panel is now a grouped control with:
+  - toggle row
+  - stroke width slider
+  - color swatch row
+  - opacity slider
+  - advanced color picker panel behind the `+`
+
+## Border Color UX
+- The `Line Color` row shows:
+  - label
+  - current hex
+  - informational active color dot
+- Beneath that is a single horizontal swatch row with:
+  - `+` toggle first
+  - custom saved colors immediately after
+  - fixed default palette after that
+- The default palette is currently:
+  - white
+  - black
+  - red
+  - orange
+  - yellow
+  - green
+  - blue
+  - purple
+- The `+` rotates into an `x` while the advanced picker is open.
+- The advanced picker is inline, not modal:
+  - SV rectangle
+  - hue slider
+  - hex input with fixed `#`
+  - `Add` button
+
+## Custom Border Colors
+- Custom border colors are stored locally in browser storage only.
+- Storage key:
+  - `atlas.border.customColors`
+- Max saved custom colors:
+  - `10`
+- `Add` behavior:
+  - default color attempted:
+    - do not duplicate
+    - scroll to default swatch
+    - flash the swatch border
+  - existing custom color attempted:
+    - move to front of custom list
+    - flash the swatch border
+  - new color attempted:
+    - add after `+`
+    - flash the new custom swatch border
+- Current add-feedback color is green.
+- Long-press on a custom saved color should reveal a red remove button above it.
+- Removing a custom color should update both runtime state and `localStorage`.
+
+## Border Color UI Debt
+- Advanced color picker handles can still clip or crowd at the control edges.
+- The current picker works better with a separate hue slider than the earlier single-rectangle model.
+- The swatch row and long-press remove affordance are sensitive to overflow clipping because the row is horizontally scrollable.
+- If adjusting the custom remove button again:
+  - check the scroll container top reserve space
+  - check vertical overlap against the swatch footprint
+  - do not nest buttons inside buttons
+
 ## Vector Asset Direction
 - Long-term vector architecture should not depend on raw `world-atlas` topology objects directly in render code.
 - Normalized vector assets now have a dedicated scaffold:
