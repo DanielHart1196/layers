@@ -365,11 +365,13 @@ body:not(.is-earth-enabled) .month-overlay {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 208px;
+  box-sizing: border-box;
+  width: var(--projection-switcher-width, 208px);
+  height: var(--projection-switcher-height, 46px);
   max-width: calc(100vw - 48px);
-  padding: 11px 16px;
+  padding: var(--projection-switcher-padding-y, 11px) var(--projection-switcher-padding-x, 16px);
   border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 999px;
+  border-radius: var(--projection-switcher-radius, 999px);
   background: rgba(255, 251, 245, 0.8);
   box-shadow: 0 16px 32px rgba(7, 31, 43, 0.14);
   backdrop-filter: blur(14px);
@@ -379,13 +381,22 @@ body:not(.is-earth-enabled) .month-overlay {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  transform: translateX(-50%);
+  transform:
+    translateX(calc(-50% + var(--projection-switcher-shift-x, 0px)))
+    translateY(var(--projection-switcher-shift-y, 0px));
   touch-action: pan-x;
   user-select: none;
-  overflow: hidden;
+  overflow: visible;
   transition:
-    box-shadow 180ms ease,
-    background 180ms ease;
+    box-shadow 220ms ease,
+    background 220ms ease,
+    transform 220ms ease,
+    width 220ms ease,
+    min-width 220ms ease,
+    height 220ms ease,
+    padding 220ms ease,
+    border-radius 220ms ease,
+    opacity 180ms ease;
 }
 
 .projection-switcher.is-dragging {
@@ -398,6 +409,36 @@ body:not(.is-earth-enabled) .month-overlay {
   display: block;
   width: 100%;
   min-height: 1.2em;
+  overflow: hidden;
+  opacity: var(--projection-switcher-track-opacity, 1);
+  transition: opacity 180ms ease;
+}
+
+.projection-switcher-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -11px 0 0 -11px;
+  opacity: var(--projection-switcher-icon-opacity, 0);
+  transform: scale(calc(0.8 + (0.2 * var(--projection-switcher-icon-opacity, 0))));
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease;
+  overflow: visible;
+}
+
+.projection-switcher-icon circle,
+.projection-switcher-icon ellipse,
+.projection-switcher-icon path {
+  fill: none;
+  stroke: rgba(15, 36, 48, 0.8);
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .projection-switcher-boot-label {
@@ -414,6 +455,27 @@ body:not(.is-earth-enabled) .month-overlay {
 
 .is-mobile-default-globe .projection-switcher-label:not(.projection-switcher-boot-label) {
   opacity: 0;
+}
+
+.is-mobile-default-globe.is-mobile-boot-zoomed .projection-switcher {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 16px;
+  transform: translateX(calc(-50% + calc(50vw - 42px))) translateY(0);
+}
+
+.is-mobile-default-globe.is-mobile-boot-zoomed .projection-switcher-boot-label {
+  display: none;
+}
+
+.is-mobile-default-globe.is-mobile-boot-zoomed .projection-switcher-track {
+  opacity: 0;
+}
+
+.is-mobile-default-globe.is-mobile-boot-zoomed .projection-switcher-icon {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .projection-switcher.is-ready .projection-switcher-boot-label {
@@ -601,6 +663,67 @@ body:not(.is-earth-enabled) .month-overlay {
   pointer-events: auto;
 }
 
+.layer-panel.is-color-previewing {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.layer-panel.is-color-previewing > :not(.layer-panel-scroll) {
+  opacity: 0;
+}
+
+.layer-panel.is-color-previewing .layer-panel-scroll > * {
+  visibility: hidden;
+}
+
+.layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color),
+.layer-panel.is-color-previewing .layer-sublist:has(.layer-control-color.is-previewing-color),
+.layer-panel.is-color-previewing .layer-control-color.is-previewing-color,
+.layer-panel.is-color-previewing .layer-group:has(.layer-opacity-control.is-previewing-opacity),
+.layer-panel.is-color-previewing .layer-sublist:has(.layer-opacity-control.is-previewing-opacity),
+.layer-panel.is-color-previewing .layer-opacity-control.is-previewing-opacity,
+.layer-panel.is-color-previewing .layer-group:has(.layer-control.is-previewing-width),
+.layer-panel.is-color-previewing .layer-sublist:has(.layer-control.is-previewing-width),
+.layer-panel.is-color-previewing .layer-control.is-previewing-width {
+  visibility: visible;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color) > .layer-group-head,
+.layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color) .layer-control:not(.is-previewing-color),
+.layer-panel.is-color-previewing .layer-control-color.is-previewing-color > :not(.layer-color-panel),
+.layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color) .layer-control-color.is-previewing-color.is-previewing-field .layer-color-panel > :not(.layer-color-field),
+.layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color) .layer-control-color.is-previewing-color.is-previewing-hue .layer-color-panel > :not(.layer-color-hue-slider),
+.layer-panel.is-color-previewing .layer-group:has(.layer-opacity-control.is-previewing-opacity) > .layer-group-head,
+.layer-panel.is-color-previewing .layer-group:has(.layer-opacity-control.is-previewing-opacity) .layer-control:not(.is-previewing-opacity),
+.layer-panel.is-color-previewing .layer-group:has(.layer-control.is-previewing-width) > .layer-group-head,
+.layer-panel.is-color-previewing .layer-group:has(.layer-control.is-previewing-width) .layer-control:not(.is-previewing-width),
+.layer-panel.is-color-previewing .layer-opacity-control.is-previewing-opacity > :not(.layer-opacity-range),
+.layer-panel.is-color-previewing .layer-control.is-previewing-width > :not(.layer-range-input) {
+  visibility: hidden;
+}
+
+.layer-panel.is-color-previewing .layer-control-color.is-previewing-color,
+.layer-panel.is-color-previewing .layer-control-color.is-previewing-color .layer-color-panel,
+.layer-panel.is-color-previewing .layer-control-color.is-previewing-color .layer-color-field,
+.layer-panel.is-color-previewing .layer-control-color.is-previewing-color .layer-color-hue-slider,
+.layer-panel.is-color-previewing .layer-opacity-control.is-previewing-opacity,
+.layer-panel.is-color-previewing .layer-opacity-control.is-previewing-opacity .layer-opacity-range,
+.layer-panel.is-color-previewing .layer-control-color.is-previewing-color .layer-color-field * {
+  visibility: visible;
+  opacity: 1;
+}
+
+.layer-panel.is-color-previewing .layer-control.is-previewing-width,
+.layer-panel.is-color-previewing .layer-control.is-previewing-width .layer-range-input {
+  visibility: visible;
+  opacity: 1;
+}
+
 .layer-trigger:hover + .layer-menu-toggle + .layer-panel,
 .layer-panel:hover,
 .layer-panel:focus-within {
@@ -666,19 +789,7 @@ body:not(.is-earth-enabled) .month-overlay {
 
 @media (max-width: 800px) {
   .projection-switcher {
-    opacity: 0;
-    transform: translateX(-50%) translateY(10px);
-    pointer-events: none;
-    transition:
-      opacity 180ms ease,
-      transform 180ms ease,
-      box-shadow 180ms ease,
-      background 180ms ease;
-  }
-
-  body.is-mobile-projection-docked .projection-switcher {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
     pointer-events: auto;
   }
 
@@ -775,8 +886,9 @@ body:not(.is-earth-enabled) .month-overlay {
 .projection-panel {
   display: grid;
   gap: 10px;
-  margin-bottom: 16px;
-  width: calc(100% + var(--layer-scrollbar-inset, 0px));
+  margin-bottom: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 .projection-label {
@@ -792,10 +904,14 @@ body:not(.is-earth-enabled) .month-overlay {
 .projection-picker {
   position: relative;
   z-index: 12;
+  min-width: 0;
 }
 
 .projection-picker-button {
+  position: relative;
+  display: block;
   width: 100%;
+  min-width: 0;
   padding: 10px 42px 10px 14px;
   border-radius: 14px;
   border: 1px solid rgba(15, 36, 48, 0.1);
@@ -816,6 +932,10 @@ body:not(.is-earth-enabled) .month-overlay {
 
 .projection-picker-value {
   display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .projection-picker-chevron {
@@ -908,12 +1028,14 @@ body:not(.is-earth-enabled) .month-overlay {
   display: grid;
   gap: 10px;
   justify-items: stretch;
-  width: calc(100% + var(--layer-scrollbar-inset, 0px));
+  width: 100%;
+  min-width: 0;
 }
 
 .layer-group {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .layer-group-empires {
@@ -950,12 +1072,12 @@ body:not(.is-earth-enabled) .month-overlay {
   background: rgba(255, 255, 255, 0.34);
 }
 
-.layer-group-borders:not(.is-open) .layer-item-group {
+.layer-group-borders:not(.is-open) > .layer-group-head .layer-item-group {
   padding-top: 12px;
   padding-bottom: 12px;
 }
 
-.layer-group-empires:not(.is-open) .layer-item-group {
+.layer-group-empires:not(.is-open) > .layer-group-head .layer-item-group {
   padding-top: 12px;
   padding-bottom: 12px;
 }
@@ -995,7 +1117,7 @@ body:not(.is-earth-enabled) .month-overlay {
   transition: transform 180ms ease;
 }
 
-.layer-group.is-open .layer-group-chevron {
+.layer-group.is-open > .layer-group-head .layer-group-chevron {
   transform: rotate(225deg) translateY(-1px);
 }
 
@@ -1003,6 +1125,7 @@ body:not(.is-earth-enabled) .month-overlay {
   display: grid;
   gap: 8px;
   padding: 2px 10px 0 10px;
+  min-width: 0;
   opacity: 0;
   max-height: 0;
   overflow: hidden;
@@ -1011,18 +1134,48 @@ body:not(.is-earth-enabled) .month-overlay {
     max-height 180ms ease;
 }
 
-.layer-group.is-open .layer-sublist {
+.layer-group.is-open > .layer-sublist {
   opacity: 1;
   max-height: 140px;
   padding-bottom: 10px;
+  overflow: hidden;
 }
 
 .layer-sublist-controls {
   gap: 10px;
+  min-width: 0;
 }
 
-.layer-group-borders.is-open .layer-sublist-controls {
+.layer-group-borders.is-open > .layer-sublist-controls {
   max-height: 460px;
+}
+
+#earthLayerGroup.is-open > .layer-sublist-controls {
+  max-height: 760px;
+  padding-top: 0;
+}
+
+#earthLayerGroup.is-open > .layer-sublist {
+  overflow: visible;
+}
+
+#earthLayerControls {
+  gap: 8px;
+}
+
+#earthLayerControls .layer-control {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+#earthLayerControls .layer-control-color {
+  gap: 8px;
+}
+
+#earthLayerControls .layer-color-swatch-scroll {
+  padding-top: 18px;
+  margin-top: -18px;
+  padding-bottom: 0;
 }
 
 .layer-item {
@@ -1053,21 +1206,23 @@ body:not(.is-earth-enabled) .month-overlay {
   border-radius: 18px;
 }
 
-.layer-group-empires.is-open .layer-item-group {
+.layer-group-empires.is-open > .layer-group-head .layer-item-group {
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
 }
 
-.layer-group-borders.is-open .layer-item-group {
+.layer-group-borders.is-open > .layer-group-head .layer-item-group {
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
 }
 
-.layer-item:hover,
 .layer-item:focus-visible {
-  transform: translateY(-1px);
   border-color: rgba(15, 36, 48, 0.18);
   outline: none;
+}
+
+.layer-item:focus-visible {
+  transform: translateY(-1px);
 }
 
 .layer-item:not(.is-active) {
@@ -1088,6 +1243,7 @@ body:not(.is-earth-enabled) .month-overlay {
 .layer-control {
   display: grid;
   gap: 10px;
+  min-width: 0;
   padding: 10px 12px;
   border: 1px solid rgba(15, 36, 48, 0.08);
   border-radius: 14px;
@@ -1099,6 +1255,7 @@ body:not(.is-earth-enabled) .month-overlay {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
 .layer-control-copy strong,
@@ -1109,6 +1266,7 @@ body:not(.is-earth-enabled) .month-overlay {
 .layer-control-copy strong {
   font-family: "Manrope", sans-serif;
   font-size: 0.92rem;
+  min-width: 0;
 }
 
 .layer-control-copy small {
@@ -1365,6 +1523,23 @@ body:not(.is-earth-enabled) .month-overlay {
   pointer-events: auto;
   max-height: 340px;
   padding-top: 8px;
+}
+
+.layer-control-color.is-previewing-color {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(15, 36, 48, 0.05);
+}
+
+.layer-control-color.is-previewing-color > :not(.layer-color-panel) {
+  opacity: 0.08;
+}
+
+.layer-control-color.is-previewing-color .layer-color-panel > :not(.layer-color-field) {
+  opacity: 0.08;
+}
+
+.layer-control-color.is-previewing-color .layer-color-field {
+  opacity: 1;
 }
 
 .layer-color-add-button {

@@ -89,6 +89,57 @@
     const rasterBuildState = new Set();
     const flatRasterPrewarmState = new Set();
     const flatMapRenderer = window.AtlasEarth?.createFlatMapRenderer?.() ?? null;
+    const tissotGeometry = {
+      type: "FeatureCollection",
+      features: (() => {
+        const features = [];
+        const circle = d3.geoCircle().radius(4).precision(3);
+        const baseLatitudeStep = 15;
+        const baseLongitudeSpacing = 15;
+
+        function addCircle(longitude, latitude) {
+          features.push({
+            type: "Feature",
+            geometry: circle.center([longitude, latitude])(),
+            properties: { longitude, latitude },
+          });
+        }
+
+        addCircle(0, -90);
+
+        for (let latitude = -75; latitude <= 75; latitude += 15) {
+          const latitudeRadians = (Math.abs(latitude) * Math.PI) / 180;
+          const cosineScale = Math.max(Math.cos(latitudeRadians), 0.1);
+          const rawLongitudeStep = baseLongitudeSpacing / cosineScale;
+          const longitudeStep = Math.min(
+            180,
+            Math.max(baseLongitudeSpacing, Math.round(rawLongitudeStep / baseLatitudeStep) * baseLatitudeStep),
+          );
+
+          for (let longitude = -180; longitude < 180; longitude += longitudeStep) {
+            addCircle(longitude, latitude);
+          }
+        }
+
+        addCircle(0, 90);
+
+        return features;
+      })(),
+    };
+
+    function withOpacity(hexColor, opacity) {
+      const normalized = String(hexColor ?? "").trim();
+      const alpha = Math.max(0, Math.min(1, Number.isFinite(opacity) ? opacity : 1));
+      const match = /^#?([0-9a-f]{6})$/i.exec(normalized);
+      if (!match) {
+        return hexColor;
+      }
+      const value = match[1];
+      const red = Number.parseInt(value.slice(0, 2), 16);
+      const green = Number.parseInt(value.slice(2, 4), 16);
+      const blue = Number.parseInt(value.slice(4, 6), 16);
+      return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    }
 
     function getSelectedLodKey(layerKey, scene) {
       const manifest = manifestRef?.();
@@ -376,13 +427,16 @@
 
     function renderFallbackLayer(scene) {
       const adapter = createSceneAdapter(scene);
+      const earthStyle = layerStateRef().earthStyle ?? {};
+      const waterColor = earthStyle.water?.color ?? "#2f7398";
+      const landColor = earthStyle.land?.color ?? "#98b977";
 
       if (layerStateRef().earth && earthTextureRef() && rasterSupportedRef()) {
         return;
       }
 
       const bounds = window.AtlasCore.getSceneBounds(scene);
-      overlayContext.fillStyle = "#2f7398";
+      overlayContext.fillStyle = waterColor;
       overlayContext.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
 
       if (layerStateRef().earth && renderProjectedRaster(scene, adapter, earthTextureRef())) {
@@ -395,7 +449,7 @@
       }
 
       const landGeometry = adapter.resolveGeometry("land", getLayerGeometry("land", scene, worldDataRef().land));
-      adapter.fillGeometry(landGeometry, "#98b977", adapter.kind === "interrupted" ? "evenodd" : "nonzero");
+      adapter.fillGeometry(landGeometry, landColor, adapter.kind === "interrupted" ? "evenodd" : "nonzero");
     }
 
     function renderGraticuleLayer(scene) {
@@ -409,11 +463,35 @@
         return;
       }
 
-      adapter.strokeGeometry(window.AtlasCore.graticule, "rgba(255, 255, 255, 0.12)", 0.7, {
+      const graticuleStyle = layerStateRef().graticuleStyle ?? {};
+      const graticuleColor = graticuleStyle.color ?? "#ffffff";
+      const graticuleOpacity = Number.isFinite(graticuleStyle.opacity) ? graticuleStyle.opacity : 0.12;
+      const graticuleWidth = Number.isFinite(graticuleStyle.width) ? graticuleStyle.width : 0.7;
+      const graticuleStroke = withOpacity(graticuleColor, graticuleOpacity);
+      const equatorStroke = withOpacity(graticuleColor, Math.min(graticuleOpacity * 2, 1));
+
+      adapter.strokeGeometry(window.AtlasCore.graticule, graticuleStroke, graticuleWidth, {
         maxStepDegrees: 1,
       });
 
-      adapter.strokeGeometry(window.AtlasCore.equator, "rgba(255, 255, 255, 0.24)", 1.15, {
+      adapter.strokeGeometry(window.AtlasCore.equator, equatorStroke, Math.max(graticuleWidth * 1.65, graticuleWidth + 0.3), {
+        maxStepDegrees: 1,
+      });
+    }
+
+    function renderTissotLayer(scene) {
+      if (!layerStateRef().tissot) {
+        return;
+      }
+
+      const adapter = createSceneAdapter(scene);
+
+      if (!adapter.isReady || !adapter.canRenderLayer("graticule")) {
+        return;
+      }
+
+      adapter.fillGeometry(tissotGeometry, "rgba(196, 59, 47, 0.12)", "nonzero");
+      adapter.strokeGeometry(tissotGeometry, "rgba(196, 59, 47, 0.72)", 0.9, {
         maxStepDegrees: 1,
       });
     }
@@ -492,7 +570,7 @@
 
         scheduleFlatRasterPrewarm(scene, image, pixelRatioRef?.() ?? 1);
       },
-      renderers: [renderFallbackLayer, renderEmpiresLayer, renderGraticuleLayer, renderBordersLayer, renderProjectionFrame],
+      renderers: [renderFallbackLayer, renderEmpiresLayer, renderGraticuleLayer, renderTissotLayer, renderBordersLayer, renderProjectionFrame],
     };
   }
 

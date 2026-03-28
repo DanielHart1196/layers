@@ -10,6 +10,15 @@
         if (bootPosterImage) {
           document.documentElement.style.setProperty("--boot-stage-poster-image", `url("${bootPosterImage}")`);
         }
+
+        const storedViewState = window.localStorage?.getItem("atlas.view.state");
+        if (storedViewState) {
+          const parsedViewState = JSON.parse(storedViewState);
+          const zoom = Number(parsedViewState?.zoom);
+          if (Number.isFinite(zoom) && zoom > 1.01) {
+            document.documentElement.classList.add("is-mobile-boot-zoomed");
+          }
+        }
       } catch (error) {
         // Ignore storage access failures during boot.
       }
@@ -179,6 +188,13 @@
           tabindex="0"
           aria-label="Current projection. Swipe to change projection"
         >
+          <svg class="projection-switcher-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.25"></circle>
+            <ellipse cx="12" cy="12" rx="3.75" ry="8.25"></ellipse>
+            <path d="M3.75 12h16.5"></path>
+            <path d="M5.5 8.5c2.1 1.05 4.3 1.55 6.5 1.55s4.4-.5 6.5-1.55"></path>
+            <path d="M5.5 15.5c2.1-1.05 4.3-1.55 6.5-1.55s4.4.5 6.5 1.55"></path>
+          </svg>
           <span class="projection-switcher-track" id="projectionSwitcherTrack">
             <span class="projection-switcher-label projection-switcher-boot-label" aria-hidden="true">Globe</span>
           </span>
@@ -192,40 +208,282 @@
             </button>
           </div>
           <div class="layer-panel-scroll">
-            <section class="projection-panel" aria-label="Projection">
-              <p class="projection-label">Projection</p>
-              <div class="projection-picker" id="projectionPicker">
-                <button
-                  class="projection-picker-button"
-                  id="projectionPickerButton"
-                  type="button"
-                  aria-label="Choose projection"
-                  aria-controls="projectionPickerList"
-                  aria-expanded="false"
-                >
-                  <span class="projection-picker-value" id="projectionPickerValue">Globe</span>
-                  <span class="projection-picker-chevron" aria-hidden="true"></span>
-                </button>
-                <div class="projection-picker-list" id="projectionPickerList" role="listbox" aria-label="Map projection">
-                  <button class="projection-picker-option" type="button" role="option" data-projection-option="orthographic">Globe</button>
-                  <button class="projection-picker-option" type="button" role="option" data-projection-option="azimuthal-equidistant">Azimuthal Eqd</button>
-                  <button class="projection-picker-option" type="button" role="option" data-projection-option="mercator">Mercator</button>
-                  <button class="projection-picker-option" type="button" role="option" data-projection-option="natural-earth-ii">Natural Earth II</button>
-                  <button class="projection-picker-option" type="button" role="option" data-projection-option="goode-homolosine">Goode Homolosine</button>
-                  <button class="projection-picker-option" type="button" role="option" data-projection-option="waterman">Waterman Butterfly</button>
-                </div>
-              </div>
-            </section>
-
             <div class="layer-list">
+              <section class="layer-group layer-group-borders layer-group-earth is-active" id="earthLayerGroup">
+                <div class="layer-group-head">
+                  <button class="layer-item layer-item-group is-active" id="earthGroupButton" type="button">
+                    <span class="layer-checkbox" aria-hidden="true">
+                      <span class="layer-checkmark"></span>
+                    </span>
+                    <span class="layer-copy">
+                      <strong>Earth</strong>
+                    </span>
+                    <span
+                      class="layer-group-toggle"
+                      id="earthGroupToggle"
+                      aria-label="Toggle earth controls"
+                      aria-controls="earthLayerControls"
+                      aria-expanded="false"
+                    >
+                      <span class="layer-group-chevron" aria-hidden="true"></span>
+                    </span>
+                  </button>
+                </div>
+                <div class="layer-sublist layer-sublist-controls" id="earthLayerControls">
+                  <div class="layer-control layer-control-color">
+                    <div class="layer-control-copy">
+                      <strong>Land Color</strong>
+                      <small id="landColorValue">#98B977</small>
+                      <span class="layer-inline-color-dot" id="landColorInlineDot" aria-hidden="true"></span>
+                    </div>
+                    <div class="layer-color-swatch-scroll">
+                      <div class="layer-color-swatch-row" id="landColorSwatchRow" aria-label="Land color presets">
+                        <button
+                          class="layer-inline-color-button layer-inline-color-button-plus"
+                          id="landColorSwatchButton"
+                          type="button"
+                          aria-label="Open custom land color picker"
+                          aria-expanded="false"
+                        >
+                          <span class="layer-inline-color-plus" aria-hidden="true">+</span>
+                        </button>
+                        <div class="layer-inline-color-customs" id="landColorCustoms"></div>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-land-color="#FFFFFF" aria-label="White"><span class="layer-inline-color-dot" style="--layer-active-color:#FFFFFF;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-land-color="#0F2430" aria-label="Black"><span class="layer-inline-color-dot" style="--layer-active-color:#0F2430;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-land-color="#D94B4B" aria-label="Red"><span class="layer-inline-color-dot" style="--layer-active-color:#D94B4B;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-land-color="#E58A2B" aria-label="Orange"><span class="layer-inline-color-dot" style="--layer-active-color:#E58A2B;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-land-color="#E5C84A" aria-label="Yellow"><span class="layer-inline-color-dot" style="--layer-active-color:#E5C84A;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-land-color="#5B8C5A" aria-label="Green"><span class="layer-inline-color-dot" style="--layer-active-color:#5B8C5A;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-land-color="#4B6ED9" aria-label="Blue"><span class="layer-inline-color-dot" style="--layer-active-color:#4B6ED9;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-land-color="#8C5BD6" aria-label="Purple"><span class="layer-inline-color-dot" style="--layer-active-color:#8C5BD6;" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                    <div class="layer-color-panel" id="landColorPanel" aria-hidden="true">
+                      <div class="layer-color-field" id="landColorField" role="application" aria-label="Land color gradient field">
+                        <span class="layer-color-field-handle" id="landColorFieldHandle" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-hue-slider" id="landColorHueSlider" role="slider" aria-label="Land hue slider">
+                        <span class="layer-color-hue-handle" id="landColorHueHandle" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-input-row">
+                        <input
+                          class="layer-hex-input"
+                          id="landColorInput"
+                          type="text"
+                          inputmode="text"
+                          autocapitalize="characters"
+                          autocomplete="off"
+                          spellcheck="false"
+                          value="#98B977"
+                          aria-label="Land color hex code"
+                        />
+                        <button class="layer-color-add-button" id="landColorAddButton" type="button">
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="layer-control layer-control-color">
+                    <div class="layer-control-copy">
+                      <strong>Water Color</strong>
+                      <small id="waterColorValue">#2F7398</small>
+                      <span class="layer-inline-color-dot" id="waterColorInlineDot" aria-hidden="true"></span>
+                    </div>
+                    <div class="layer-color-swatch-scroll">
+                      <div class="layer-color-swatch-row" id="waterColorSwatchRow" aria-label="Water color presets">
+                        <button
+                          class="layer-inline-color-button layer-inline-color-button-plus"
+                          id="waterColorSwatchButton"
+                          type="button"
+                          aria-label="Open custom water color picker"
+                          aria-expanded="false"
+                        >
+                          <span class="layer-inline-color-plus" aria-hidden="true">+</span>
+                        </button>
+                        <div class="layer-inline-color-customs" id="waterColorCustoms"></div>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-water-color="#FFFFFF" aria-label="White"><span class="layer-inline-color-dot" style="--layer-active-color:#FFFFFF;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-water-color="#0F2430" aria-label="Black"><span class="layer-inline-color-dot" style="--layer-active-color:#0F2430;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-water-color="#D94B4B" aria-label="Red"><span class="layer-inline-color-dot" style="--layer-active-color:#D94B4B;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-water-color="#E58A2B" aria-label="Orange"><span class="layer-inline-color-dot" style="--layer-active-color:#E58A2B;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-water-color="#E5C84A" aria-label="Yellow"><span class="layer-inline-color-dot" style="--layer-active-color:#E5C84A;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-water-color="#5B8C5A" aria-label="Green"><span class="layer-inline-color-dot" style="--layer-active-color:#5B8C5A;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-water-color="#4B6ED9" aria-label="Blue"><span class="layer-inline-color-dot" style="--layer-active-color:#4B6ED9;" aria-hidden="true"></span></button>
+                        <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-water-color="#8C5BD6" aria-label="Purple"><span class="layer-inline-color-dot" style="--layer-active-color:#8C5BD6;" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                    <div class="layer-color-panel" id="waterColorPanel" aria-hidden="true">
+                      <div class="layer-color-field" id="waterColorField" role="application" aria-label="Water color gradient field">
+                        <span class="layer-color-field-handle" id="waterColorFieldHandle" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-hue-slider" id="waterColorHueSlider" role="slider" aria-label="Water hue slider">
+                        <span class="layer-color-hue-handle" id="waterColorHueHandle" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-input-row">
+                        <input
+                          class="layer-hex-input"
+                          id="waterColorInput"
+                          type="text"
+                          inputmode="text"
+                          autocapitalize="characters"
+                          autocomplete="off"
+                          spellcheck="false"
+                          value="#2F7398"
+                          aria-label="Water color hex code"
+                        />
+                        <button class="layer-color-add-button" id="waterColorAddButton" type="button">
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <section class="projection-panel" aria-label="Projection">
+                    <p class="projection-label">Projection</p>
+                    <div class="projection-picker" id="projectionPicker">
+                      <button
+                        class="projection-picker-button"
+                        id="projectionPickerButton"
+                        type="button"
+                        aria-label="Choose projection"
+                        aria-controls="projectionPickerList"
+                        aria-expanded="false"
+                      >
+                        <span class="projection-picker-value" id="projectionPickerValue">Globe</span>
+                        <span class="projection-picker-chevron" aria-hidden="true"></span>
+                      </button>
+                      <div class="projection-picker-list" id="projectionPickerList" role="listbox" aria-label="Map projection">
+                        <button class="projection-picker-option" type="button" role="option" data-projection-option="orthographic">Globe</button>
+                        <button class="projection-picker-option" type="button" role="option" data-projection-option="azimuthal-equidistant">Azimuthal Eqd</button>
+                        <button class="projection-picker-option" type="button" role="option" data-projection-option="mercator">Mercator</button>
+                        <button class="projection-picker-option" type="button" role="option" data-projection-option="natural-earth-ii">Natural Earth II</button>
+                        <button class="projection-picker-option" type="button" role="option" data-projection-option="goode-homolosine">Goode Homolosine</button>
+                        <button class="projection-picker-option" type="button" role="option" data-projection-option="waterman">Waterman Butterfly</button>
+                      </div>
+                    </div>
+                  </section>
+                  <section class="layer-group layer-group-borders" id="graticuleLayerGroup">
+                    <div class="layer-group-head">
+                      <button class="layer-item layer-item-group is-active" data-layer-id="graticule" type="button">
+                        <span class="layer-checkbox" aria-hidden="true">
+                          <span class="layer-checkmark"></span>
+                        </span>
+                        <span class="layer-copy">
+                          <strong>Graticule</strong>
+                          <small>Latitude and longitude grid</small>
+                        </span>
+                        <span
+                          class="layer-group-toggle"
+                          id="graticuleGroupToggle"
+                          aria-label="Toggle graticule controls"
+                          aria-controls="graticuleLayerControls"
+                          aria-expanded="false"
+                        >
+                          <span class="layer-group-chevron" aria-hidden="true"></span>
+                        </span>
+                      </button>
+                    </div>
+                    <div class="layer-sublist layer-sublist-controls" id="graticuleLayerControls">
+                      <label class="layer-control" for="graticuleWidthInput">
+                        <span class="layer-control-copy">
+                          <strong>Stroke Width</strong>
+                          <small id="graticuleWidthValue">0.7 px</small>
+                        </span>
+                        <input
+                          class="layer-range-input"
+                          id="graticuleWidthInput"
+                          type="range"
+                          min="0.4"
+                          max="3"
+                          step="0.1"
+                          value="0.7"
+                        />
+                      </label>
+                      <div class="layer-control layer-control-color">
+                        <div class="layer-control-copy">
+                          <strong>Line Color</strong>
+                          <small id="graticuleColorValue">#FFFFFF</small>
+                          <span class="layer-inline-color-dot" id="graticuleColorInlineDot" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-swatch-scroll">
+                          <div class="layer-color-swatch-row" id="graticuleColorSwatchRow" aria-label="Graticule color presets">
+                            <button
+                              class="layer-inline-color-button layer-inline-color-button-plus"
+                              id="graticuleColorSwatchButton"
+                              type="button"
+                              aria-label="Open graticule color selector"
+                              aria-controls="graticuleColorPanel"
+                              aria-expanded="false"
+                            >
+                              <span class="layer-inline-color-plus" aria-hidden="true">+</span>
+                            </button>
+                            <div class="layer-inline-color-customs" id="graticuleColorCustoms"></div>
+                            <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#FFFFFF" aria-label="Choose white graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#FFFFFF"></span></button>
+                            <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#000000" aria-label="Choose black graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#000000"></span></button>
+                            <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#D9534F" aria-label="Choose red graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#D9534F"></span></button>
+                            <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#E59A3E" aria-label="Choose orange graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#E59A3E"></span></button>
+                            <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#E6CF58" aria-label="Choose yellow graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#E6CF58"></span></button>
+                            <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#63A66A" aria-label="Choose green graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#63A66A"></span></button>
+                            <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#1F3B57" aria-label="Choose blue graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#1F3B57"></span></button>
+                            <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#7A58A6" aria-label="Choose purple graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#7A58A6"></span></button>
+                          </div>
+                        </div>
+                        <div class="layer-opacity-control">
+                          <label class="layer-opacity-label" for="graticuleOpacityInput">Opacity</label>
+                          <input
+                            class="layer-opacity-range"
+                            id="graticuleOpacityInput"
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="1"
+                            value="12"
+                          />
+                        </div>
+                        <div class="layer-color-panel" id="graticuleColorPanel" aria-hidden="true">
+                          <div class="layer-color-field" id="graticuleColorField" role="application" aria-label="Graticule color gradient field">
+                            <span class="layer-color-field-handle" id="graticuleColorFieldHandle" aria-hidden="true"></span>
+                          </div>
+                          <div class="layer-color-hue-slider" id="graticuleColorHueSlider" role="slider" aria-label="Graticule color hue slider" aria-valuemin="0" aria-valuemax="360">
+                            <span class="layer-color-hue-handle" id="graticuleColorHueHandle" aria-hidden="true"></span>
+                          </div>
+                          <div class="layer-color-input-row">
+                            <input
+                              class="layer-hex-input"
+                              id="graticuleColorInput"
+                              type="text"
+                              inputmode="text"
+                              autocomplete="off"
+                              spellcheck="false"
+                              value="#FFFFFF"
+                              aria-label="Graticule line hex color"
+                            />
+                            <button class="layer-color-add-button" id="graticuleColorAddButton" type="button">
+                              Add
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  <button class="layer-item layer-item-sub" data-layer-id="tissot" type="button">
+                    <span class="layer-checkbox" aria-hidden="true">
+                      <span class="layer-checkmark"></span>
+                    </span>
+                    <span class="layer-copy">
+                      <strong>Tissot Indicatrix</strong>
+                      <small>Projection distortion circles</small>
+                    </span>
+                  </button>
+                </div>
+              </section>
+
               <section class="layer-group layer-group-earth is-active">
                 <button class="layer-item is-active" data-layer-id="earth" type="button">
                   <span class="layer-checkbox" aria-hidden="true">
                     <span class="layer-checkmark"></span>
                   </span>
                   <span class="layer-copy">
-                    <strong>Earth</strong>
-                    <small>Base globe imagery</small>
+                    <strong>Satellite</strong>
+                    <small>Monthly imagery overlay</small>
                   </span>
                 </button>
               </section>
@@ -378,15 +636,6 @@
                   </button>
                 </div>
               </section>
-              <button class="layer-item is-active" data-layer-id="graticule" type="button">
-                <span class="layer-checkbox" aria-hidden="true">
-                  <span class="layer-checkmark"></span>
-                </span>
-                <span class="layer-copy">
-                  <strong>Graticule</strong>
-                  <small>Latitude and longitude grid</small>
-                </span>
-              </button>
             </div>
           </div>
           <div class="layer-panel-scrollbar" id="layerPanelScrollbar" aria-hidden="true">

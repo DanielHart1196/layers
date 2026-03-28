@@ -11,6 +11,26 @@ const layerPanelScrollbar = document.getElementById("layerPanelScrollbar");
 const layerPanelScrollbarThumb = document.getElementById("layerPanelScrollbarThumb");
 const empireLayerGroup = document.getElementById("empireLayerGroup");
 const empireGroupToggle = document.getElementById("empireGroupToggle");
+const earthLayerGroup = document.getElementById("earthLayerGroup");
+const earthGroupButton = document.getElementById("earthGroupButton");
+const earthGroupToggle = document.getElementById("earthGroupToggle");
+const graticuleLayerGroup = document.getElementById("graticuleLayerGroup");
+const graticuleGroupToggle = document.getElementById("graticuleGroupToggle");
+const graticuleWidthInput = document.getElementById("graticuleWidthInput");
+const graticuleWidthValue = document.getElementById("graticuleWidthValue");
+const graticuleOpacityInput = document.getElementById("graticuleOpacityInput");
+const graticuleColorInput = document.getElementById("graticuleColorInput");
+const graticuleColorValue = document.getElementById("graticuleColorValue");
+const graticuleColorInlineDot = document.getElementById("graticuleColorInlineDot");
+const graticuleColorSwatchButton = document.getElementById("graticuleColorSwatchButton");
+const graticuleColorCustoms = document.getElementById("graticuleColorCustoms");
+const graticuleColorPresetButtons = Array.from(document.querySelectorAll("[data-graticule-color]"));
+const graticuleColorPanel = document.getElementById("graticuleColorPanel");
+const graticuleColorField = document.getElementById("graticuleColorField");
+const graticuleColorFieldHandle = document.getElementById("graticuleColorFieldHandle");
+const graticuleColorHueSlider = document.getElementById("graticuleColorHueSlider");
+const graticuleColorHueHandle = document.getElementById("graticuleColorHueHandle");
+const graticuleColorAddButton = document.getElementById("graticuleColorAddButton");
 const borderLayerGroup = document.getElementById("borderLayerGroup");
 const borderGroupToggle = document.getElementById("borderGroupToggle");
 const borderWidthInput = document.getElementById("borderWidthInput");
@@ -21,13 +41,37 @@ const borderColorValue = document.getElementById("borderColorValue");
 const borderColorInlineDot = document.getElementById("borderColorInlineDot");
 const borderColorSwatchButton = document.getElementById("borderColorSwatchButton");
 const borderColorCustoms = document.getElementById("borderColorCustoms");
-const borderColorPresetButtons = Array.from(document.querySelectorAll(".layer-inline-color-choice"));
+const borderColorPresetButtons = Array.from(document.querySelectorAll("[data-border-color]"));
 const borderColorPanel = document.getElementById("borderColorPanel");
 const borderColorField = document.getElementById("borderColorField");
 const borderColorFieldHandle = document.getElementById("borderColorFieldHandle");
 const borderColorHueSlider = document.getElementById("borderColorHueSlider");
 const borderColorHueHandle = document.getElementById("borderColorHueHandle");
 const borderColorAddButton = document.getElementById("borderColorAddButton");
+const landColorInput = document.getElementById("landColorInput");
+const landColorValue = document.getElementById("landColorValue");
+const landColorInlineDot = document.getElementById("landColorInlineDot");
+const landColorSwatchButton = document.getElementById("landColorSwatchButton");
+const landColorCustoms = document.getElementById("landColorCustoms");
+const landColorPresetButtons = Array.from(document.querySelectorAll("[data-land-color]"));
+const landColorPanel = document.getElementById("landColorPanel");
+const landColorField = document.getElementById("landColorField");
+const landColorFieldHandle = document.getElementById("landColorFieldHandle");
+const landColorHueSlider = document.getElementById("landColorHueSlider");
+const landColorHueHandle = document.getElementById("landColorHueHandle");
+const landColorAddButton = document.getElementById("landColorAddButton");
+const waterColorInput = document.getElementById("waterColorInput");
+const waterColorValue = document.getElementById("waterColorValue");
+const waterColorInlineDot = document.getElementById("waterColorInlineDot");
+const waterColorSwatchButton = document.getElementById("waterColorSwatchButton");
+const waterColorCustoms = document.getElementById("waterColorCustoms");
+const waterColorPresetButtons = Array.from(document.querySelectorAll("[data-water-color]"));
+const waterColorPanel = document.getElementById("waterColorPanel");
+const waterColorField = document.getElementById("waterColorField");
+const waterColorFieldHandle = document.getElementById("waterColorFieldHandle");
+const waterColorHueSlider = document.getElementById("waterColorHueSlider");
+const waterColorHueHandle = document.getElementById("waterColorHueHandle");
+const waterColorAddButton = document.getElementById("waterColorAddButton");
 const mobileRefresh = document.getElementById("mobileRefresh");
 const mobileRefreshButton = document.getElementById("mobileRefreshButton");
 const mobileRefreshMenu = document.getElementById("mobileRefreshMenu");
@@ -83,19 +127,21 @@ let projectionSwipeAnimating = false;
 let projectionSwipeSettleTimer = null;
 let interactionSettleTimer = null;
 let bootStagePosterSnapshotTimer = null;
+let viewStateSaveTimer = null;
 let layerScrollbarDragState = null;
 let layerScrollbarFadeTimer = null;
-let borderColorFieldDragState = null;
-let borderColorHueDragState = null;
-let borderColorDuplicateFlashTimer = null;
-let borderColorDuplicateFlashButton = null;
-let borderColorRemovePressTimer = null;
-let borderColorRemoveTarget = null;
-let borderColorLongPressTriggered = false;
 const BORDER_COLOR_STORAGE_KEY = "atlas.border.customColors";
+const GRATICULE_COLOR_STORAGE_KEY = "atlas.graticule.customColors";
+const LAND_COLOR_STORAGE_KEY = "atlas.earth.land.customColors";
+const WATER_COLOR_STORAGE_KEY = "atlas.earth.water.customColors";
+const STYLE_SETTINGS_STORAGE_KEY = "atlas.style.settings";
+const VIEW_STATE_STORAGE_KEY = "atlas.view.state";
 const MAX_CUSTOM_BORDER_COLORS = 10;
 const BOOT_STAGE_POSTER_STORAGE_KEY = "atlas.bootViewportPoster";
 let customBorderColors = [];
+let customGraticuleColors = [];
+let customLandColors = [];
+let customWaterColors = [];
 const flatProjectionPanOffsets = {
   "natural-earth-ii": { x: 0, y: 0 },
   "goode-homolosine": { x: 0, y: 0 },
@@ -107,6 +153,7 @@ const layerState = {
   empires: false,
   borders: true,
   graticule: true,
+  tissot: false,
 };
 const empireLayerState = {
   roman: true,
@@ -129,12 +176,31 @@ const zoomState = {
 const uiState = {
   isLayerPanelOpen: false,
   isMonthOverlayOpen: false,
+  isEarthGroupOpen: false,
+  isGraticuleGroupOpen: false,
   isEmpireGroupOpen: false,
   isBorderGroupOpen: false,
   isBorderColorPaletteOpen: false,
+  isGraticuleColorPaletteOpen: false,
+  isLandColorPaletteOpen: false,
+  isWaterColorPaletteOpen: false,
   isProjectionMenuOpen: false,
   isProjectionSwitcherReady: false,
   isInteracting: false,
+};
+const earthStyleState = {
+  land: {
+    color: "#98B977",
+    hue: 88,
+    saturation: 0.37,
+    value: 0.73,
+  },
+  water: {
+    color: "#2F7398",
+    hue: 201,
+    saturation: 0.69,
+    value: 0.6,
+  },
 };
 const borderStyleState = {
   color: "#ffffff",
@@ -143,6 +209,52 @@ const borderStyleState = {
   hue: 0,
   saturation: 0,
   value: 1,
+};
+const graticuleStyleState = {
+  color: "#ffffff",
+  opacity: 0.12,
+  width: 0.7,
+  hue: 0,
+  saturation: 0,
+  value: 1,
+};
+const colorControlRuntimeState = {
+  border: {
+    fieldDragState: null,
+    hueDragState: null,
+    duplicateFlashTimer: null,
+    duplicateFlashButton: null,
+    removePressTimer: null,
+    removeTarget: null,
+    longPressTriggered: false,
+  },
+  graticule: {
+    fieldDragState: null,
+    hueDragState: null,
+    duplicateFlashTimer: null,
+    duplicateFlashButton: null,
+    removePressTimer: null,
+    removeTarget: null,
+    longPressTriggered: false,
+  },
+  land: {
+    fieldDragState: null,
+    hueDragState: null,
+    duplicateFlashTimer: null,
+    duplicateFlashButton: null,
+    removePressTimer: null,
+    removeTarget: null,
+    longPressTriggered: false,
+  },
+  water: {
+    fieldDragState: null,
+    hueDragState: null,
+    duplicateFlashTimer: null,
+    duplicateFlashButton: null,
+    removePressTimer: null,
+    removeTarget: null,
+    longPressTriggered: false,
+  },
 };
 const SUPPORTED_PROJECTIONS = new Set([
   "orthographic",
@@ -249,8 +361,10 @@ function syncProjectionSwitcher() {
 function cycleProjection(direction = 1) {
   projectionState.selectedProjection = getAdjacentProjection(direction);
   zoomState.scale = clampZoomScale(zoomState.scale);
+  syncFlatProjectionPanOffset();
   syncProjectionPicker();
   syncProjectionSwitcher();
+  scheduleViewStateSave();
   handleResize();
 }
 
@@ -352,6 +466,55 @@ function syncMobileMonthChrome() {
   if (!monthsEnabled || (isMobileViewport && isZoomedOut)) {
     setMonthOverlayOpen(false);
   }
+
+  syncProjectionSwitcherMorph();
+}
+
+function syncProjectionSwitcherMorph() {
+  if (!projectionSwitcher) {
+    return;
+  }
+
+  if (!mobileLayerMenuMediaQuery.matches) {
+    projectionSwitcher.style.removeProperty("--projection-switcher-width");
+    projectionSwitcher.style.removeProperty("--projection-switcher-height");
+    projectionSwitcher.style.removeProperty("--projection-switcher-padding-x");
+    projectionSwitcher.style.removeProperty("--projection-switcher-padding-y");
+    projectionSwitcher.style.removeProperty("--projection-switcher-radius");
+    projectionSwitcher.style.removeProperty("--projection-switcher-shift-x");
+    projectionSwitcher.style.removeProperty("--projection-switcher-shift-y");
+    projectionSwitcher.style.removeProperty("--projection-switcher-track-opacity");
+    projectionSwitcher.style.removeProperty("--projection-switcher-icon-opacity");
+    renderProjectionSwitcher(0);
+    return;
+  }
+
+  const liveProgress = clamp((zoomState.scale - 1) / 0.35, 0, 1);
+  const progress = uiState.isInteracting
+    ? liveProgress
+    : (liveProgress >= 0.5 ? 1 : 0);
+  const viewportWidth = Math.max(window.innerWidth || 0, 1);
+  const startCenterX = viewportWidth / 2;
+  const endCenterX = viewportWidth - 18 - 24;
+  const shiftX = (endCenterX - startCenterX) * progress;
+  const width = 208 - (160 * progress);
+  const height = 46 + (2 * progress);
+  const paddingX = 16 * (1 - progress);
+  const paddingY = 11 * (1 - progress);
+  const radius = 999 - ((999 - 16) * progress);
+  const trackOpacity = 1 - progress;
+  const iconOpacity = progress;
+
+  projectionSwitcher.style.setProperty("--projection-switcher-width", `${width}px`);
+  projectionSwitcher.style.setProperty("--projection-switcher-height", `${height}px`);
+  projectionSwitcher.style.setProperty("--projection-switcher-padding-x", `${paddingX}px`);
+  projectionSwitcher.style.setProperty("--projection-switcher-padding-y", `${paddingY}px`);
+  projectionSwitcher.style.setProperty("--projection-switcher-radius", `${radius}px`);
+  projectionSwitcher.style.setProperty("--projection-switcher-shift-x", `${shiftX}px`);
+  projectionSwitcher.style.setProperty("--projection-switcher-shift-y", "0px");
+  projectionSwitcher.style.setProperty("--projection-switcher-track-opacity", `${trackOpacity}`);
+  projectionSwitcher.style.setProperty("--projection-switcher-icon-opacity", `${iconOpacity}`);
+  renderProjectionSwitcher(0);
 }
 
 function enableMonthMenuToggle() {
@@ -392,8 +555,13 @@ function enableMonthMenuToggle() {
 }
 
 async function init() {
-  customBorderColors = loadCustomBorderColors();
-  projectionState.selectedProjection = normalizeProjectionSelection(getDefaultProjection());
+  customBorderColors = loadStoredCustomColors(BORDER_COLOR_STORAGE_KEY);
+  customGraticuleColors = loadStoredCustomColors(GRATICULE_COLOR_STORAGE_KEY);
+  customLandColors = loadStoredCustomColors(LAND_COLOR_STORAGE_KEY);
+  customWaterColors = loadStoredCustomColors(WATER_COLOR_STORAGE_KEY);
+  loadStyleSettings();
+  loadViewState();
+  projectionState.selectedProjection = normalizeProjectionSelection(projectionState.selectedProjection);
   syncMobileMonthChrome();
   syncStageChrome();
   configureCanvases();
@@ -410,6 +578,8 @@ async function init() {
       ...layerState,
       empireSublayers: empireLayerState,
       borderStyle: borderStyleState,
+      graticuleStyle: graticuleStyleState,
+      earthStyle: earthStyleState,
       isInteracting: uiState.isInteracting,
     }),
     earthTextureRef: () => earthTextureImage,
@@ -556,6 +726,7 @@ function getActiveMonth() {
 
 function markInteractionActivity() {
   uiState.isInteracting = true;
+  scheduleViewStateSave();
   if (interactionSettleTimer !== null) {
     window.clearTimeout(interactionSettleTimer);
   }
@@ -563,6 +734,7 @@ function markInteractionActivity() {
   interactionSettleTimer = window.setTimeout(() => {
     interactionSettleTimer = null;
     uiState.isInteracting = false;
+    syncMobileMonthChrome();
     requestRender();
   }, 140);
 }
@@ -608,13 +780,7 @@ function scheduleBootStagePosterSnapshot() {
 }
 
 function snapshotBootStagePoster() {
-  if (
-    projectionState.selectedProjection !== "orthographic" ||
-    zoomState.scale > 1.01 ||
-    layerState.earth ||
-    !overlayCanvas ||
-    !stage
-  ) {
+  if (!overlayCanvas || !stage) {
     return;
   }
 
@@ -630,17 +796,23 @@ function snapshotBootStagePoster() {
       return;
     }
 
+    context.clearRect(0, 0, posterWidth, posterHeight);
+    if (earthCanvas) {
+      context.drawImage(earthCanvas, 0, 0, posterWidth, posterHeight);
+    }
     context.drawImage(overlayCanvas, 0, 0, posterWidth, posterHeight);
 
-    const globeRadius = Number.parseFloat(singleGlobeFrameElement?.getAttribute("r") ?? "") || Math.max(120, Math.min(posterWidth, posterHeight) / 2 - 44);
-    const globeCenterX = Number.parseFloat(singleGlobeFrameElement?.getAttribute("cx") ?? "") || (posterWidth / 2);
-    const globeCenterY = Number.parseFloat(singleGlobeFrameElement?.getAttribute("cy") ?? "") || (posterHeight / 2);
+    if (projectionState.selectedProjection === "orthographic") {
+      const globeRadius = Number.parseFloat(singleGlobeFrameElement?.getAttribute("r") ?? "") || Math.max(120, Math.min(posterWidth, posterHeight) / 2 - 44);
+      const globeCenterX = Number.parseFloat(singleGlobeFrameElement?.getAttribute("cx") ?? "") || (posterWidth / 2);
+      const globeCenterY = Number.parseFloat(singleGlobeFrameElement?.getAttribute("cy") ?? "") || (posterHeight / 2);
 
-    context.strokeStyle = "rgba(8, 27, 38, 0.85)";
-    context.lineWidth = 2;
-    context.beginPath();
-    context.arc(globeCenterX, globeCenterY, globeRadius, 0, Math.PI * 2);
-    context.stroke();
+      context.strokeStyle = "rgba(8, 27, 38, 0.85)";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(globeCenterX, globeCenterY, globeRadius, 0, Math.PI * 2);
+      context.stroke();
+    }
 
     const dataUrl = posterCanvas.toDataURL("image/webp", 0.82);
     sessionStorage.setItem(BOOT_STAGE_POSTER_STORAGE_KEY, dataUrl);
@@ -758,6 +930,7 @@ function syncFlatProjectionPanOffset() {
   flatProjectionPanOffsets[projectionState.selectedProjection] = clampFlatProjectionPanOffset(
     getFlatProjectionPanOffset(),
   );
+  scheduleViewStateSave();
 }
 
 function getMercatorPhiSensitivityMultiplier() {
@@ -1070,20 +1243,19 @@ function enableZoomControls() {
 
 function enableLayerControls() {
   layerButtons.forEach((button) => {
+    const layerId = button.dataset.layerId;
     if (button.dataset.empireLayerId) {
       return;
     }
 
-    button.classList.toggle("is-active", Boolean(layerState[button.dataset.layerId]));
-    button.closest(".layer-group")?.classList.toggle("is-active", Boolean(layerState[button.dataset.layerId]));
+    if (!layerId || !(layerId in layerState)) {
+      return;
+    }
+
+    button.classList.toggle("is-active", Boolean(layerState[layerId]));
+    button.closest(".layer-group")?.classList.toggle("is-active", Boolean(layerState[layerId]));
 
     button.addEventListener("click", async (event) => {
-      const layerId = button.dataset.layerId;
-
-      if (!layerId || !(layerId in layerState)) {
-        return;
-      }
-
       if (layerId === "empires" && empireGroupToggle && event.target instanceof Node && empireGroupToggle.contains(event.target)) {
         uiState.isEmpireGroupOpen = !uiState.isEmpireGroupOpen;
         syncEmpireGroupUi();
@@ -1096,6 +1268,15 @@ function enableLayerControls() {
       if (layerId === "borders" && borderGroupToggle && event.target instanceof Node && borderGroupToggle.contains(event.target)) {
         uiState.isBorderGroupOpen = !uiState.isBorderGroupOpen;
         syncBorderGroupUi();
+        syncLayerPanelScrollbar();
+        showLayerPanelScrollbarTemporarily();
+        releaseLayerPanelFocusAfterPointerInteraction(button);
+        return;
+      }
+
+      if (layerId === "graticule" && graticuleGroupToggle && event.target instanceof Node && graticuleGroupToggle.contains(event.target)) {
+        uiState.isGraticuleGroupOpen = !uiState.isGraticuleGroupOpen;
+        syncGraticuleGroupUi();
         syncLayerPanelScrollbar();
         showLayerPanelScrollbarTemporarily();
         releaseLayerPanelFocusAfterPointerInteraction(button);
@@ -1127,9 +1308,21 @@ function enableLayerControls() {
       if (layerId === "borders") {
         syncBorderGroupUi();
       }
+      if (layerId === "graticule") {
+        syncGraticuleGroupUi();
+      }
+      scheduleViewStateSave();
       drawAtlas();
       releaseLayerPanelFocusAfterPointerInteraction(button);
     });
+  });
+
+  earthGroupButton?.addEventListener("click", () => {
+    uiState.isEarthGroupOpen = !uiState.isEarthGroupOpen;
+    syncEarthGroupUi();
+    syncLayerPanelScrollbar();
+    showLayerPanelScrollbarTemporarily();
+    releaseLayerPanelFocusAfterPointerInteraction(earthGroupButton);
   });
 
   empireLayerButtons.forEach((button) => {
@@ -1147,12 +1340,18 @@ function enableLayerControls() {
       }
       layerState.empires = Object.values(empireLayerState).some(Boolean);
       syncEmpireGroupUi();
+      scheduleViewStateSave();
       drawAtlas();
       releaseLayerPanelFocusAfterPointerInteraction(button);
     });
   });
 
   syncEmpireGroupUi();
+  enableSharedColorControl("land");
+  enableSharedColorControl("water");
+  syncEarthGroupUi();
+  enableGraticuleStyleControls();
+  syncGraticuleGroupUi();
   enableBorderStyleControls();
   syncBorderGroupUi();
 }
@@ -1349,9 +1548,9 @@ function normalizeHexDraftValue(value) {
   return `#${withoutHashes.slice(0, 6)}`;
 }
 
-function loadCustomBorderColors() {
+function loadStoredCustomColors(storageKey) {
   try {
-    const stored = window.localStorage?.getItem(BORDER_COLOR_STORAGE_KEY);
+    const stored = window.localStorage?.getItem(storageKey);
     if (!stored) {
       return [];
     }
@@ -1370,177 +1569,188 @@ function loadCustomBorderColors() {
   }
 }
 
-function saveCustomBorderColors() {
+function saveStyleSettings() {
   try {
-    window.localStorage?.setItem(BORDER_COLOR_STORAGE_KEY, JSON.stringify(customBorderColors));
+    window.localStorage?.setItem(
+      STYLE_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        border: {
+          color: borderStyleState.color,
+          opacity: borderStyleState.opacity,
+          width: borderStyleState.width,
+        },
+        graticule: {
+          color: graticuleStyleState.color,
+          opacity: graticuleStyleState.opacity,
+          width: graticuleStyleState.width,
+        },
+        earth: {
+          land: {
+            color: earthStyleState.land.color,
+          },
+          water: {
+            color: earthStyleState.water.color,
+          },
+        },
+      }),
+    );
   } catch (error) {
-    // Ignore persistence failures and keep the runtime state.
+    // Ignore persistence failures and keep runtime state.
   }
 }
 
-function clearBorderColorRemovePressTimer() {
-  if (borderColorRemovePressTimer !== null) {
-    window.clearTimeout(borderColorRemovePressTimer);
-    borderColorRemovePressTimer = null;
-  }
-}
-
-function hideCustomBorderColorRemoveButton() {
-  borderColorRemoveTarget?.classList.remove("is-remove-visible");
-  borderColorRemoveTarget = null;
-}
-
-function createCustomBorderColorButton(color) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "layer-inline-color-custom";
-
-  const button = document.createElement("button");
-  button.className = "layer-inline-color-button layer-inline-color-choice";
-  button.type = "button";
-  button.dataset.borderColor = color;
-  button.setAttribute("aria-label", `Custom color ${color}`);
-  wrapper.appendChild(button);
-
-  const dot = document.createElement("span");
-  dot.className = "layer-inline-color-dot";
-  dot.style.setProperty("--layer-active-color", color);
-  dot.setAttribute("aria-hidden", "true");
-  button.appendChild(dot);
-
-  const removeButton = document.createElement("button");
-  removeButton.className = "layer-inline-color-remove";
-  removeButton.type = "button";
-  removeButton.textContent = "−";
-  removeButton.setAttribute("aria-label", `Remove custom color ${color}`);
-  wrapper.appendChild(removeButton);
-
-  button.addEventListener("click", () => {
-    if (borderColorLongPressTriggered) {
-      borderColorLongPressTriggered = false;
+function loadStyleSettings() {
+  try {
+    const stored = window.localStorage?.getItem(STYLE_SETTINGS_STORAGE_KEY);
+    if (!stored) {
       return;
     }
 
-    if (!setBorderColor(color)) {
+    const parsed = JSON.parse(stored);
+
+    const borderColor = normalizeHexColor(parsed?.border?.color);
+    if (borderColor) {
+      setColorControlValue("border", borderColor);
+    }
+
+    const borderOpacity = Number(parsed?.border?.opacity);
+    if (Number.isFinite(borderOpacity)) {
+      borderStyleState.opacity = clamp(borderOpacity, 0, 1);
+    }
+
+    const borderWidth = Number(parsed?.border?.width);
+    if (Number.isFinite(borderWidth)) {
+      borderStyleState.width = clamp(borderWidth, 0.4, 3);
+    }
+
+    const graticuleColor = normalizeHexColor(parsed?.graticule?.color);
+    if (graticuleColor) {
+      setColorControlValue("graticule", graticuleColor);
+    }
+
+    const graticuleWidth = Number(parsed?.graticule?.width);
+    if (Number.isFinite(graticuleWidth)) {
+      graticuleStyleState.width = clamp(graticuleWidth, 0.4, 3);
+    }
+
+    const graticuleOpacity = Number(parsed?.graticule?.opacity);
+    if (Number.isFinite(graticuleOpacity)) {
+      graticuleStyleState.opacity = clamp(graticuleOpacity, 0, 1);
+    }
+
+    const landColor = normalizeHexColor(parsed?.earth?.land?.color);
+    if (landColor) {
+      setColorControlValue("land", landColor);
+    }
+
+    const waterColor = normalizeHexColor(parsed?.earth?.water?.color);
+    if (waterColor) {
+      setColorControlValue("water", waterColor);
+    }
+  } catch (error) {
+    // Ignore invalid persisted data.
+  }
+}
+
+function saveViewState() {
+  try {
+    window.localStorage?.setItem(
+      VIEW_STATE_STORAGE_KEY,
+      JSON.stringify({
+        projection: projectionState.selectedProjection,
+        zoom: zoomState.scale,
+        rotationOffset: {
+          lambda: rotationOffset.lambda,
+          phi: rotationOffset.phi,
+        },
+        flatProjectionPanOffsets,
+        layers: {
+          earth: layerState.earth,
+          empires: layerState.empires,
+          borders: layerState.borders,
+          graticule: layerState.graticule,
+          tissot: layerState.tissot,
+        },
+        empireSublayers: {
+          ...empireLayerState,
+        },
+        month: temporalState.selectedMonth,
+      }),
+    );
+  } catch (error) {
+    // Ignore persistence failures and keep runtime state.
+  }
+}
+
+function scheduleViewStateSave() {
+  if (viewStateSaveTimer !== null) {
+    window.clearTimeout(viewStateSaveTimer);
+  }
+
+  viewStateSaveTimer = window.setTimeout(() => {
+    viewStateSaveTimer = null;
+    saveViewState();
+  }, 60);
+}
+
+function loadViewState() {
+  try {
+    const stored = window.localStorage?.getItem(VIEW_STATE_STORAGE_KEY);
+    if (!stored) {
       return;
     }
 
-    syncBorderGroupUi();
-    drawAtlas();
-  });
+    const parsed = JSON.parse(stored);
+    projectionState.selectedProjection = normalizeProjectionSelection(parsed?.projection);
 
-  const startLongPress = () => {
-    clearBorderColorRemovePressTimer();
-    borderColorLongPressTriggered = false;
-    borderColorRemovePressTimer = window.setTimeout(() => {
-      if (borderColorRemoveTarget && borderColorRemoveTarget !== wrapper) {
-        borderColorRemoveTarget.classList.remove("is-remove-visible");
-      }
-      borderColorRemoveTarget = wrapper;
-      borderColorRemoveTarget.classList.add("is-remove-visible");
-      borderColorLongPressTriggered = true;
-      borderColorRemovePressTimer = null;
-    }, 300);
-  };
-
-  const cancelLongPress = () => {
-    clearBorderColorRemovePressTimer();
-  };
-
-  button.addEventListener("pointerdown", (event) => {
-    if (event.pointerType === "mouse" && event.button !== 0) {
-      return;
+    const zoom = Number(parsed?.zoom);
+    if (Number.isFinite(zoom)) {
+      zoomState.scale = clampZoomScale(zoom);
     }
-    startLongPress();
-  });
-  button.addEventListener("pointerup", cancelLongPress);
-  button.addEventListener("pointerleave", cancelLongPress);
-  button.addEventListener("pointercancel", cancelLongPress);
-  button.addEventListener("touchstart", startLongPress, { passive: true });
-  button.addEventListener("touchend", cancelLongPress, { passive: true });
-  button.addEventListener("touchcancel", cancelLongPress, { passive: true });
-  button.addEventListener("contextmenu", (event) => {
-    event.preventDefault();
-  });
 
-  removeButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    customBorderColors = customBorderColors.filter((entry) => entry !== color);
-    saveCustomBorderColors();
-    hideCustomBorderColorRemoveButton();
-    renderCustomBorderColors();
-    syncBorderGroupUi();
-  });
+    const lambda = Number(parsed?.rotationOffset?.lambda);
+    const phi = Number(parsed?.rotationOffset?.phi);
+    if (Number.isFinite(lambda)) {
+      rotationOffset.lambda = lambda;
+    }
+    if (Number.isFinite(phi)) {
+      rotationOffset.phi = clamp(phi, -getProjectionPhiClampRange(), getProjectionPhiClampRange());
+    }
 
-  return wrapper;
-}
+    if (parsed?.flatProjectionPanOffsets && typeof parsed.flatProjectionPanOffsets === "object") {
+      Object.keys(flatProjectionPanOffsets).forEach((projectionKey) => {
+        const offset = parsed.flatProjectionPanOffsets?.[projectionKey];
+        const x = Number(offset?.x);
+        const y = Number(offset?.y);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          flatProjectionPanOffsets[projectionKey] = { x, y };
+        }
+      });
+    }
 
-function renderCustomBorderColors() {
-  if (!borderColorCustoms) {
-    return;
+    if (parsed?.layers && typeof parsed.layers === "object") {
+      Object.keys(layerState).forEach((key) => {
+        if (typeof parsed.layers[key] === "boolean") {
+          layerState[key] = parsed.layers[key];
+        }
+      });
+    }
+
+    if (parsed?.empireSublayers && typeof parsed.empireSublayers === "object") {
+      Object.keys(empireLayerState).forEach((key) => {
+        if (typeof parsed.empireSublayers[key] === "boolean") {
+          empireLayerState[key] = parsed.empireSublayers[key];
+        }
+      });
+    }
+
+    const month = String(parsed?.month ?? "");
+    if (/^\d{2}$/.test(month)) {
+      temporalState.selectedMonth = month;
+    }
+  } catch (error) {
+    // Ignore invalid persisted data.
   }
-
-  borderColorCustoms.replaceChildren(
-    ...customBorderColors.map((color) => createCustomBorderColorButton(color)),
-  );
-}
-
-function revealCustomBorderColor(color) {
-  const matchingButton = borderColorCustoms?.querySelector(
-    `.layer-inline-color-choice[data-border-color="${color}"]`,
-  );
-
-  if (!(matchingButton instanceof HTMLElement)) {
-    return null;
-  }
-
-  matchingButton.scrollIntoView({
-    behavior: "smooth",
-    block: "nearest",
-    inline: "center",
-  });
-
-  return matchingButton;
-}
-
-function revealBorderPresetColor(color) {
-  const matchingButton = borderColorPresetButtons.find(
-    (button) => button.dataset.borderColor?.toUpperCase() === color.toUpperCase(),
-  );
-
-  if (!matchingButton) {
-    return null;
-  }
-
-  matchingButton.scrollIntoView({
-    behavior: "smooth",
-    block: "nearest",
-    inline: "center",
-  });
-
-  return matchingButton;
-}
-
-function flashBorderDuplicateDefault(button) {
-  if (!button) {
-    return;
-  }
-
-  if (borderColorDuplicateFlashTimer !== null) {
-    window.clearTimeout(borderColorDuplicateFlashTimer);
-    borderColorDuplicateFlashTimer = null;
-  }
-  if (borderColorDuplicateFlashButton) {
-    borderColorDuplicateFlashButton.classList.remove("is-duplicate-flash");
-  }
-
-  borderColorDuplicateFlashButton = button;
-  borderColorDuplicateFlashButton.classList.add("is-duplicate-flash");
-
-  borderColorDuplicateFlashTimer = window.setTimeout(() => {
-    borderColorDuplicateFlashButton?.classList.remove("is-duplicate-flash");
-    borderColorDuplicateFlashButton = null;
-    borderColorDuplicateFlashTimer = null;
-  }, 820);
 }
 
 function hsvToHex(hue, saturation, value) {
@@ -1614,52 +1824,311 @@ function hexToHsv(hexColor) {
   };
 }
 
-function setBorderColor(colorHex) {
+function getColorControlConfig(controlId) {
+  const configs = {
+    border: {
+      storageKey: BORDER_COLOR_STORAGE_KEY,
+      datasetKey: "borderColor",
+      paletteOpenKey: "isBorderColorPaletteOpen",
+      input: borderColorInput,
+      value: borderColorValue,
+      inlineDot: borderColorInlineDot,
+      swatchButton: borderColorSwatchButton,
+      customs: borderColorCustoms,
+      presetButtons: borderColorPresetButtons,
+      panel: borderColorPanel,
+      field: borderColorField,
+      fieldHandle: borderColorFieldHandle,
+      hueSlider: borderColorHueSlider,
+      hueHandle: borderColorHueHandle,
+      addButton: borderColorAddButton,
+    },
+    graticule: {
+      storageKey: GRATICULE_COLOR_STORAGE_KEY,
+      datasetKey: "graticuleColor",
+      paletteOpenKey: "isGraticuleColorPaletteOpen",
+      input: graticuleColorInput,
+      value: graticuleColorValue,
+      inlineDot: graticuleColorInlineDot,
+      swatchButton: graticuleColorSwatchButton,
+      customs: graticuleColorCustoms,
+      presetButtons: graticuleColorPresetButtons,
+      panel: graticuleColorPanel,
+      field: graticuleColorField,
+      fieldHandle: graticuleColorFieldHandle,
+      hueSlider: graticuleColorHueSlider,
+      hueHandle: graticuleColorHueHandle,
+      addButton: graticuleColorAddButton,
+    },
+    land: {
+      storageKey: LAND_COLOR_STORAGE_KEY,
+      datasetKey: "landColor",
+      paletteOpenKey: "isLandColorPaletteOpen",
+      input: landColorInput,
+      value: landColorValue,
+      inlineDot: landColorInlineDot,
+      swatchButton: landColorSwatchButton,
+      customs: landColorCustoms,
+      presetButtons: landColorPresetButtons,
+      panel: landColorPanel,
+      field: landColorField,
+      fieldHandle: landColorFieldHandle,
+      hueSlider: landColorHueSlider,
+      hueHandle: landColorHueHandle,
+      addButton: landColorAddButton,
+    },
+    water: {
+      storageKey: WATER_COLOR_STORAGE_KEY,
+      datasetKey: "waterColor",
+      paletteOpenKey: "isWaterColorPaletteOpen",
+      input: waterColorInput,
+      value: waterColorValue,
+      inlineDot: waterColorInlineDot,
+      swatchButton: waterColorSwatchButton,
+      customs: waterColorCustoms,
+      presetButtons: waterColorPresetButtons,
+      panel: waterColorPanel,
+      field: waterColorField,
+      fieldHandle: waterColorFieldHandle,
+      hueSlider: waterColorHueSlider,
+      hueHandle: waterColorHueHandle,
+      addButton: waterColorAddButton,
+    },
+  };
+  return configs[controlId];
+}
+
+function getColorStyleState(controlId) {
+  if (controlId === "border") {
+    return borderStyleState;
+  }
+  if (controlId === "graticule") {
+    return graticuleStyleState;
+  }
+  if (controlId === "land") {
+    return earthStyleState.land;
+  }
+  if (controlId === "water") {
+    return earthStyleState.water;
+  }
+  return null;
+}
+
+function getCustomColorList(controlId) {
+  if (controlId === "border") return customBorderColors;
+  if (controlId === "graticule") return customGraticuleColors;
+  if (controlId === "land") return customLandColors;
+  if (controlId === "water") return customWaterColors;
+  return [];
+}
+
+function setCustomColorList(controlId, colors) {
+  if (controlId === "border") customBorderColors = colors;
+  if (controlId === "graticule") customGraticuleColors = colors;
+  if (controlId === "land") customLandColors = colors;
+  if (controlId === "water") customWaterColors = colors;
+}
+
+function saveCustomColors(controlId) {
+  const config = getColorControlConfig(controlId);
+  try {
+    window.localStorage?.setItem(config.storageKey, JSON.stringify(getCustomColorList(controlId)));
+  } catch (error) {
+    // Ignore persistence failures and keep the runtime state.
+  }
+}
+
+function clearColorRemovePressTimer(controlId) {
+  const runtime = colorControlRuntimeState[controlId];
+  if (runtime.removePressTimer !== null) {
+    window.clearTimeout(runtime.removePressTimer);
+    runtime.removePressTimer = null;
+  }
+}
+
+function hideCustomColorRemoveButton(controlId) {
+  const runtime = colorControlRuntimeState[controlId];
+  runtime.removeTarget?.classList.remove("is-remove-visible");
+  runtime.removeTarget = null;
+}
+
+function getColorDatasetSelector(config) {
+  return config.datasetKey.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+}
+
+function setColorControlValue(controlId, colorHex) {
   const normalizedColor = normalizeHexColor(colorHex);
-  if (!normalizedColor) {
+  const style = getColorStyleState(controlId);
+  if (!normalizedColor || !style) {
     return false;
   }
 
   const hsv = hexToHsv(normalizedColor);
-  borderStyleState.color = normalizedColor;
+  style.color = normalizedColor;
   if (hsv) {
-    borderStyleState.hue = hsv.hue;
-    borderStyleState.saturation = hsv.saturation;
-    borderStyleState.value = hsv.value;
+    style.hue = hsv.hue;
+    style.saturation = hsv.saturation;
+    style.value = hsv.value;
   }
+  saveStyleSettings();
   return true;
 }
 
-function setBorderColorFromField(clientX, clientY) {
-  if (!borderColorField) {
+function setColorControlFromField(controlId, clientX, clientY) {
+  const config = getColorControlConfig(controlId);
+  const style = getColorStyleState(controlId);
+  if (!config?.field || !style) {
     return;
   }
+  const rect = config.field.getBoundingClientRect();
+  style.saturation = clamp((clientX - rect.left) / rect.width, 0, 1);
+  style.value = 1 - clamp((clientY - rect.top) / rect.height, 0, 1);
+  style.color = hsvToHex(style.hue, style.saturation, style.value);
+}
 
-  const rect = borderColorField.getBoundingClientRect();
-  const relativeX = clamp((clientX - rect.left) / rect.width, 0, 1);
-  const relativeY = clamp((clientY - rect.top) / rect.height, 0, 1);
-  borderStyleState.saturation = relativeX;
-  borderStyleState.value = 1 - relativeY;
-  borderStyleState.color = hsvToHex(
-    borderStyleState.hue,
-    borderStyleState.saturation,
-    borderStyleState.value,
+function setColorControlFromHueSlider(controlId, clientX) {
+  const config = getColorControlConfig(controlId);
+  const style = getColorStyleState(controlId);
+  if (!config?.hueSlider || !style) {
+    return;
+  }
+  const rect = config.hueSlider.getBoundingClientRect();
+  style.hue = clamp((clientX - rect.left) / rect.width, 0, 1) * 360;
+  style.color = hsvToHex(style.hue, style.saturation, style.value);
+}
+
+function createCustomColorButton(controlId, color) {
+  const config = getColorControlConfig(controlId);
+  const runtime = colorControlRuntimeState[controlId];
+  const wrapper = document.createElement("div");
+  wrapper.className = "layer-inline-color-custom";
+
+  const button = document.createElement("button");
+  button.className = "layer-inline-color-button layer-inline-color-choice";
+  button.type = "button";
+  button.dataset[config.datasetKey] = color;
+  button.setAttribute("aria-label", `Custom color ${color}`);
+  wrapper.appendChild(button);
+
+  const dot = document.createElement("span");
+  dot.className = "layer-inline-color-dot";
+  dot.style.setProperty("--layer-active-color", color);
+  dot.setAttribute("aria-hidden", "true");
+  button.appendChild(dot);
+
+  const removeButton = document.createElement("button");
+  removeButton.className = "layer-inline-color-remove";
+  removeButton.type = "button";
+  removeButton.textContent = "−";
+  removeButton.setAttribute("aria-label", `Remove custom color ${color}`);
+  wrapper.appendChild(removeButton);
+
+  button.addEventListener("click", () => {
+    if (runtime.longPressTriggered) {
+      runtime.longPressTriggered = false;
+      return;
+    }
+    if (!setColorControlValue(controlId, color)) {
+      return;
+    }
+    syncColorControlUi(controlId);
+    drawAtlas();
+  });
+
+  const startLongPress = () => {
+    clearColorRemovePressTimer(controlId);
+    runtime.longPressTriggered = false;
+    runtime.removePressTimer = window.setTimeout(() => {
+      if (runtime.removeTarget && runtime.removeTarget !== wrapper) {
+        runtime.removeTarget.classList.remove("is-remove-visible");
+      }
+      runtime.removeTarget = wrapper;
+      runtime.removeTarget.classList.add("is-remove-visible");
+      runtime.longPressTriggered = true;
+      runtime.removePressTimer = null;
+    }, 300);
+  };
+
+  const cancelLongPress = () => {
+    clearColorRemovePressTimer(controlId);
+  };
+
+  button.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+    startLongPress();
+  });
+  button.addEventListener("pointerup", cancelLongPress);
+  button.addEventListener("pointerleave", cancelLongPress);
+  button.addEventListener("pointercancel", cancelLongPress);
+  button.addEventListener("touchstart", startLongPress, { passive: true });
+  button.addEventListener("touchend", cancelLongPress, { passive: true });
+  button.addEventListener("touchcancel", cancelLongPress, { passive: true });
+  button.addEventListener("contextmenu", (event) => event.preventDefault());
+
+  removeButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setCustomColorList(controlId, getCustomColorList(controlId).filter((entry) => entry !== color));
+    saveCustomColors(controlId);
+    hideCustomColorRemoveButton(controlId);
+    renderCustomColors(controlId);
+    syncColorControlUi(controlId);
+  });
+
+  return wrapper;
+}
+
+function renderCustomColors(controlId) {
+  const config = getColorControlConfig(controlId);
+  if (!config?.customs) {
+    return;
+  }
+  config.customs.replaceChildren(
+    ...getCustomColorList(controlId).map((color) => createCustomColorButton(controlId, color)),
   );
 }
 
-function setBorderColorFromHueSlider(clientX) {
-  if (!borderColorHueSlider) {
+function revealCustomColor(controlId, color) {
+  const config = getColorControlConfig(controlId);
+  const matchingButton = config?.customs?.querySelector(
+    `.layer-inline-color-choice[data-${getColorDatasetSelector(config)}="${color}"]`,
+  );
+  if (!(matchingButton instanceof HTMLElement)) {
+    return null;
+  }
+  matchingButton.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  return matchingButton;
+}
+
+function revealPresetColor(controlId, color) {
+  const config = getColorControlConfig(controlId);
+  const matchingButton = config?.presetButtons?.find(
+    (button) => button.dataset[config.datasetKey]?.toUpperCase() === color.toUpperCase(),
+  );
+  if (!(matchingButton instanceof HTMLElement)) {
+    return null;
+  }
+  matchingButton.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  return matchingButton;
+}
+
+function flashColorFeedback(controlId, button) {
+  if (!button) {
     return;
   }
-
-  const rect = borderColorHueSlider.getBoundingClientRect();
-  const relativeX = clamp((clientX - rect.left) / rect.width, 0, 1);
-  borderStyleState.hue = relativeX * 360;
-  borderStyleState.color = hsvToHex(
-    borderStyleState.hue,
-    borderStyleState.saturation,
-    borderStyleState.value,
-  );
+  const runtime = colorControlRuntimeState[controlId];
+  if (runtime.duplicateFlashTimer !== null) {
+    window.clearTimeout(runtime.duplicateFlashTimer);
+  }
+  runtime.duplicateFlashButton?.classList.remove("is-duplicate-flash");
+  runtime.duplicateFlashButton = button;
+  runtime.duplicateFlashButton.classList.add("is-duplicate-flash");
+  runtime.duplicateFlashTimer = window.setTimeout(() => {
+    runtime.duplicateFlashButton?.classList.remove("is-duplicate-flash");
+    runtime.duplicateFlashButton = null;
+    runtime.duplicateFlashTimer = null;
+  }, 820);
 }
 
 function syncBorderGroupUi() {
@@ -1704,8 +2173,265 @@ function syncBorderGroupUi() {
   });
 }
 
+function syncGraticuleGroupUi() {
+  const graticuleButton = document.querySelector('#graticuleLayerGroup [data-layer-id="graticule"]');
+
+  graticuleLayerGroup?.classList.toggle("is-active", layerState.graticule);
+  graticuleLayerGroup?.classList.toggle("is-open", uiState.isGraticuleGroupOpen);
+  graticuleGroupToggle?.setAttribute("aria-expanded", String(uiState.isGraticuleGroupOpen));
+  graticuleButton?.classList.toggle("is-active", layerState.graticule);
+
+  if (graticuleWidthInput) {
+    graticuleWidthInput.value = String(graticuleStyleState.width);
+  }
+  if (graticuleWidthValue) {
+    graticuleWidthValue.textContent = formatBorderWidthLabel(graticuleStyleState.width);
+  }
+  if (graticuleOpacityInput) {
+    graticuleOpacityInput.value = String(Math.round(clamp(graticuleStyleState.opacity, 0, 1) * 100));
+  }
+
+  syncColorControlUi("graticule");
+}
+
+function syncColorControlUi(controlId) {
+  const config = getColorControlConfig(controlId);
+  const style = getColorStyleState(controlId);
+  if (!config || !style) {
+    return;
+  }
+
+  config.input && (config.input.value = style.color.toUpperCase());
+  config.value && (config.value.textContent = style.color.toUpperCase());
+  config.inlineDot?.style.setProperty("--layer-active-color", style.color);
+  config.fieldHandle?.style.setProperty("--layer-active-color", style.color);
+  config.field?.style.setProperty("--layer-color-field-hue", hsvToHex(style.hue, 1, 1));
+  config.field?.style.setProperty("--layer-color-field-x", `${clamp(style.saturation, 0, 1) * 100}%`);
+  config.field?.style.setProperty("--layer-color-field-y", `${(1 - clamp(style.value, 0, 1)) * 100}%`);
+  config.hueHandle?.style.setProperty("--layer-color-field-hue", hsvToHex(style.hue, 1, 1));
+  config.hueSlider?.style.setProperty("--layer-color-hue-x", `${(style.hue / 360) * 100}%`);
+  config.swatchButton?.setAttribute("aria-expanded", String(uiState[config.paletteOpenKey]));
+  config.panel?.closest(".layer-control-color")?.classList.toggle("is-panel-open", uiState[config.paletteOpenKey]);
+  config.panel?.setAttribute("aria-hidden", String(!uiState[config.paletteOpenKey]));
+  config.presetButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset[config.datasetKey]?.toUpperCase() === style.color.toUpperCase());
+  });
+  config.customs?.querySelectorAll(".layer-inline-color-choice").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset[config.datasetKey]?.toUpperCase() === style.color.toUpperCase());
+  });
+}
+
+function syncEarthGroupUi() {
+  earthLayerGroup?.classList.add("is-active");
+  earthLayerGroup?.classList.toggle("is-open", uiState.isEarthGroupOpen);
+  earthGroupButton?.classList.add("is-active");
+  earthGroupToggle?.setAttribute("aria-expanded", String(uiState.isEarthGroupOpen));
+  syncColorControlUi("land");
+  syncColorControlUi("water");
+}
+
+function setColorControlPreviewState(controlId, previewTarget) {
+  const config = getColorControlConfig(controlId);
+  const control = config?.panel?.closest(".layer-control-color");
+  const isPreviewing = Boolean(previewTarget);
+  control?.classList.toggle("is-previewing-color", isPreviewing);
+  control?.classList.toggle("is-previewing-field", previewTarget === "field");
+  control?.classList.toggle("is-previewing-hue", previewTarget === "hue");
+  layerPanel?.classList.toggle("is-color-previewing", isPreviewing);
+}
+
+function setOpacityPreviewState(isPreviewing) {
+  const opacityControl = borderOpacityInput?.closest(".layer-opacity-control");
+  opacityControl?.classList.toggle("is-previewing-opacity", Boolean(isPreviewing));
+  layerPanel?.classList.toggle("is-color-previewing", Boolean(isPreviewing));
+}
+
+function setBorderWidthPreviewState(isPreviewing) {
+  const widthControl = borderWidthInput?.closest(".layer-control");
+  widthControl?.classList.toggle("is-previewing-width", Boolean(isPreviewing));
+  layerPanel?.classList.toggle("is-color-previewing", Boolean(isPreviewing));
+}
+
+function setGraticuleWidthPreviewState(isPreviewing) {
+  const widthControl = graticuleWidthInput?.closest(".layer-control");
+  widthControl?.classList.toggle("is-previewing-width", Boolean(isPreviewing));
+  layerPanel?.classList.toggle("is-color-previewing", Boolean(isPreviewing));
+}
+
+function setGraticuleOpacityPreviewState(isPreviewing) {
+  const opacityControl = graticuleOpacityInput?.closest(".layer-opacity-control");
+  opacityControl?.classList.toggle("is-previewing-opacity", Boolean(isPreviewing));
+  layerPanel?.classList.toggle("is-color-previewing", Boolean(isPreviewing));
+}
+
+function enableSharedColorControl(controlId) {
+  const config = getColorControlConfig(controlId);
+  const runtime = colorControlRuntimeState[controlId];
+  renderCustomColors(controlId);
+
+  config.input?.addEventListener("input", () => {
+    const draftValue = normalizeHexDraftValue(config.input.value);
+    config.input.value = draftValue;
+    const normalizedColor = normalizeHexColor(draftValue);
+    if (!normalizedColor || !setColorControlValue(controlId, normalizedColor)) {
+      return;
+    }
+    syncColorControlUi(controlId);
+    drawAtlas();
+  });
+
+  config.input?.addEventListener("blur", () => {
+    config.input.value = getColorStyleState(controlId).color.toUpperCase();
+  });
+
+  config.swatchButton?.addEventListener("click", () => {
+    uiState[config.paletteOpenKey] = !uiState[config.paletteOpenKey];
+    syncColorControlUi(controlId);
+    syncLayerPanelScrollbar();
+    showLayerPanelScrollbarTemporarily();
+  });
+
+  config.presetButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!setColorControlValue(controlId, button.dataset[config.datasetKey])) {
+        return;
+      }
+      syncColorControlUi(controlId);
+      drawAtlas();
+    });
+  });
+
+  config.field?.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    runtime.fieldDragState = { pointerId: event.pointerId };
+    config.field.setPointerCapture?.(event.pointerId);
+    setColorControlPreviewState(controlId, "field");
+    if (layerPanelScroll) {
+      layerPanelScroll.style.overflowY = "hidden";
+    }
+    setColorControlFromField(controlId, event.clientX, event.clientY);
+    syncColorControlUi(controlId);
+    drawAtlas();
+  });
+
+  config.field?.addEventListener("pointermove", (event) => {
+    if (!runtime.fieldDragState || event.pointerId !== runtime.fieldDragState.pointerId) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setColorControlFromField(controlId, event.clientX, event.clientY);
+    syncColorControlUi(controlId);
+    drawAtlas();
+  });
+
+  const endFieldDrag = (event) => {
+    if (!runtime.fieldDragState || event.pointerId !== runtime.fieldDragState.pointerId) {
+      return;
+    }
+    config.field.releasePointerCapture?.(event.pointerId);
+    runtime.fieldDragState = null;
+    setColorControlPreviewState(controlId, null);
+    if (layerPanelScroll) {
+      layerPanelScroll.style.overflowY = "";
+    }
+  };
+  config.field?.addEventListener("pointerup", endFieldDrag);
+  config.field?.addEventListener("pointercancel", endFieldDrag);
+
+  config.hueSlider?.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    runtime.hueDragState = { pointerId: event.pointerId };
+    config.hueSlider.setPointerCapture?.(event.pointerId);
+    setColorControlPreviewState(controlId, "hue");
+    setColorControlFromHueSlider(controlId, event.clientX);
+    syncColorControlUi(controlId);
+    drawAtlas();
+  });
+
+  config.hueSlider?.addEventListener("pointermove", (event) => {
+    if (!runtime.hueDragState || event.pointerId !== runtime.hueDragState.pointerId) {
+      return;
+    }
+    event.preventDefault();
+    setColorControlFromHueSlider(controlId, event.clientX);
+    syncColorControlUi(controlId);
+    drawAtlas();
+  });
+
+  const endHueDrag = (event) => {
+    if (!runtime.hueDragState || event.pointerId !== runtime.hueDragState.pointerId) {
+      return;
+    }
+    config.hueSlider.releasePointerCapture?.(event.pointerId);
+    runtime.hueDragState = null;
+    setColorControlPreviewState(controlId, null);
+  };
+  config.hueSlider?.addEventListener("pointerup", endHueDrag);
+  config.hueSlider?.addEventListener("pointercancel", endHueDrag);
+
+  config.addButton?.addEventListener("click", () => {
+    const normalizedColor = normalizeHexColor(getColorStyleState(controlId).color);
+    if (!normalizedColor) {
+      return;
+    }
+    const presetButton = revealPresetColor(controlId, normalizedColor);
+    if (presetButton) {
+      flashColorFeedback(controlId, presetButton);
+      return;
+    }
+    setCustomColorList(
+      controlId,
+      [normalizedColor, ...getCustomColorList(controlId).filter((color) => color !== normalizedColor)]
+        .slice(0, MAX_CUSTOM_BORDER_COLORS),
+    );
+    saveCustomColors(controlId);
+    renderCustomColors(controlId);
+    syncColorControlUi(controlId);
+    const customButton = revealCustomColor(controlId, normalizedColor);
+    if (customButton) {
+      flashColorFeedback(controlId, customButton);
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!uiState[config.paletteOpenKey]) {
+      return;
+    }
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+    const colorControl = config.panel?.closest(".layer-control-color");
+    if (colorControl?.contains(target)) {
+      return;
+    }
+    uiState[config.paletteOpenKey] = false;
+    syncColorControlUi(controlId);
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+    if (colorControlRuntimeState[controlId].removeTarget?.contains(target)) {
+      return;
+    }
+    hideCustomColorRemoveButton(controlId);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && uiState[config.paletteOpenKey]) {
+      uiState[config.paletteOpenKey] = false;
+      syncColorControlUi(controlId);
+    }
+  });
+}
+
 function enableBorderStyleControls() {
-  renderCustomBorderColors();
+  enableSharedColorControl("border");
 
   borderWidthInput?.addEventListener("input", () => {
     const nextWidth = Number.parseFloat(borderWidthInput.value);
@@ -1714,13 +2440,28 @@ function enableBorderStyleControls() {
     }
 
     borderStyleState.width = nextWidth;
+    saveStyleSettings();
     syncBorderGroupUi();
     drawAtlas();
   });
 
+  borderWidthInput?.addEventListener("pointerdown", () => {
+    setBorderWidthPreviewState(true);
+  });
+
+  const endBorderWidthPreview = () => {
+    setBorderWidthPreviewState(false);
+  };
+
+  borderWidthInput?.addEventListener("pointerup", endBorderWidthPreview);
+  borderWidthInput?.addEventListener("pointercancel", endBorderWidthPreview);
+  borderWidthInput?.addEventListener("touchend", endBorderWidthPreview, { passive: true });
+  borderWidthInput?.addEventListener("touchcancel", endBorderWidthPreview, { passive: true });
+
   const applyBorderOpacityPercent = (value) => {
     const nextPercent = clampOpacityPercent(value);
     borderStyleState.opacity = nextPercent / 100;
+    saveStyleSettings();
     syncBorderGroupUi();
     drawAtlas();
   };
@@ -1729,178 +2470,72 @@ function enableBorderStyleControls() {
     applyBorderOpacityPercent(borderOpacityInput.value);
   });
 
-  borderColorInput?.addEventListener("input", () => {
-    const draftValue = normalizeHexDraftValue(borderColorInput.value);
-    borderColorInput.value = draftValue;
-    const normalizedColor = normalizeHexColor(draftValue);
-    if (!normalizedColor) {
-      return;
-    }
-
-    setBorderColor(normalizedColor);
-    syncBorderGroupUi();
-    drawAtlas();
+  borderOpacityInput?.addEventListener("pointerdown", () => {
+    setOpacityPreviewState(true);
   });
 
-  borderColorInput?.addEventListener("blur", () => {
-    borderColorInput.value = borderStyleState.color.toUpperCase();
-  });
-
-  borderColorSwatchButton?.addEventListener("click", () => {
-    uiState.isBorderColorPaletteOpen = !uiState.isBorderColorPaletteOpen;
-    syncBorderGroupUi();
-    syncLayerPanelScrollbar();
-    showLayerPanelScrollbarTemporarily();
-  });
-
-  borderColorPresetButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      if (!setBorderColor(button.dataset.borderColor)) {
-        return;
-      }
-
-      syncBorderGroupUi();
-      drawAtlas();
-    });
-  });
-
-  borderColorField?.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    borderColorFieldDragState = { pointerId: event.pointerId };
-    borderColorField.setPointerCapture?.(event.pointerId);
-    if (layerPanelScroll) {
-      layerPanelScroll.style.overflowY = "hidden";
-    }
-    setBorderColorFromField(event.clientX, event.clientY);
-    syncBorderGroupUi();
-    drawAtlas();
-  });
-
-  borderColorField?.addEventListener("pointermove", (event) => {
-    if (!borderColorFieldDragState || event.pointerId !== borderColorFieldDragState.pointerId) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    setBorderColorFromField(event.clientX, event.clientY);
-    syncBorderGroupUi();
-    drawAtlas();
-  });
-
-  const endBorderColorFieldDrag = (event) => {
-    if (!borderColorFieldDragState || event.pointerId !== borderColorFieldDragState.pointerId) {
-      return;
-    }
-
-    borderColorField.releasePointerCapture?.(event.pointerId);
-    borderColorFieldDragState = null;
-    if (layerPanelScroll) {
-      layerPanelScroll.style.overflowY = "";
-    }
+  const endOpacityPreview = () => {
+    setOpacityPreviewState(false);
   };
 
-  borderColorField?.addEventListener("pointerup", endBorderColorFieldDrag);
-  borderColorField?.addEventListener("pointercancel", endBorderColorFieldDrag);
+  borderOpacityInput?.addEventListener("pointerup", endOpacityPreview);
+  borderOpacityInput?.addEventListener("pointercancel", endOpacityPreview);
+  borderOpacityInput?.addEventListener("touchend", endOpacityPreview, { passive: true });
+  borderOpacityInput?.addEventListener("touchcancel", endOpacityPreview, { passive: true });
+}
 
-  borderColorHueSlider?.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    borderColorHueDragState = { pointerId: event.pointerId };
-    borderColorHueSlider.setPointerCapture?.(event.pointerId);
-    setBorderColorFromHueSlider(event.clientX);
-    syncBorderGroupUi();
-    drawAtlas();
-  });
+function enableGraticuleStyleControls() {
+  enableSharedColorControl("graticule");
 
-  borderColorHueSlider?.addEventListener("pointermove", (event) => {
-    if (!borderColorHueDragState || event.pointerId !== borderColorHueDragState.pointerId) {
+  graticuleWidthInput?.addEventListener("input", () => {
+    const nextWidth = Number.parseFloat(graticuleWidthInput.value);
+    if (!Number.isFinite(nextWidth)) {
       return;
     }
 
-    event.preventDefault();
-    setBorderColorFromHueSlider(event.clientX);
-    syncBorderGroupUi();
+    graticuleStyleState.width = nextWidth;
+    saveStyleSettings();
+    syncGraticuleGroupUi();
     drawAtlas();
   });
 
-  const endBorderColorHueDrag = (event) => {
-    if (!borderColorHueDragState || event.pointerId !== borderColorHueDragState.pointerId) {
-      return;
-    }
+  graticuleWidthInput?.addEventListener("pointerdown", () => {
+    setGraticuleWidthPreviewState(true);
+  });
 
-    borderColorHueSlider.releasePointerCapture?.(event.pointerId);
-    borderColorHueDragState = null;
+  const endGraticuleWidthPreview = () => {
+    setGraticuleWidthPreviewState(false);
   };
 
-  borderColorHueSlider?.addEventListener("pointerup", endBorderColorHueDrag);
-  borderColorHueSlider?.addEventListener("pointercancel", endBorderColorHueDrag);
+  graticuleWidthInput?.addEventListener("pointerup", endGraticuleWidthPreview);
+  graticuleWidthInput?.addEventListener("pointercancel", endGraticuleWidthPreview);
+  graticuleWidthInput?.addEventListener("touchend", endGraticuleWidthPreview, { passive: true });
+  graticuleWidthInput?.addEventListener("touchcancel", endGraticuleWidthPreview, { passive: true });
 
-  borderColorAddButton?.addEventListener("click", () => {
-    const normalizedColor = normalizeHexColor(borderStyleState.color);
-    if (!normalizedColor) {
-      return;
-    }
+  const applyGraticuleOpacityPercent = (value) => {
+    const nextPercent = clampOpacityPercent(value);
+    graticuleStyleState.opacity = nextPercent / 100;
+    saveStyleSettings();
+    syncGraticuleGroupUi();
+    drawAtlas();
+  };
 
-    const matchingPresetButton = revealBorderPresetColor(normalizedColor);
-    if (matchingPresetButton) {
-      flashBorderDuplicateDefault(matchingPresetButton);
-      return;
-    }
-
-    customBorderColors = [
-      normalizedColor,
-      ...customBorderColors.filter((color) => color !== normalizedColor),
-    ].slice(0, MAX_CUSTOM_BORDER_COLORS);
-    saveCustomBorderColors();
-    renderCustomBorderColors();
-    syncBorderGroupUi();
-
-    const matchingCustomButton = revealCustomBorderColor(normalizedColor);
-    if (matchingCustomButton) {
-      flashBorderDuplicateDefault(matchingCustomButton);
-    }
+  graticuleOpacityInput?.addEventListener("input", () => {
+    applyGraticuleOpacityPercent(graticuleOpacityInput.value);
   });
 
-  document.addEventListener("click", (event) => {
-    if (!uiState.isBorderColorPaletteOpen) {
-      return;
-    }
-
-    const target = event.target;
-    if (!(target instanceof Node)) {
-      return;
-    }
-
-    const colorControl = borderColorPanel?.closest(".layer-control-color");
-    if (colorControl?.contains(target)) {
-      return;
-    }
-
-    uiState.isBorderColorPaletteOpen = false;
-    syncBorderGroupUi();
+  graticuleOpacityInput?.addEventListener("pointerdown", () => {
+    setGraticuleOpacityPreviewState(true);
   });
 
-  document.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof Node)) {
-      return;
-    }
+  const endGraticuleOpacityPreview = () => {
+    setGraticuleOpacityPreviewState(false);
+  };
 
-    if (borderColorRemoveTarget?.contains(target)) {
-      return;
-    }
-
-    hideCustomBorderColorRemoveButton();
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && uiState.isBorderColorPaletteOpen) {
-      uiState.isBorderColorPaletteOpen = false;
-      syncBorderGroupUi();
-    }
-  });
-
+  graticuleOpacityInput?.addEventListener("pointerup", endGraticuleOpacityPreview);
+  graticuleOpacityInput?.addEventListener("pointercancel", endGraticuleOpacityPreview);
+  graticuleOpacityInput?.addEventListener("touchend", endGraticuleOpacityPreview, { passive: true });
+  graticuleOpacityInput?.addEventListener("touchcancel", endGraticuleOpacityPreview, { passive: true });
 }
 
 function clearRefreshMenuPressTimer() {
@@ -2115,7 +2750,9 @@ function setProjectionFromPickerValue(projectionKind) {
   projectionState.selectedProjection = normalizeProjectionSelection(projectionKind);
   syncProjectionPicker();
   zoomState.scale = clampZoomScale(zoomState.scale);
+  syncFlatProjectionPanOffset();
   syncProjectionSwitcher();
+  scheduleViewStateSave();
   releaseLayerPanelFocusAfterPointerInteraction(projectionPickerButton);
   handleResize();
 }
@@ -2327,6 +2964,7 @@ function enableTemporalControls() {
     button.addEventListener("click", async () => {
       temporalState.selectedMonth = month;
       syncMonthButtons();
+      scheduleViewStateSave();
       await refreshEarthTexture();
     });
   });
