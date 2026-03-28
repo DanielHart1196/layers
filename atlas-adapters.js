@@ -149,23 +149,41 @@
           path(wrappedGeometry);
         });
       },
-      fillGeometry(geometry, fillStyle, fillRule = "nonzero") {
-        const cachedPath = createCachedPath2D(geometry, `fill:${fillRule}`);
+      fillGeometry(geometry, fillStyle, fillRule = "nonzero", options = {}) {
+        const variantKey = [
+          `fill:${fillRule}`,
+          `step:${options.maxStepDegrees ?? "default"}`,
+          `min:${options.minimumStepDegrees ?? "default"}`,
+        ].join("|");
+        const cachedPath = createCachedPath2D(geometry, variantKey);
         if (cachedPath) {
           context.fillStyle = fillStyle;
           context.fill(cachedPath, fillRule);
           return;
         }
 
+        const drawPath = d3.geoPath(cameraProjection, context);
+        const previousPrecision = typeof baseProjection.precision === "function" ? baseProjection.precision() : null;
+        if (typeof baseProjection.precision === "function" && Number.isFinite(options.maxStepDegrees)) {
+          baseProjection.precision(options.maxStepDegrees);
+        }
         forEachWrappedPath(geometry, (wrappedGeometry) => {
           context.beginPath();
-          path(wrappedGeometry);
+          drawPath(wrappedGeometry);
           context.fillStyle = fillStyle;
           context.fill(fillRule);
         });
+        if (typeof baseProjection.precision === "function" && previousPrecision !== null) {
+          baseProjection.precision(previousPrecision);
+        }
       },
-      strokeGeometry(geometry, strokeStyle, lineWidth) {
-        const cachedPath = createCachedPath2D(geometry, "stroke");
+      strokeGeometry(geometry, strokeStyle, lineWidth, options = {}) {
+        const variantKey = [
+          "stroke",
+          `step:${options.maxStepDegrees ?? "default"}`,
+          `min:${options.minimumStepDegrees ?? "default"}`,
+        ].join("|");
+        const cachedPath = createCachedPath2D(geometry, variantKey);
         if (cachedPath) {
           context.strokeStyle = strokeStyle;
           context.lineWidth = lineWidth;
@@ -173,13 +191,21 @@
           return;
         }
 
+        const drawPath = d3.geoPath(cameraProjection, context);
+        const previousPrecision = typeof baseProjection.precision === "function" ? baseProjection.precision() : null;
+        if (typeof baseProjection.precision === "function" && Number.isFinite(options.maxStepDegrees)) {
+          baseProjection.precision(options.maxStepDegrees);
+        }
         forEachWrappedPath(geometry, (wrappedGeometry) => {
           context.beginPath();
-          path(wrappedGeometry);
+          drawPath(wrappedGeometry);
           context.strokeStyle = strokeStyle;
           context.lineWidth = lineWidth;
           context.stroke();
         });
+        if (typeof baseProjection.precision === "function" && previousPrecision !== null) {
+          baseProjection.precision(previousPrecision);
+        }
       },
     };
   }

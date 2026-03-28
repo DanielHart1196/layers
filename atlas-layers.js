@@ -526,6 +526,7 @@
       }
 
       const adapter = createSceneAdapter(scene, options.contextOverride ?? overlayContext);
+      const isInteracting = Boolean(layerStateRef().isInteracting);
       const empireLayerState = layerStateRef().empireSublayers ?? {};
       const empireStyles = layerStateRef().empireStyles ?? {};
       const empireGeometries = Object.entries(empireLayerState)
@@ -538,6 +539,21 @@
       if (!adapter.isReady || !adapter.canRenderLayer("land") || !empireGeometries.length) {
         return;
       }
+
+      const empireFillOptions = isInteracting
+        ? {
+            maxStepDegrees: adapter.kind === "interrupted" ? 1.25 : 1.4,
+            minimumStepDegrees: adapter.kind === "interrupted" ? 0.12 : 0.14,
+          }
+        : {};
+      const empireStrokeOptions = isInteracting
+        ? {
+            maxStepDegrees: adapter.kind === "interrupted" ? 1.4 : 1.6,
+            minimumStepDegrees: adapter.kind === "interrupted" ? 0.14 : 0.16,
+          }
+        : {
+            maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
+          };
 
       empireGeometries.forEach(({ geometry, style }) => {
         const fillColor = style?.fillColor ?? "#C48B35";
@@ -554,10 +570,8 @@
         const strokeG = Number.parseInt(strokeHex.slice(2, 4), 16);
         const strokeB = Number.parseInt(strokeHex.slice(4, 6), 16);
 
-        adapter.fillGeometry(geometry, `rgba(${fillR}, ${fillG}, ${fillB}, ${fillOpacity})`, "evenodd");
-        adapter.strokeGeometry(geometry, `rgba(${strokeR}, ${strokeG}, ${strokeB}, ${strokeOpacity})`, strokeWidth, {
-          maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
-        });
+        adapter.fillGeometry(geometry, `rgba(${fillR}, ${fillG}, ${fillB}, ${fillOpacity})`, "evenodd", empireFillOptions);
+        adapter.strokeGeometry(geometry, `rgba(${strokeR}, ${strokeG}, ${strokeB}, ${strokeOpacity})`, strokeWidth, empireStrokeOptions);
       });
     }
 

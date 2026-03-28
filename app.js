@@ -111,6 +111,8 @@ let glRenderer = null;
 let rotationOffset = { lambda: 0, phi: 0 };
 let pixelRatio = 1;
 let lastEmpireRenderKey = null;
+let lastEmpireRenderTimestamp = 0;
+let currentEmpirePixelRatio = 1;
 let renderScheduled = false;
 const earthTextureStore = window.AtlasLayers.createEarthTextureStore();
 const mobileLayerMenuMediaQuery = window.matchMedia("(max-width: 800px)");
@@ -118,6 +120,8 @@ const activeGesturePointers = new Map();
 let isPinchZooming = false;
 let pinchDistance = null;
 let lastTapTimestamp = 0;
+const EMPIRE_INTERACTION_RENDER_INTERVAL_MS = 90;
+const EMPIRE_INTERACTION_PIXEL_RATIO = 0.6;
 let lastTapPosition = null;
 let doubleTapHoldState = null;
 let refreshMenuPressTimer = null;
@@ -796,7 +800,7 @@ function getEmpireRenderKey(scenes) {
     projection: projectionState.selectedProjection,
     empiresEnabled: layerState.empires,
     empireSublayers: empireLayerState,
-    pixelRatio,
+    empirePixelRatio: currentEmpirePixelRatio,
     scenes: scenes.map((scene) => ({
       projectionKind: scene.projectionKind,
       center: scene.center,
@@ -810,9 +814,40 @@ function getEmpireRenderKey(scenes) {
   });
 }
 
+function configureEmpireCanvas(viewDimensions, targetPixelRatio) {
+  const nextEmpirePixelRatio = Math.max(0.5, Math.min(targetPixelRatio, pixelRatio));
+  if (
+    currentEmpirePixelRatio === nextEmpirePixelRatio
+    && empireCanvas.width === Math.round(viewDimensions.width * nextEmpirePixelRatio)
+    && empireCanvas.height === Math.round(viewDimensions.height * nextEmpirePixelRatio)
+  ) {
+    return;
+  }
+
+  currentEmpirePixelRatio = nextEmpirePixelRatio;
+  empireCanvas.width = Math.round(viewDimensions.width * currentEmpirePixelRatio);
+  empireCanvas.height = Math.round(viewDimensions.height * currentEmpirePixelRatio);
+  empireContext.setTransform(currentEmpirePixelRatio, 0, 0, currentEmpirePixelRatio, 0, 0);
+  lastEmpireRenderKey = null;
+}
+
 function drawEmpirePass(scenes) {
   if (!empireCanvas || !empireContext) {
     return;
+  }
+
+  const viewDimensions = window.AtlasCore.getViewDimensions(projectionState.selectedProjection);
+  configureEmpireCanvas(
+    viewDimensions,
+    uiState.isInteracting ? pixelRatio * EMPIRE_INTERACTION_PIXEL_RATIO : pixelRatio,
+  );
+
+  if (uiState.isInteracting) {
+    const now = performance.now();
+    if (now - lastEmpireRenderTimestamp < EMPIRE_INTERACTION_RENDER_INTERVAL_MS) {
+      return;
+    }
+    lastEmpireRenderTimestamp = now;
   }
 
   const nextKey = getEmpireRenderKey(scenes);
@@ -825,7 +860,7 @@ function drawEmpirePass(scenes) {
   empireContext.setTransform(1, 0, 0, 1, 0, 0);
   empireContext.clearRect(0, 0, empireCanvas.width, empireCanvas.height);
   empireContext.restore();
-  empireContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  empireContext.setTransform(currentEmpirePixelRatio, 0, 0, currentEmpirePixelRatio, 0, 0);
 
   if (!empireLayerRenderer) {
     return;
@@ -834,6 +869,10 @@ function drawEmpirePass(scenes) {
   scenes.forEach((scene) => {
     empireLayerRenderer(scene, { contextOverride: empireContext });
   });
+
+  if (!uiState.isInteracting) {
+    lastEmpireRenderTimestamp = performance.now();
+  }
 }
 
 function scheduleBootStagePosterSnapshot() {
@@ -3070,12 +3109,10 @@ function configureCanvases() {
 
   earthCanvas.width = Math.round(viewDimensions.width * pixelRatio);
   earthCanvas.height = Math.round(viewDimensions.height * pixelRatio);
-  empireCanvas.width = Math.round(viewDimensions.width * pixelRatio);
-  empireCanvas.height = Math.round(viewDimensions.height * pixelRatio);
   overlayCanvas.width = Math.round(viewDimensions.width * pixelRatio);
   overlayCanvas.height = Math.round(viewDimensions.height * pixelRatio);
 
-  empireContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  configureEmpireCanvas(viewDimensions, pixelRatio);
   overlayContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   lastEmpireRenderKey = null;
 }
