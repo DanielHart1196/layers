@@ -168,6 +168,7 @@
     function getLayerGeometry(layerKey, scene, fallbackGeometry) {
       const worldData = worldDataRef();
       const layerSources = worldData?.layerSources?.[layerKey];
+
       const selectedLod = getSelectedLodKey(layerKey, scene);
 
       if (selectedLod && layerSources?.[selectedLod]) {
@@ -527,12 +528,15 @@
 
       const adapter = createSceneAdapter(scene, options.contextOverride ?? overlayContext);
       const isInteracting = Boolean(layerStateRef().isInteracting);
+      const selectedEmpireQuality = options.empireQuality ?? "medium";
       const empireLayerState = layerStateRef().empireSublayers ?? {};
       const empireStyles = layerStateRef().empireStyles ?? {};
       const empireGeometries = Object.entries(empireLayerState)
         .filter(([, isEnabled]) => isEnabled)
         .map(([empireKey]) => ({
-          geometry: worldDataRef()?.layerSources?.empires?.[empireKey],
+          geometry: worldDataRef()?.layerSources?.empires?.[empireKey]?.[selectedEmpireQuality]
+            ?? worldDataRef()?.layerSources?.empires?.[empireKey]?.high
+            ?? worldDataRef()?.layerSources?.empires?.[empireKey]?.canonical,
           style: empireStyles[empireKey] ?? null,
         }))
         .filter(({ geometry }) => Boolean(geometry));
@@ -603,6 +607,8 @@
         scheduleFlatRasterPrewarm(scene, image, pixelRatioRef?.() ?? 1);
       },
       renderers: [renderFallbackLayer, renderGraticuleLayer, renderTissotLayer, renderBordersLayer, renderProjectionFrame],
+      bordersRenderer: renderBordersLayer,
+      graticuleRenderer: renderGraticuleLayer,
       empireRenderer: renderEmpiresLayer,
     };
   }

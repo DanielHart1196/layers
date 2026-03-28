@@ -631,22 +631,27 @@
                   </button>
                 </div>
                 <div class="layer-sublist" id="empireSubLayers">
-                  <button class="layer-item layer-item-sub" data-empire-layer-id="roman" type="button">
-                    <span class="layer-checkbox" aria-hidden="true">
-                      <span class="layer-checkmark"></span>
+                  <label class="layer-control" for="empireQualityInput">
+                    <span class="layer-control-copy">
+                      <strong>Detail</strong>
+                      <small id="empireQualityValue">Medium</small>
                     </span>
-                    <span class="layer-copy">
-                      <strong>Roman</strong>
-                      <small>AD 117 extent</small>
-                    </span>
-                  </button>
+                    <input
+                      class="layer-range-input"
+                      id="empireQualityInput"
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="1"
+                      value="1"
+                    />
+                  </label>
                   <button class="layer-item layer-item-sub" data-empire-layer-id="romanComparison" type="button">
                     <span class="layer-checkbox" aria-hidden="true">
                       <span class="layer-checkmark"></span>
                     </span>
                     <span class="layer-copy">
-                      <strong>Roman ArcGIS</strong>
-                      <small>Comparison source</small>
+                      <strong>Roman (117 AD)</strong>
                     </span>
                   </button>
                   <button class="layer-item layer-item-sub" data-empire-layer-id="mongol" type="button">
@@ -654,8 +659,7 @@
                       <span class="layer-checkmark"></span>
                     </span>
                     <span class="layer-copy">
-                      <strong>Mongol</strong>
-                      <small>1279 extent</small>
+                      <strong>Mongol (1279)</strong>
                     </span>
                   </button>
                   <button class="layer-item layer-item-sub" data-empire-layer-id="british" type="button">
@@ -663,8 +667,7 @@
                       <span class="layer-checkmark"></span>
                     </span>
                     <span class="layer-copy">
-                      <strong>British</strong>
-                      <small>1921 extent</small>
+                      <strong>British (1921)</strong>
                     </span>
                   </button>
                 </div>

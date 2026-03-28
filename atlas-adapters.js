@@ -119,6 +119,30 @@
       });
     }
 
+    function preparePath2D(geometry, variantKey = "default", options = {}) {
+      if (typeof Path2D === "undefined") {
+        return null;
+      }
+
+      const previousPrecision = typeof baseProjection.precision === "function" ? baseProjection.precision() : null;
+      if (typeof baseProjection.precision === "function" && Number.isFinite(options.maxStepDegrees)) {
+        baseProjection.precision(options.maxStepDegrees);
+      }
+
+      const preparedPath = createCachedPath2D(geometry, variantKey) ?? (() => {
+        const path2d = new Path2D();
+        const cachedPath = d3.geoPath(cameraProjection, path2d);
+        cachedPath(geometry);
+        return path2d;
+      })();
+
+      if (typeof baseProjection.precision === "function" && previousPrecision !== null) {
+        baseProjection.precision(previousPrecision);
+      }
+
+      return preparedPath;
+    }
+
     return {
       kind: "continuous",
       isReady: true,
@@ -149,6 +173,7 @@
           path(wrappedGeometry);
         });
       },
+      preparePath2D,
       fillGeometry(geometry, fillStyle, fillRule = "nonzero", options = {}) {
         const variantKey = [
           `fill:${fillRule}`,
@@ -327,6 +352,9 @@
       },
       traceGeometry(geometry, options = {}) {
         window.AtlasDymaxion.traceGeometry(context, projector, geometry, options);
+      },
+      preparePath2D() {
+        return null;
       },
       fillGeometry,
       strokeGeometry,

@@ -13,6 +13,8 @@ const layerPanelScrollbar = document.getElementById("layerPanelScrollbar");
 const layerPanelScrollbarThumb = document.getElementById("layerPanelScrollbarThumb");
 const empireLayerGroup = document.getElementById("empireLayerGroup");
 const empireGroupToggle = document.getElementById("empireGroupToggle");
+const empireQualityInput = document.getElementById("empireQualityInput");
+const empireQualityValue = document.getElementById("empireQualityValue");
 const earthLayerGroup = document.getElementById("earthLayerGroup");
 const earthGroupButton = document.getElementById("earthGroupButton");
 const earthGroupToggle = document.getElementById("earthGroupToggle");
@@ -111,7 +113,6 @@ let glRenderer = null;
 let rotationOffset = { lambda: 0, phi: 0 };
 let pixelRatio = 1;
 let lastEmpireRenderKey = null;
-let lastEmpireRenderTimestamp = 0;
 let currentEmpirePixelRatio = 1;
 let renderScheduled = false;
 const earthTextureStore = window.AtlasLayers.createEarthTextureStore();
@@ -120,7 +121,6 @@ const activeGesturePointers = new Map();
 let isPinchZooming = false;
 let pinchDistance = null;
 let lastTapTimestamp = 0;
-const EMPIRE_INTERACTION_RENDER_INTERVAL_MS = 90;
 const EMPIRE_INTERACTION_PIXEL_RATIO = 0.6;
 let lastTapPosition = null;
 let doubleTapHoldState = null;
@@ -163,11 +163,16 @@ const layerState = {
   tissot: false,
 };
 const empireLayerState = {
-  roman: true,
-  romanComparison: false,
+  romanComparison: true,
   mongol: false,
   british: false,
 };
+const empireQualityState = {
+  romanComparison: "medium",
+  mongol: "medium",
+  british: "medium",
+};
+const EMPIRE_QUALITY_LEVELS = ["low", "medium", "high"];
 
 const temporalState = {
   selectedMonth: getDefaultMonth(),
@@ -603,6 +608,7 @@ async function init() {
   if (layerState.earth) {
     await refreshEarthTexture();
   }
+  syncEmpireQualityUi();
   drawAtlas();
   document.documentElement.classList.remove("is-mobile-default-globe");
   enableDragging();
@@ -676,19 +682,39 @@ async function loadWorld() {
   const [
     countriesTopology10,
     countriesTopology110,
+    land10,
+    land50,
     land110,
-    romanEmpire,
     romanComparisonEmpire,
     mongolEmpire,
     britishEmpire,
+    romanComparisonHigh,
+    romanComparisonMedium,
+    romanComparisonLow,
+    mongolEmpireHigh,
+    mongolEmpireMedium,
+    mongolEmpireLow,
+    britishEmpireHigh,
+    britishEmpireMedium,
+    britishEmpireLow,
   ] = await Promise.all([
     d3.json("./data/raw/world-atlas/countries-10m.json"),
     d3.json("./data/raw/world-atlas/countries-110m.json"),
+    d3.json("./data/raw/world-atlas/land-10m.json"),
+    d3.json("./data/raw/world-atlas/land-50m.json"),
     d3.json("./data/raw/world-atlas/land-110m.json"),
-    d3.json("./data/empires/roman_empire_ad_117_extent.geojson"),
     d3.json("./data/empires/roman_empire_117ad_major_empires_source.geojson"),
     d3.json("./data/empires/mongol_empire_1279_extent.geojson"),
     d3.json("./data/empires/british_empire_1921_extent.geojson"),
+    d3.json("./data/empires/roman_empire_117ad_major_empires_source.high.geojson"),
+    d3.json("./data/empires/roman_empire_117ad_major_empires_source.medium.geojson"),
+    d3.json("./data/empires/roman_empire_117ad_major_empires_source.low.geojson"),
+    d3.json("./data/empires/mongol_empire_1279_extent.high.geojson"),
+    d3.json("./data/empires/mongol_empire_1279_extent.medium.geojson"),
+    d3.json("./data/empires/mongol_empire_1279_extent.low.geojson"),
+    d3.json("./data/empires/british_empire_1921_extent.high.geojson"),
+    d3.json("./data/empires/british_empire_1921_extent.medium.geojson"),
+    d3.json("./data/empires/british_empire_1921_extent.low.geojson"),
   ]);
 
   const land = topojson.feature(land110, land110.objects.land);
@@ -701,7 +727,6 @@ async function loadWorld() {
   return {
     topology: countriesTopology10,
     empires: {
-      roman: romanEmpire,
       romanComparison: romanComparisonEmpire,
       mongol: mongolEmpire,
       british: britishEmpire,
@@ -717,10 +742,24 @@ async function loadWorld() {
         "110m": borders,
       },
       empires: {
-        roman: romanEmpire,
-        romanComparison: romanComparisonEmpire,
-        mongol: mongolEmpire,
-        british: britishEmpire,
+        romanComparison: {
+          high: romanComparisonHigh,
+          medium: romanComparisonMedium,
+          low: romanComparisonLow,
+          canonical: romanComparisonEmpire,
+        },
+        mongol: {
+          high: mongolEmpireHigh,
+          medium: mongolEmpireMedium,
+          low: mongolEmpireLow,
+          canonical: mongolEmpire,
+        },
+        british: {
+          high: britishEmpireHigh,
+          medium: britishEmpireMedium,
+          low: britishEmpireLow,
+          canonical: britishEmpire,
+        },
       },
     },
   };
@@ -814,6 +853,17 @@ function getEmpireRenderKey(scenes) {
   });
 }
 
+function syncEmpireQualityUi() {
+  const quality = empireQualityState.romanComparison;
+  const qualityIndex = Math.max(0, EMPIRE_QUALITY_LEVELS.indexOf(quality));
+  if (empireQualityInput) {
+    empireQualityInput.value = String(qualityIndex);
+  }
+  if (empireQualityValue) {
+    empireQualityValue.textContent = quality === "low" ? "Low" : quality === "high" ? "High" : "Medium";
+  }
+}
+
 function configureEmpireCanvas(viewDimensions, targetPixelRatio) {
   const nextEmpirePixelRatio = Math.max(0.5, Math.min(targetPixelRatio, pixelRatio));
   if (
@@ -832,22 +882,8 @@ function configureEmpireCanvas(viewDimensions, targetPixelRatio) {
 }
 
 function drawEmpirePass(scenes) {
-  if (!empireCanvas || !empireContext) {
+  if (!empireCanvas || !empireContext || !empireLayerRenderer) {
     return;
-  }
-
-  const viewDimensions = window.AtlasCore.getViewDimensions(projectionState.selectedProjection);
-  configureEmpireCanvas(
-    viewDimensions,
-    uiState.isInteracting ? pixelRatio * EMPIRE_INTERACTION_PIXEL_RATIO : pixelRatio,
-  );
-
-  if (uiState.isInteracting) {
-    const now = performance.now();
-    if (now - lastEmpireRenderTimestamp < EMPIRE_INTERACTION_RENDER_INTERVAL_MS) {
-      return;
-    }
-    lastEmpireRenderTimestamp = now;
   }
 
   const nextKey = getEmpireRenderKey(scenes);
@@ -856,23 +892,25 @@ function drawEmpirePass(scenes) {
   }
 
   lastEmpireRenderKey = nextKey;
+  const viewDimensions = window.AtlasCore.getViewDimensions(projectionState.selectedProjection);
+  configureEmpireCanvas(
+    viewDimensions,
+    uiState.isInteracting ? pixelRatio * EMPIRE_INTERACTION_PIXEL_RATIO : pixelRatio,
+  );
+
   empireContext.save();
   empireContext.setTransform(1, 0, 0, 1, 0, 0);
   empireContext.clearRect(0, 0, empireCanvas.width, empireCanvas.height);
   empireContext.restore();
   empireContext.setTransform(currentEmpirePixelRatio, 0, 0, currentEmpirePixelRatio, 0, 0);
 
-  if (!empireLayerRenderer) {
-    return;
-  }
-
+  const globalEmpireQuality = empireQualityState.romanComparison;
   scenes.forEach((scene) => {
-    empireLayerRenderer(scene, { contextOverride: empireContext });
+    empireLayerRenderer(scene, {
+      contextOverride: empireContext,
+      empireQuality: globalEmpireQuality,
+    });
   });
-
-  if (!uiState.isInteracting) {
-    lastEmpireRenderTimestamp = performance.now();
-  }
 }
 
 function scheduleBootStagePosterSnapshot() {
@@ -1396,7 +1434,7 @@ function enableLayerControls() {
       if (layerId === "empires") {
         const nextEmpireVisibility = !layerState.empires;
         if (nextEmpireVisibility && !Object.values(empireLayerState).some(Boolean)) {
-          empireLayerState.roman = true;
+          empireLayerState.romanComparison = true;
         }
         layerState.empires = nextEmpireVisibility;
       } else {
@@ -1454,6 +1492,18 @@ function enableLayerControls() {
       drawAtlas();
       releaseLayerPanelFocusAfterPointerInteraction(button);
     });
+  });
+
+  empireQualityInput?.addEventListener("input", () => {
+    const nextIndex = clamp(Number.parseInt(empireQualityInput.value, 10) || 0, 0, EMPIRE_QUALITY_LEVELS.length - 1);
+    const nextQuality = EMPIRE_QUALITY_LEVELS[nextIndex];
+    Object.keys(empireQualityState).forEach((empireKey) => {
+      empireQualityState[empireKey] = nextQuality;
+    });
+    syncEmpireQualityUi();
+    lastEmpireRenderKey = null;
+    scheduleViewStateSave();
+    drawAtlas();
   });
 
   syncEmpireGroupUi();
@@ -1621,12 +1671,34 @@ function syncEmpireGroupUi() {
   const hasEnabledEmpireLayer = Object.values(empireLayerState).some(Boolean);
   const parentIsActive = layerState.empires && hasEnabledEmpireLayer;
   const empiresButton = document.querySelector('[data-layer-id="empires"]');
+  const empireSubLayers = document.getElementById("empireSubLayers");
 
   empireLayerGroup?.classList.toggle("is-active", parentIsActive);
   empireLayerGroup?.classList.toggle("is-disabled", !layerState.empires);
   empireLayerGroup?.classList.toggle("is-open", uiState.isEmpireGroupOpen);
   empireGroupToggle?.setAttribute("aria-expanded", String(uiState.isEmpireGroupOpen));
   empiresButton?.classList.toggle("is-active", parentIsActive);
+
+  if (empireSubLayers) {
+    if (uiState.isEmpireGroupOpen) {
+      requestAnimationFrame(() => {
+        const children = Array.from(empireSubLayers.children);
+        const firstChild = children[0];
+        const lastChild = children[children.length - 1];
+        if (!(firstChild instanceof HTMLElement) || !(lastChild instanceof HTMLElement)) {
+          empireSubLayers.style.maxHeight = "0px";
+          return;
+        }
+
+        const firstTop = firstChild.offsetTop;
+        const lastBottom = lastChild.offsetTop + lastChild.offsetHeight + parseFloat(window.getComputedStyle(lastChild).marginBottom || "0");
+        const contentHeight = Math.max(0, Math.ceil(lastBottom - firstTop));
+        empireSubLayers.style.maxHeight = `${contentHeight}px`;
+      });
+    } else {
+      empireSubLayers.style.maxHeight = "0px";
+    }
+  }
 
   empireLayerButtons.forEach((button) => {
     const empireLayerId = button.dataset.empireLayerId;
@@ -1637,6 +1709,7 @@ function syncEmpireGroupUi() {
     button.setAttribute("aria-disabled", "false");
   });
 }
+
 
 function formatBorderWidthLabel(width) {
   return `${width.toFixed(1)} px`;
@@ -1784,6 +1857,9 @@ function saveViewState() {
         empireSublayers: {
           ...empireLayerState,
         },
+        empireQuality: {
+          ...empireQualityState,
+        },
         month: temporalState.selectedMonth,
       }),
     );
@@ -1850,6 +1926,14 @@ function loadViewState() {
       Object.keys(empireLayerState).forEach((key) => {
         if (typeof parsed.empireSublayers[key] === "boolean") {
           empireLayerState[key] = parsed.empireSublayers[key];
+        }
+      });
+    }
+
+    if (parsed?.empireQuality && typeof parsed.empireQuality === "object") {
+      Object.keys(empireQualityState).forEach((key) => {
+        if (EMPIRE_QUALITY_LEVELS.includes(parsed.empireQuality[key])) {
+          empireQualityState[key] = parsed.empireQuality[key];
         }
       });
     }
@@ -2243,11 +2327,16 @@ function flashColorFeedback(controlId, button) {
 
 function syncBorderGroupUi() {
   const bordersButton = document.querySelector('[data-layer-id="borders"]');
+  const borderControls = document.getElementById("borderLayerControls");
 
   borderLayerGroup?.classList.toggle("is-active", layerState.borders);
   borderLayerGroup?.classList.toggle("is-open", uiState.isBorderGroupOpen);
   borderGroupToggle?.setAttribute("aria-expanded", String(uiState.isBorderGroupOpen));
   bordersButton?.classList.toggle("is-active", layerState.borders);
+
+  if (borderControls) {
+    borderControls.style.maxHeight = uiState.isBorderGroupOpen ? `${borderControls.scrollHeight}px` : "0px";
+  }
 
   if (borderWidthInput) {
     borderWidthInput.value = String(borderStyleState.width);
@@ -2285,11 +2374,16 @@ function syncBorderGroupUi() {
 
 function syncGraticuleGroupUi() {
   const graticuleButton = document.querySelector('#graticuleLayerGroup [data-layer-id="graticule"]');
+  const graticuleControls = document.getElementById("graticuleLayerControls");
 
   graticuleLayerGroup?.classList.toggle("is-active", layerState.graticule);
   graticuleLayerGroup?.classList.toggle("is-open", uiState.isGraticuleGroupOpen);
   graticuleGroupToggle?.setAttribute("aria-expanded", String(uiState.isGraticuleGroupOpen));
   graticuleButton?.classList.toggle("is-active", layerState.graticule);
+
+  if (graticuleControls) {
+    graticuleControls.style.maxHeight = uiState.isGraticuleGroupOpen ? `${graticuleControls.scrollHeight}px` : "0px";
+  }
 
   if (graticuleWidthInput) {
     graticuleWidthInput.value = String(graticuleStyleState.width);
@@ -2332,10 +2426,15 @@ function syncColorControlUi(controlId) {
 }
 
 function syncEarthGroupUi() {
+  const earthControls = document.getElementById("earthLayerControls");
+
   earthLayerGroup?.classList.add("is-active");
   earthLayerGroup?.classList.toggle("is-open", uiState.isEarthGroupOpen);
   earthGroupButton?.classList.add("is-active");
   earthGroupToggle?.setAttribute("aria-expanded", String(uiState.isEarthGroupOpen));
+  if (earthControls) {
+    earthControls.style.maxHeight = uiState.isEarthGroupOpen ? `${earthControls.scrollHeight}px` : "0px";
+  }
   syncColorControlUi("land");
   syncColorControlUi("water");
 }

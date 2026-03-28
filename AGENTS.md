@@ -18,7 +18,8 @@
 - Default behavior:
   - sort by most recent modified time
   - inspect the latest relevant screenshot unless the user asks for a specific file
-- If sandbox access does not return the Android screenshot folders, retry with escalated filesystem access instead of asking the user where screenshots are.
+- First try reading Android screenshot folders without escalated permissions.
+- Only retry with escalated filesystem access if the non-escalated read fails or does not return the Android screenshot folders.
 - After locating the file, use the image viewer tool on the exact path and describe what is visible before proposing fixes.
 
 ## Layers Project Notes

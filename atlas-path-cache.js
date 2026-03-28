@@ -99,6 +99,7 @@
 
   window.AtlasPathCache = {
     createProjectedPathCache,
+    getGeometryId,
     getSceneCacheKey,
     shouldCacheScene,
   };

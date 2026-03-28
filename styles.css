@@ -1146,8 +1146,13 @@ body:not(.is-earth-enabled) .month-overlay {
 }
 
 #empireLayerGroup.is-open > #empireSubLayers {
-  max-height: 320px;
+  margin-top: 0;
+  padding-bottom: 0;
   overflow: visible;
+}
+
+#empireSubLayers > .layer-item-sub:last-child {
+  margin-bottom: 10px;
 }
 
 .layer-sublist-controls {
@@ -1155,12 +1160,7 @@ body:not(.is-earth-enabled) .month-overlay {
   min-width: 0;
 }
 
-.layer-group-borders.is-open > .layer-sublist-controls {
-  max-height: 460px;
-}
-
 #earthLayerGroup.is-open > .layer-sublist-controls {
-  max-height: 760px;
   padding-top: 0;
 }
 

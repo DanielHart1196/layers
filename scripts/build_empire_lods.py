@@ -7,16 +7,33 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_PATH = ROOT / "data" / "empires" / "roman_empire_ad_117_extent.geojson"
-OUTPUTS = {
-    "high": ROOT / "data" / "empires" / "roman_empire_ad_117_extent.high.geojson",
-    "medium": ROOT / "data" / "empires" / "roman_empire_ad_117_extent.medium.geojson",
-    "low": ROOT / "data" / "empires" / "roman_empire_ad_117_extent.low.geojson",
+EMPIRE_SOURCES = {
+    "roman": ROOT / "data" / "empires" / "roman_empire_ad_117_extent.geojson",
+    "romanComparison": ROOT / "data" / "empires" / "roman_empire_117ad_major_empires_source.geojson",
+    "mongol": ROOT / "data" / "empires" / "mongol_empire_1279_extent.geojson",
+    "british": ROOT / "data" / "empires" / "british_empire_1921_extent.geojson",
 }
-TOLERANCES = {
-    "high": 0.08,
-    "medium": 0.28,
-    "low": 0.75,
+EMPIRE_TOLERANCES = {
+    "roman": {
+        "high": 0.02,
+        "medium": 0.08,
+        "low": 0.2,
+    },
+    "mongol": {
+        "high": 0.02,
+        "medium": 0.08,
+        "low": 0.2,
+    },
+    "romanComparison": {
+        "high": 0.005,
+        "medium": 0.02,
+        "low": 0.05,
+    },
+    "british": {
+        "high": 0.005,
+        "medium": 0.005,
+        "low": 0.05,
+    },
 }
 
 
@@ -70,8 +87,16 @@ def simplify_ring(ring, epsilon):
     if is_closed:
         simplified.append(simplified[0])
 
-    if len(simplified) < 4:
-        simplified = ring[:4]
+    unique_points = {
+        (round(point[0], 12), round(point[1], 12))
+        for point in simplified[:-1] if is_closed
+    } if is_closed else {
+        (round(point[0], 12), round(point[1], 12))
+        for point in simplified
+    }
+
+    if len(simplified) < 4 or len(unique_points) < 3:
+        return ring
 
     return simplified
 
@@ -101,29 +126,33 @@ def write_payload(path, payload):
 
 
 def main():
-    source = json.loads(SOURCE_PATH.read_text(encoding="utf-8"))
+    for empire_key, source_path in EMPIRE_SOURCES.items():
+        source = json.loads(source_path.read_text(encoding="utf-8"))
+        base_name = source_path.stem
+        tolerances = EMPIRE_TOLERANCES[empire_key]
 
-    for lod, output_path in OUTPUTS.items():
-        tolerance = TOLERANCES[lod]
-        features = []
-        for feature in source["features"]:
-            simplified_feature = {
-                **feature,
-                "properties": {
-                    **feature.get("properties", {}),
-                    "lod": lod,
-                    "simplifyToleranceDegrees": tolerance,
-                },
-                "geometry": simplify_geometry(feature["geometry"], tolerance),
+        for quality, tolerance in tolerances.items():
+            output_path = source_path.with_name(f"{base_name}.{quality}.geojson")
+            features = []
+            for feature in source["features"]:
+                simplified_feature = {
+                    **feature,
+                    "properties": {
+                        **feature.get("properties", {}),
+                        "empireKey": empire_key,
+                        "quality": quality,
+                        "simplifyToleranceDegrees": tolerance,
+                    },
+                    "geometry": simplify_geometry(feature["geometry"], tolerance),
+                }
+                features.append(simplified_feature)
+
+            payload = {
+                **source,
+                "features": features,
             }
-            features.append(simplified_feature)
-
-        payload = {
-            **source,
-            "features": features,
-        }
-        write_payload(output_path, payload)
-        print(f"Wrote {output_path.name}")
+            write_payload(output_path, payload)
+            print(f"Wrote {output_path.name}")
 
 
 if __name__ == "__main__":
