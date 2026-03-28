@@ -1,6 +1,8 @@
 const stage = document.getElementById("atlasStage");
 const earthCanvas = document.getElementById("atlasEarthCanvas");
+const empireCanvas = document.getElementById("atlasEmpireCanvas");
 const overlayCanvas = document.getElementById("atlasOverlayCanvas");
+const empireContext = empireCanvas.getContext("2d");
 const overlayContext = overlayCanvas.getContext("2d");
 const overlaySvg = document.querySelector(".atlas-overlay");
 const layerPanel = document.querySelector(".layer-panel");
@@ -108,6 +110,7 @@ let earthTextureImage = null;
 let glRenderer = null;
 let rotationOffset = { lambda: 0, phi: 0 };
 let pixelRatio = 1;
+let lastEmpireRenderKey = null;
 let renderScheduled = false;
 const earthTextureStore = window.AtlasLayers.createEarthTextureStore();
 const mobileLayerMenuMediaQuery = window.matchMedia("(max-width: 800px)");
@@ -157,6 +160,9 @@ const layerState = {
 };
 const empireLayerState = {
   roman: true,
+  romanComparison: false,
+  mongol: false,
+  british: false,
 };
 
 const temporalState = {
@@ -282,6 +288,7 @@ const PROJECTION_OPTIONS = [
   { value: "waterman", label: "Waterman Butterfly" },
 ];
 let overlayLayerRenderers = [];
+let empireLayerRenderer = null;
 
 const projectionSwitcherItems = PROJECTION_SEQUENCE.map((projectionKind) => {
   const item = document.createElement("span");
@@ -588,6 +595,7 @@ async function init() {
     requestRenderRef: () => requestRender(),
   });
   overlayLayerRenderers = overlayLayerManager.renderers;
+  empireLayerRenderer = overlayLayerManager.empireRenderer ?? null;
   if (layerState.earth) {
     await refreshEarthTexture();
   }
@@ -665,12 +673,18 @@ async function loadWorld() {
     countriesTopology10,
     countriesTopology110,
     land110,
-    empires,
+    romanEmpire,
+    romanComparisonEmpire,
+    mongolEmpire,
+    britishEmpire,
   ] = await Promise.all([
     d3.json("./data/raw/world-atlas/countries-10m.json"),
     d3.json("./data/raw/world-atlas/countries-110m.json"),
     d3.json("./data/raw/world-atlas/land-110m.json"),
     d3.json("./data/empires/roman_empire_ad_117_extent.geojson"),
+    d3.json("./data/empires/roman_empire_117ad_major_empires_source.geojson"),
+    d3.json("./data/empires/mongol_empire_1279_extent.geojson"),
+    d3.json("./data/empires/british_empire_1921_extent.geojson"),
   ]);
 
   const land = topojson.feature(land110, land110.objects.land);
@@ -682,7 +696,12 @@ async function loadWorld() {
 
   return {
     topology: countriesTopology10,
-    empires,
+    empires: {
+      roman: romanEmpire,
+      romanComparison: romanComparisonEmpire,
+      mongol: mongolEmpire,
+      british: britishEmpire,
+    },
     countries: topojson.feature(countriesTopology10, countriesTopology10.objects.countries),
     land,
     borders,
@@ -694,7 +713,10 @@ async function loadWorld() {
         "110m": borders,
       },
       empires: {
-        roman: empires,
+        roman: romanEmpire,
+        romanComparison: romanComparisonEmpire,
+        mongol: mongolEmpire,
+        british: britishEmpire,
       },
     },
   };
@@ -764,8 +786,54 @@ function drawAtlas() {
   stage.classList.toggle("is-waterman", projectionState.selectedProjection === "waterman");
   stage.classList.toggle("is-dymaxion", projectionState.selectedProjection === "dymaxion");
   drawEarthPass(scenes);
+  drawEmpirePass(scenes);
   drawOverlayPass(scenes);
   scheduleBootStagePosterSnapshot();
+}
+
+function getEmpireRenderKey(scenes) {
+  return JSON.stringify({
+    projection: projectionState.selectedProjection,
+    empiresEnabled: layerState.empires,
+    empireSublayers: empireLayerState,
+    pixelRatio,
+    scenes: scenes.map((scene) => ({
+      projectionKind: scene.projectionKind,
+      center: scene.center,
+      width: scene.width,
+      height: scene.height,
+      radius: scene.radius,
+      zoomScale: scene.zoomScale,
+      rotate: scene.rotate,
+      panOffset: scene.panOffset,
+    })),
+  });
+}
+
+function drawEmpirePass(scenes) {
+  if (!empireCanvas || !empireContext) {
+    return;
+  }
+
+  const nextKey = getEmpireRenderKey(scenes);
+  if (nextKey === lastEmpireRenderKey) {
+    return;
+  }
+
+  lastEmpireRenderKey = nextKey;
+  empireContext.save();
+  empireContext.setTransform(1, 0, 0, 1, 0, 0);
+  empireContext.clearRect(0, 0, empireCanvas.width, empireCanvas.height);
+  empireContext.restore();
+  empireContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+  if (!empireLayerRenderer) {
+    return;
+  }
+
+  scenes.forEach((scene) => {
+    empireLayerRenderer(scene, { contextOverride: empireContext });
+  });
 }
 
 function scheduleBootStagePosterSnapshot() {
@@ -799,6 +867,9 @@ function snapshotBootStagePoster() {
     context.clearRect(0, 0, posterWidth, posterHeight);
     if (earthCanvas) {
       context.drawImage(earthCanvas, 0, 0, posterWidth, posterHeight);
+    }
+    if (empireCanvas) {
+      context.drawImage(empireCanvas, 0, 0, posterWidth, posterHeight);
     }
     context.drawImage(overlayCanvas, 0, 0, posterWidth, posterHeight);
 
@@ -2999,10 +3070,14 @@ function configureCanvases() {
 
   earthCanvas.width = Math.round(viewDimensions.width * pixelRatio);
   earthCanvas.height = Math.round(viewDimensions.height * pixelRatio);
+  empireCanvas.width = Math.round(viewDimensions.width * pixelRatio);
+  empireCanvas.height = Math.round(viewDimensions.height * pixelRatio);
   overlayCanvas.width = Math.round(viewDimensions.width * pixelRatio);
   overlayCanvas.height = Math.round(viewDimensions.height * pixelRatio);
 
+  empireContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   overlayContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  lastEmpireRenderKey = null;
 }
 
 function handleResize() {

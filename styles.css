@@ -94,6 +94,7 @@ body.is-viewport-stage .app-shell {
 }
 
 .atlas-canvas,
+.atlas-empire-canvas,
 .atlas-overlay-canvas,
 .atlas-overlay {
   position: absolute;
@@ -103,6 +104,7 @@ body.is-viewport-stage .app-shell {
   height: 100%;
 }
 
+.atlas-empire-canvas,
 .atlas-overlay-canvas,
 .atlas-overlay {
   pointer-events: none;
@@ -112,6 +114,7 @@ body.is-viewport-stage .app-shell {
   z-index: 1;
 }
 
+.atlas-empire-canvas,
 .atlas-overlay-canvas,
 .atlas-overlay {
   z-index: 2;
@@ -133,6 +136,7 @@ body.is-viewport-stage .app-shell {
 }
 
 .is-mobile-default-globe .atlas-canvas,
+.is-mobile-default-globe .atlas-empire-canvas,
 .is-mobile-default-globe .atlas-overlay-canvas,
 .is-mobile-default-globe .atlas-overlay {
   opacity: 0;
@@ -1139,6 +1143,11 @@ body:not(.is-earth-enabled) .month-overlay {
   max-height: 140px;
   padding-bottom: 10px;
   overflow: hidden;
+}
+
+#empireLayerGroup.is-open > #empireSubLayers {
+  max-height: 320px;
+  overflow: visible;
 }
 
 .layer-sublist-controls {

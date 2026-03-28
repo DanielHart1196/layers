@@ -184,8 +184,8 @@
       return fallbackGeometry;
     }
 
-    function createSceneAdapter(scene) {
-      return window.AtlasAdapters.createAdapter(scene, overlayContext, worldDataRef(), {
+    function createSceneAdapter(scene, contextOverride = overlayContext) {
+      return window.AtlasAdapters.createAdapter(scene, contextOverride, worldDataRef(), {
         isInteracting: Boolean(layerStateRef?.().isInteracting),
       });
     }
@@ -520,24 +520,42 @@
       });
     }
 
-    function renderEmpiresLayer(scene) {
+    function renderEmpiresLayer(scene, options = {}) {
       if (!layerStateRef().empires) {
         return;
       }
 
-      const adapter = createSceneAdapter(scene);
+      const adapter = createSceneAdapter(scene, options.contextOverride ?? overlayContext);
       const empireLayerState = layerStateRef().empireSublayers ?? {};
+      const empireStyles = layerStateRef().empireStyles ?? {};
       const empireGeometries = Object.entries(empireLayerState)
         .filter(([, isEnabled]) => isEnabled)
-        .map(([empireKey]) => worldDataRef()?.layerSources?.empires?.[empireKey])
-        .filter(Boolean);
+        .map(([empireKey]) => ({
+          geometry: worldDataRef()?.layerSources?.empires?.[empireKey],
+          style: empireStyles[empireKey] ?? null,
+        }))
+        .filter(({ geometry }) => Boolean(geometry));
       if (!adapter.isReady || !adapter.canRenderLayer("land") || !empireGeometries.length) {
         return;
       }
 
-      empireGeometries.forEach((empiresGeometry) => {
-        adapter.fillGeometry(empiresGeometry, "rgba(196, 139, 53, 0.22)", adapter.kind === "interrupted" ? "evenodd" : "nonzero");
-        adapter.strokeGeometry(empiresGeometry, "rgba(176, 120, 37, 0.9)", 1.1, {
+      empireGeometries.forEach(({ geometry, style }) => {
+        const fillColor = style?.fillColor ?? "#C48B35";
+        const fillOpacity = Number.isFinite(style?.fillOpacity) ? style.fillOpacity : 0.22;
+        const strokeColor = style?.strokeColor ?? "#B07825";
+        const strokeOpacity = Number.isFinite(style?.strokeOpacity) ? style.strokeOpacity : 0.9;
+        const strokeWidth = Number.isFinite(style?.strokeWidth) ? style.strokeWidth : 1.1;
+        const fillHex = fillColor.replace('#', '');
+        const strokeHex = strokeColor.replace('#', '');
+        const fillR = Number.parseInt(fillHex.slice(0, 2), 16);
+        const fillG = Number.parseInt(fillHex.slice(2, 4), 16);
+        const fillB = Number.parseInt(fillHex.slice(4, 6), 16);
+        const strokeR = Number.parseInt(strokeHex.slice(0, 2), 16);
+        const strokeG = Number.parseInt(strokeHex.slice(2, 4), 16);
+        const strokeB = Number.parseInt(strokeHex.slice(4, 6), 16);
+
+        adapter.fillGeometry(geometry, `rgba(${fillR}, ${fillG}, ${fillB}, ${fillOpacity})`, "evenodd");
+        adapter.strokeGeometry(geometry, `rgba(${strokeR}, ${strokeG}, ${strokeB}, ${strokeOpacity})`, strokeWidth, {
           maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
         });
       });
@@ -570,7 +588,8 @@
 
         scheduleFlatRasterPrewarm(scene, image, pixelRatioRef?.() ?? 1);
       },
-      renderers: [renderFallbackLayer, renderEmpiresLayer, renderGraticuleLayer, renderTissotLayer, renderBordersLayer, renderProjectionFrame],
+      renderers: [renderFallbackLayer, renderGraticuleLayer, renderTissotLayer, renderBordersLayer, renderProjectionFrame],
+      empireRenderer: renderEmpiresLayer,
     };
   }
 
