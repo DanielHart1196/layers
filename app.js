@@ -1164,14 +1164,14 @@ function enableDragging() {
 function getProjectionZoomBounds() {
   switch (projectionState.selectedProjection) {
     case "mercator":
-      return { min: 1, max: 8 };
+      return { min: 1, max: 20 };
     case "orthographic":
-      return { min: 1, max: 7 };
+      return { min: 1, max: 16 };
     case "natural-earth-ii":
     case "goode-homolosine":
     case "waterman":
     case "azimuthal-equidistant":
-      return { min: 1, max: 6 };
+      return { min: 1, max: 16 };
     default:
       return { min: 1, max: 1 };
   }
