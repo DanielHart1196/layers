@@ -319,6 +319,9 @@ function renderProjectionSwitcher(offset = 0) {
   });
 }
 
+projectionState.selectedProjection = normalizeProjectionSelection(projectionState.selectedProjection);
+renderProjectionSwitcher(0);
+
 function syncProjectionSwitcher() {
   if (!projectionSwitcherTrack) {
     return;
@@ -1156,12 +1159,20 @@ function setZoomScale(nextScale) {
     return;
   }
 
+  const previousScale = zoomState.scale;
   const clampedScale = clampZoomScale(nextScale);
-  if (Math.abs(clampedScale - zoomState.scale) < 0.001) {
+  if (Math.abs(clampedScale - previousScale) < 0.001) {
     return;
   }
 
   zoomState.scale = clampedScale;
+  if (usesFlatProjectionPan() && previousScale > 0) {
+    const currentOffset = getFlatProjectionPanOffset();
+    flatProjectionPanOffsets[projectionState.selectedProjection] = {
+      x: currentOffset.x * (clampedScale / previousScale),
+      y: currentOffset.y * (clampedScale / previousScale),
+    };
+  }
   syncFlatProjectionPanOffset();
   syncMobileMonthChrome();
   syncStageChrome();

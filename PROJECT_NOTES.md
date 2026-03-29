@@ -15,6 +15,10 @@
   - one coherent goal per change
   - behavior-preserving extraction separated from behavior-changing work
   - risky subsystems validated immediately after change
+- When browser caching could affect diagnosis, prove runtime consistency before trusting debug output:
+  - add a visible runtime/version token to temporary debug when needed
+  - prefer cache-busted local scripts during active debugging
+  - do not keep chasing render/math bugs until you know the browser is running one coherent code version
 
 ## Collaboration Expectations
 - If the user forgets a previously agreed architecture goal, surface it and ask whether to stay aligned or intentionally diverge.
@@ -197,6 +201,19 @@
   - drag alignment
   - projection switch speed
   - mobile control hit areas
+- If adding temporary on-screen debug:
+  - default to a floating top-left position
+  - avoid blocking refresh, projection, layers, or month controls
+  - remove it once the diagnosis is complete
+
+## Debugging Lessons
+- Browser caching can invalidate otherwise good diagnosis. If runtime behavior and code inspection disagree, verify loaded code first rather than stacking more theory on top.
+- For projection/render debugging, separate:
+  - geometry bounds
+  - scene bounds
+  - stage/canvas sizing
+  - layer compositing
+- When the issue is visually ambiguous, prefer targeted layer-isolation or numeric bounds debug over repeated subjective screenshot interpretation.
 
 ## Target App Architecture
 - Current app-level complexity is concentrated too heavily in `app.js`.

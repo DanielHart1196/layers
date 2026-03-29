@@ -11,36 +11,28 @@
           document.documentElement.style.setProperty("--boot-stage-poster-image", `url("${bootPosterImage}")`);
         }
 
-        const projectionBootLabels = {
-          orthographic: "Globe",
-          mercator: "Mercator",
-          "natural-earth-ii": "Natural Earth II",
-          "goode-homolosine": "Goode Homolosine",
-          waterman: "Waterman",
-          dymaxion: "Dymaxion",
-          "azimuthal-equidistant": "Atlas",
-        };
-
         const storedViewState = window.localStorage?.getItem("atlas.view.state");
+        let storedProjection = "orthographic";
         if (storedViewState) {
           const parsedViewState = JSON.parse(storedViewState);
           const zoom = Number(parsedViewState?.zoom);
-          const storedProjection = String(parsedViewState?.projection || "").trim();
+          storedProjection = String(parsedViewState?.projection || "orthographic").trim() || "orthographic";
           if (Number.isFinite(zoom) && zoom > 1.01) {
             document.documentElement.classList.add("is-mobile-boot-zoomed");
           }
-
-          document.documentElement.dataset.bootProjectionLabel =
-            projectionBootLabels[storedProjection] || "Globe";
-        } else {
-          document.documentElement.dataset.bootProjectionLabel = "Globe";
         }
+
+        document.documentElement.dataset.bootProjection = storedProjection;
       } catch (error) {
         // Ignore storage access failures during boot.
-        document.documentElement.dataset.bootProjectionLabel = "Globe";
+        document.documentElement.dataset.bootProjection = "orthographic";
       }
 
-      if (window.matchMedia && window.matchMedia("(max-width: 800px)").matches) {
+      if (
+        window.matchMedia &&
+        window.matchMedia("(max-width: 800px)").matches &&
+        document.documentElement.dataset.bootProjection === "orthographic"
+      ) {
         document.documentElement.classList.add("is-mobile-default-globe");
         document.documentElement.style.setProperty("--boot-globe-width", `${Math.max(1, Math.round(window.innerWidth || 1200))}`);
         document.documentElement.style.setProperty("--boot-globe-height", `${Math.max(1, Math.round(window.innerHeight || 860))}`);
@@ -231,16 +223,7 @@
             <path d="M5.5 8.5c2.1 1.05 4.3 1.55 6.5 1.55s4.4-.5 6.5-1.55"></path>
             <path d="M5.5 15.5c2.1-1.05 4.3-1.55 6.5-1.55s4.4.5 6.5 1.55"></path>
           </svg>
-          <span class="projection-switcher-track" id="projectionSwitcherTrack">
-            <span class="projection-switcher-label projection-switcher-boot-label" aria-hidden="true">Globe</span>
-          </span>
-          <script>
-            const bootProjectionLabel = document.documentElement.dataset.bootProjectionLabel || "Globe";
-            const bootProjectionLabelElement = document.currentScript.previousElementSibling?.querySelector?.(".projection-switcher-boot-label");
-            if (bootProjectionLabelElement) {
-              bootProjectionLabelElement.textContent = bootProjectionLabel;
-            }
-          </script>
+          <span class="projection-switcher-track" id="projectionSwitcherTrack"></span>
         </div>
         <aside class="layer-panel" id="layerPanel" aria-label="Map layers">
           <div class="layer-panel-header">
@@ -379,30 +362,6 @@
                       </div>
                     </div>
                   </div>
-                  <section class="projection-panel" id="projectionRow" aria-label="Projection">
-                    <p class="projection-label">Projection</p>
-                    <div class="projection-picker" id="projectionPicker">
-                      <button
-                        class="projection-picker-button"
-                        id="projectionPickerButton"
-                        type="button"
-                        aria-label="Choose projection"
-                        aria-controls="projectionPickerList"
-                        aria-expanded="false"
-                      >
-                        <span class="projection-picker-value" id="projectionPickerValue">Globe</span>
-                        <span class="projection-picker-chevron" aria-hidden="true"></span>
-                      </button>
-                      <div class="projection-picker-list" id="projectionPickerList" role="listbox" aria-label="Map projection">
-                        <button class="projection-picker-option" type="button" role="option" data-projection-option="orthographic">Globe</button>
-                        <button class="projection-picker-option" type="button" role="option" data-projection-option="azimuthal-equidistant">Azimuthal Eqd</button>
-                        <button class="projection-picker-option" type="button" role="option" data-projection-option="mercator">Mercator</button>
-                        <button class="projection-picker-option" type="button" role="option" data-projection-option="natural-earth-ii">Natural Earth II</button>
-                        <button class="projection-picker-option" type="button" role="option" data-projection-option="goode-homolosine">Goode Homolosine</button>
-                        <button class="projection-picker-option" type="button" role="option" data-projection-option="waterman">Waterman Butterfly</button>
-                      </div>
-                    </div>
-                  </section>
                   <section class="layer-group layer-group-shell" id="graticuleLayerGroup">
                     <div class="layer-group-head">
                       <button class="layer-item layer-item-group is-active" data-layer-id="graticule" type="button">

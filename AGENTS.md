@@ -50,3 +50,5 @@
 - When something becomes sideways-scrollable, clipped, misaligned, or visually overflows, first identify which child element is exceeding its intended bounds and fix that element or its layout contract.
 - If the quickest available fix is a containment hack rather than a structural fix, say so explicitly before applying it.
 - Temporary on-screen debug UI in `layers` should default to a floating top-left position and should avoid covering primary controls like refresh, layer menu, projection pill, or month controls unless the user asks otherwise.
+- When using temporary runtime debug instrumentation in `layers`, include a visible version token or other runtime identity marker if browser caching could cause mixed old/new JS to be mistaken for current behavior.
+- Before trusting a browser-based diagnosis in `layers`, verify that the page is actually running the intended current code when cache inconsistency is plausible.

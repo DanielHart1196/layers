@@ -445,32 +445,12 @@ body:not(.is-earth-enabled) .month-overlay {
   stroke-linejoin: round;
 }
 
-.projection-switcher-boot-label {
-  display: none;
-  position: static;
-  width: 100%;
-  text-align: center;
-  transform: none;
-}
-
-.is-mobile-default-globe .projection-switcher-boot-label {
-  display: block;
-}
-
-.is-mobile-default-globe .projection-switcher-label:not(.projection-switcher-boot-label) {
-  opacity: 0;
-}
-
 .is-mobile-default-globe.is-mobile-boot-zoomed .projection-switcher {
   width: 48px;
   height: 48px;
   padding: 0;
   border-radius: 16px;
   transform: translateX(calc(-50% + calc(50vw - 42px))) translateY(0);
-}
-
-.is-mobile-default-globe.is-mobile-boot-zoomed .projection-switcher-boot-label {
-  display: none;
 }
 
 .is-mobile-default-globe.is-mobile-boot-zoomed .projection-switcher-track {
@@ -480,10 +460,6 @@ body:not(.is-earth-enabled) .month-overlay {
 .is-mobile-default-globe.is-mobile-boot-zoomed .projection-switcher-icon {
   opacity: 1;
   transform: scale(1);
-}
-
-.projection-switcher.is-ready .projection-switcher-boot-label {
-  display: none;
 }
 
 .projection-switcher-label {

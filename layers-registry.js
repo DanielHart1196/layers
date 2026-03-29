@@ -33,11 +33,10 @@
       uiSection: "basemap",
       parentId: null,
       children: ["graticule", "tissot"],
-      controls: ["landColor", "waterColor", "projection"],
+      controls: ["landColor", "waterColor"],
       rows: [
         { type: "color", controlId: "land", rowElementId: "landColorRow" },
         { type: "color", controlId: "water", rowElementId: "waterColorRow" },
-        { type: "dropdown", controlId: "projection", rowElementId: "projectionRow" },
         { type: "layer", layerId: "graticule", rowElementId: "graticuleLayerGroup" },
         { type: "layer", layerId: "tissot", rowElementId: "tissotLayerRow" },
       ],
