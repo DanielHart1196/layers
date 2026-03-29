@@ -138,7 +138,7 @@
       return;
     }
     config.customs.replaceChildren(
-      ...hooks.getCustomColorList(controlId).map((color) => createCustomColorButton(controlId, color, hooks)),
+      ...hooks.getCustomColorList(controlId).map((color) => hooks.createCustomColorButton(controlId, color)),
     );
   }
 

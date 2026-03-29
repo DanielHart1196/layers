@@ -32,11 +32,16 @@
 - Keep behavior-preserving extraction separate from behavior-changing refactors. If a change touches rendering cadence, gesture semantics, projection math, or other fragile interaction paths, say so explicitly before making it.
 - Prefer small, self-contained changes that preserve code health and are easy to review, test, and revert.
 - For UI controls, rows, toggles, chevrons, pickers, panels, sliders, and similar interactions in `layers`, always reuse the existing markup structure, event wiring pattern, CSS class contract, and state model from the nearest working example.
+- For layer panel work in `layers`, think in rows first:
+  - `layer` is one row type
+  - sliders, colors, dropdowns, and similar controls are row types
+  - if nesting is needed, prefer child rows over bespoke container concepts
 - Do not invent a new component pattern, alternate DOM structure, or parallel interaction model when an equivalent working pattern already exists in the codebase.
 - When extending an existing UI pattern to new data, copy the proven pattern first and only change the identifiers, labels, and state bindings required for the new item.
 - Before implementing a new UI interaction in `layers`, identify the exact existing file and section it should mirror, and use that as the implementation template.
 - If a requested UI change cannot be implemented by reusing an existing pattern, say that explicitly before coding and explain what constraint prevents reuse.
 - Prefer structural reuse of existing patterns over one-off fixes, custom wrappers, or new layout abstractions, even if the custom approach appears faster at first.
+- If spacing or ordering behavior should be inspectable and shared across layers, prefer explicit structural elements over implicit CSS-only spacing.
 - Prefer preserving working mobile gesture behavior and fixing browser-specific issues in the narrowest path possible.
 - For flat projections in `layers`, keep raster and vector layers on the same camera transform model to avoid alignment drift.
 - When touching fragile areas like rendering, gestures, or projection switching, include a concrete regression checklist in the final response so validation is targeted instead of generic.

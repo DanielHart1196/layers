@@ -178,20 +178,19 @@ let layerScrollbarDragState = null;
 let layerScrollbarFadeTimer = null;
 let expandableLayoutFrame = null;
 let expandableLayoutSettleTimer = null;
-const BORDER_COLOR_STORAGE_KEY = "atlas.border.customColors";
-const GRATICULE_COLOR_STORAGE_KEY = "atlas.graticule.customColors";
-const LAND_COLOR_STORAGE_KEY = "atlas.earth.land.customColors";
-const WATER_COLOR_STORAGE_KEY = "atlas.earth.water.customColors";
-const ROMAN_EMPIRE_FILL_COLOR_STORAGE_KEY = "atlas.empires.roman.fill.customColors";
+const SHARED_CUSTOM_COLORS_STORAGE_KEY = "atlas.colors.customColors";
+const LEGACY_CUSTOM_COLOR_STORAGE_KEYS = [
+  "atlas.border.customColors",
+  "atlas.graticule.customColors",
+  "atlas.earth.land.customColors",
+  "atlas.earth.water.customColors",
+  "atlas.empires.roman.fill.customColors",
+];
 const STYLE_SETTINGS_STORAGE_KEY = "atlas.style.settings";
 const VIEW_STATE_STORAGE_KEY = "atlas.view.state";
 const MAX_CUSTOM_BORDER_COLORS = 10;
 const BOOT_STAGE_POSTER_STORAGE_KEY = "atlas.bootViewportPoster";
-let customBorderColors = [];
-let customGraticuleColors = [];
-let customLandColors = [];
-let customWaterColors = [];
-let customRomanEmpireFillColors = [];
+let sharedCustomColors = [];
 const flatProjectionPanOffsets = {
   "natural-earth-ii": { x: 0, y: 0 },
   "goode-homolosine": { x: 0, y: 0 },
@@ -530,11 +529,7 @@ async function init() {
     getBodyElement: getLayerBodyElement,
     getRowElement: getLayerRowElement,
   });
-  customBorderColors = loadStoredCustomColors(BORDER_COLOR_STORAGE_KEY);
-  customGraticuleColors = loadStoredCustomColors(GRATICULE_COLOR_STORAGE_KEY);
-  customLandColors = loadStoredCustomColors(LAND_COLOR_STORAGE_KEY);
-  customWaterColors = loadStoredCustomColors(WATER_COLOR_STORAGE_KEY);
-  customRomanEmpireFillColors = loadStoredCustomColors(ROMAN_EMPIRE_FILL_COLOR_STORAGE_KEY);
+  sharedCustomColors = loadSharedCustomColors();
   loadStyleSettings();
   loadViewState();
   projectionState.selectedProjection = normalizeProjectionSelection(projectionState.selectedProjection);
@@ -1557,6 +1552,23 @@ function loadStoredCustomColors(storageKey) {
   }
 }
 
+function loadSharedCustomColors() {
+  const primary = loadStoredCustomColors(SHARED_CUSTOM_COLORS_STORAGE_KEY);
+  if (primary.length > 0) {
+    return primary;
+  }
+
+  const merged = [];
+  LEGACY_CUSTOM_COLOR_STORAGE_KEYS.forEach((storageKey) => {
+    loadStoredCustomColors(storageKey).forEach((color) => {
+      if (!merged.includes(color)) {
+        merged.push(color);
+      }
+    });
+  });
+  return merged.slice(0, MAX_CUSTOM_BORDER_COLORS);
+}
+
 function saveStyleSettings() {
   window.AtlasStatePersistence.saveStyleSettings({
     storage: window.localStorage,
@@ -1700,7 +1712,7 @@ function hexToHsv(hexColor) {
 function getColorControlConfig(controlId) {
   const configs = {
     border: {
-      storageKey: BORDER_COLOR_STORAGE_KEY,
+      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
       datasetKey: "borderColor",
       paletteOpenKey: "isBorderColorPaletteOpen",
       input: borderColorInput,
@@ -1717,7 +1729,7 @@ function getColorControlConfig(controlId) {
       addButton: borderColorAddButton,
     },
     graticule: {
-      storageKey: GRATICULE_COLOR_STORAGE_KEY,
+      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
       datasetKey: "graticuleColor",
       paletteOpenKey: "isGraticuleColorPaletteOpen",
       input: graticuleColorInput,
@@ -1734,7 +1746,7 @@ function getColorControlConfig(controlId) {
       addButton: graticuleColorAddButton,
     },
     land: {
-      storageKey: LAND_COLOR_STORAGE_KEY,
+      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
       datasetKey: "landColor",
       paletteOpenKey: "isLandColorPaletteOpen",
       input: landColorInput,
@@ -1751,7 +1763,7 @@ function getColorControlConfig(controlId) {
       addButton: landColorAddButton,
     },
     water: {
-      storageKey: WATER_COLOR_STORAGE_KEY,
+      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
       datasetKey: "waterColor",
       paletteOpenKey: "isWaterColorPaletteOpen",
       input: waterColorInput,
@@ -1768,7 +1780,7 @@ function getColorControlConfig(controlId) {
       addButton: waterColorAddButton,
     },
     romanEmpireFill: {
-      storageKey: ROMAN_EMPIRE_FILL_COLOR_STORAGE_KEY,
+      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
       datasetKey: "romanEmpireFillColor",
       paletteOpenKey: "isRomanEmpireFillColorPaletteOpen",
       input: romanEmpireFillColorInput,
@@ -1833,20 +1845,11 @@ function getColorStyleState(controlId) {
 }
 
 function getCustomColorList(controlId) {
-  if (controlId === "border") return customBorderColors;
-  if (controlId === "graticule") return customGraticuleColors;
-  if (controlId === "land") return customLandColors;
-  if (controlId === "water") return customWaterColors;
-  if (controlId === "romanEmpireFill") return customRomanEmpireFillColors;
-  return [];
+  return sharedCustomColors;
 }
 
 function setCustomColorList(controlId, colors) {
-  if (controlId === "border") customBorderColors = colors;
-  if (controlId === "graticule") customGraticuleColors = colors;
-  if (controlId === "land") customLandColors = colors;
-  if (controlId === "water") customWaterColors = colors;
-  if (controlId === "romanEmpireFill") customRomanEmpireFillColors = colors;
+  sharedCustomColors = colors;
 }
 
 function saveCustomColors(controlId) {
@@ -1854,6 +1857,12 @@ function saveCustomColors(controlId) {
     getConfig: getColorControlConfig,
     storage: window.localStorage,
     getCustomColorList,
+  });
+}
+
+function renderAllCustomColors() {
+  ["border", "graticule", "land", "water", "romanEmpireFill"].forEach((controlId) => {
+    renderCustomColors(controlId);
   });
 }
 
@@ -1918,7 +1927,7 @@ function createCustomColorButton(controlId, color) {
     drawForColorControl,
     setCustomColorList,
     getCustomColorList,
-    renderCustomColors,
+    renderCustomColors: renderAllCustomColors,
     saveCustomColors,
     hideCustomColorRemoveButton,
   });
@@ -2054,7 +2063,7 @@ function enableSharedColorControl(controlId) {
   bindSharedColorControl(controlId, {
     getConfig: getColorControlConfig,
     getRuntime: (id) => colorControlRuntimeState[id],
-    renderCustomColors,
+    renderCustomColors: renderAllCustomColors,
     normalizeHexDraftValue,
     normalizeHexColor,
     setColorControlValue,

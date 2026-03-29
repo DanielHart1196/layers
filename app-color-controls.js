@@ -145,10 +145,11 @@
         flashColorFeedback(controlId, presetButton);
         return;
       }
+      const nextColors = [normalizedColor, ...getCustomColorList(controlId).filter((color) => color !== normalizedColor)]
+        .slice(0, maxCustomColors);
       setCustomColorList(
         controlId,
-        [normalizedColor, ...getCustomColorList(controlId).filter((color) => color !== normalizedColor)]
-          .slice(0, maxCustomColors),
+        nextColors,
       );
       saveCustomColors(controlId);
       renderCustomColors(controlId);

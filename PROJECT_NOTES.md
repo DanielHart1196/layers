@@ -334,17 +334,37 @@
 - Some layers are basemap-oriented layers.
 - Those differences should be expressed as metadata on the same core type, not as unrelated UI species.
 - This should let the app support a tree-capable schema even if the current UI only exposes one nested level at first.
-- The settings UI should eventually use one canonical layer row / expandable shell:
-  - same structure for top-level layers
-  - same structure for nested layers
-  - controls and children populated from config
+- In the settings UI, everything should be represented as rows:
+  - `layer` is a row type
+  - sliders, colors, dropdowns, and other controls are row types
+  - rows may contain child rows recursively
+- The panel should prefer one canonical row system over separate architectural concepts like “controls section” or “child stack” when rows can represent those structures directly.
+- A layer remains a real domain entity, but in the panel it is rendered as `row.type = "layer"`.
+- The settings UI should eventually use one canonical row system:
+  - same structure for top-level rows
+  - same structure for nested rows
+  - controls and children populated from row definitions
   - no bespoke Roman-vs-Graticule markup behavior
+
+## Panel Row And Spacing Model
+- Layer panel layout should be driven by explicit rows, not hidden spacing behavior.
+- When spacing needs to be inspectable and guaranteed consistent across layers, prefer explicit spacer rows over implicit `gap` or padding-only layouts.
+- The intended body structure is:
+  - row
+  - spacer
+  - row
+  - spacer
+  - bottom spacer
+- Parent containers should own outer spacing for their row list.
+- Nested layers should own only their internal spacing, not extra external spacing that competes with the parent row system.
+- If a nested expanded layer causes parent spacing to behave differently, treat that as a structural bug in the row model, not a one-off CSS tuning issue.
 
 ## Refactor Guardrails
 - Do not treat file splitting alone as architectural progress.
 - Strengthen the layer model and shared behavior contracts before introducing more abstractions.
 - For rendering and gestures, prefer explicit contracts over clever indirection.
 - Do not reintroduce pass-based redraw narrowing in behavior-sensitive paths until the invalidation contract is specific enough to prove correctness.
+- For layer panel work, prefer row-based composition over layer-family-specific wrappers, per-layer spacing rules, or hidden layout contracts.
 - When a refactor touches:
   - render timing
   - gesture semantics
@@ -360,6 +380,10 @@
   - projection switcher responsiveness
   - expandable settings rows opening to full child content
   - parent/child layer state persistence
+- For row/spacing changes, also validate:
+  - spacer visibility and consistency across multiple expanded layers
+  - nested layer expansion not collapsing parent bottom spacing
+  - the same spacing contract on `Earth`, `Empires`, `Borders`, `Graticule`, and `Roman`
 - Prefer a short explicit regression checklist over vague “test the UI” wording.
 
 ## Export Architecture Direction
@@ -470,24 +494,22 @@
   - define export-side render targets when export work starts
 
 ## Shared Color Strategy
-- Saved custom colors should move toward a shared palette model rather than siloed per-control lists.
-- Reason:
-  - improves consistency across user-created maps
-  - reduces duplicate color saving across borders, graticule, land, water, and empire fills
-  - makes recurring cartographic palettes easier to reuse
-- Recommended direction:
+- Saved custom colors now use a shared palette model rather than siloed per-control lists.
+- Current behavior:
   - one shared saved color collection for user-defined colors
-  - controls may still keep their own fixed default palettes if needed
-  - shared custom colors should appear consistently across all compatible color controls
+  - controls still keep their own fixed default palettes
+  - shared custom colors appear consistently across all compatible color controls
 - Important distinction:
   - shared custom colors
   - control-specific currently selected color
+- In practice:
+  - `Land Color`, `Water Color`, `Borders`, `Graticule`, and `Roman Fill` can all draw from the same saved custom palette
+  - selecting a color in one row only changes that row’s own target
 - If a color is removed from the shared saved palette, it should not silently overwrite a control that is currently using that color.
 - Shared saved colors should remain local/browser-persisted unless account sync is introduced later.
-- If this change is implemented:
-  - migrate existing per-control saved colors into a deduplicated shared collection
-  - preserve current selected values in each control
-  - avoid a UX regression where users lose previously saved favorites
+- Migration behavior:
+  - legacy per-control saved palettes are merged into a deduplicated shared collection if the shared key is empty
+  - current selected values in each control remain local to that control
 
 ## Readability Standards
 - Do not add new features by extending `app.js` with another large inline state/sync block if the logic belongs in a focused module.
