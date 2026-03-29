@@ -262,6 +262,8 @@
     let projectionSwipeDeltaX = 0;
     let projectionSwipeAnimating = false;
     let projectionSwipeSettleTimer = null;
+    let suppressNextClick = false;
+    let suppressNextClickResetTimer = null;
 
     function bind({
       projectionSwitcher,
@@ -269,15 +271,20 @@
       renderProjectionSwitcher,
       getProjectionSlotWidth,
       cycleProjection,
+      debugLog,
+      setDebugMode,
+      getDebugTargetLabel,
     }) {
       if (!projectionSwitcher || !projectionSwitcherTrack) {
         return;
       }
 
       const useTouchProjectionSwipe = !window.PointerEvent || /firefox/i.test(navigator.userAgent);
+      setDebugMode?.(useTouchProjectionSwipe ? "touch" : "pointer");
 
       const startProjectionSwipe = (clientX, pointerId = null) => {
         if (projectionSwipeAnimating) {
+          debugLog?.("start blocked animating");
           return false;
         }
 
@@ -287,25 +294,30 @@
         projectionSwipeDeltaX = 0;
         projectionSwitcher.classList.add("is-dragging");
         renderProjectionSwitcher(0);
+        debugLog?.(`start x=${Math.round(clientX)} pointer=${pointerId ?? "touch"}`);
         return true;
       };
 
       const moveProjectionSwipe = (clientX, pointerId = null) => {
         if (projectionSwipeStartX === null) {
+          debugLog?.("move ignored no-start");
           return false;
         }
 
         if (projectionSwipePointerId !== null && projectionSwipePointerId !== pointerId) {
+          debugLog?.(`move ignored pointer=${pointerId}`);
           return false;
         }
 
         projectionSwipeDeltaX = clientX - projectionSwipeStartX;
         renderProjectionSwitcher(projectionSwipeDeltaX);
+        debugLog?.(`move dx=${Math.round(projectionSwipeDeltaX)}`);
         return true;
       };
 
       const endProjectionSwipe = () => {
         if (projectionSwipeStartX === null) {
+          debugLog?.("end ignored no-start");
           return false;
         }
 
@@ -326,12 +338,24 @@
           renderProjectionSwitcher(0);
           projectionSwipeDeltaX = 0;
           projectionSwipeStartTime = 0;
+          debugLog?.("end tap");
           return true;
         }
 
         projectionSwipeAnimating = true;
+        suppressNextClick = true;
+        debugLog?.("suppress=true");
+        if (suppressNextClickResetTimer !== null) {
+          window.clearTimeout(suppressNextClickResetTimer);
+        }
+        suppressNextClickResetTimer = window.setTimeout(() => {
+          suppressNextClick = false;
+          suppressNextClickResetTimer = null;
+          debugLog?.("suppress timeout reset");
+        }, 220);
         projectionSwitcher.classList.add("is-settling");
         renderProjectionSwitcher(steps * slotWidth);
+        debugLog?.(`end swipe steps=${steps}`);
         if (projectionSwipeSettleTimer !== null) {
           window.clearTimeout(projectionSwipeSettleTimer);
         }
@@ -351,6 +375,11 @@
           window.clearTimeout(projectionSwipeSettleTimer);
           projectionSwipeSettleTimer = null;
         }
+        if (suppressNextClickResetTimer !== null) {
+          window.clearTimeout(suppressNextClickResetTimer);
+          suppressNextClickResetTimer = null;
+        }
+        debugLog?.("cancel resets suppress");
 
         projectionSwipeAnimating = false;
         projectionSwipeStartX = null;
@@ -360,13 +389,16 @@
         projectionSwitcher.classList.remove("is-dragging");
         projectionSwitcher.classList.remove("is-settling");
         renderProjectionSwitcher(0);
+        debugLog?.("cancel");
       };
 
       projectionSwitcher.addEventListener("pointerdown", (event) => {
         if (useTouchProjectionSwipe) {
+          debugLog?.("pointerdown ignored touch-mode");
           return;
         }
 
+        debugLog?.(`pointerdown type=${event.pointerType} id=${event.pointerId} target=${getDebugTargetLabel?.(event.target) ?? "unknown"}`);
         if (!startProjectionSwipe(event.clientX, event.pointerId)) {
           return;
         }
@@ -376,6 +408,7 @@
 
       projectionSwitcher.addEventListener("pointermove", (event) => {
         if (useTouchProjectionSwipe) {
+          debugLog?.("pointermove ignored touch-mode");
           return;
         }
 
@@ -384,13 +417,16 @@
 
       projectionSwitcher.addEventListener("pointerup", (event) => {
         if (useTouchProjectionSwipe) {
+          debugLog?.("pointerup ignored touch-mode");
           return;
         }
 
         if (projectionSwipePointerId !== event.pointerId) {
+          debugLog?.(`pointerup mismatched id=${event.pointerId}`);
           return;
         }
 
+        debugLog?.(`pointerup id=${event.pointerId} target=${getDebugTargetLabel?.(event.target) ?? "unknown"}`);
         endProjectionSwipe();
 
         if (projectionSwitcher.hasPointerCapture?.(event.pointerId)) {
@@ -408,13 +444,16 @@
 
       projectionSwitcher.addEventListener("touchstart", (event) => {
         if (!useTouchProjectionSwipe) {
+          debugLog?.("touchstart ignored pointer-mode");
           return;
         }
 
         if (event.touches.length !== 1) {
+          debugLog?.(`touchstart ignored touches=${event.touches.length}`);
           return;
         }
 
+        debugLog?.(`touchstart target=${getDebugTargetLabel?.(event.target) ?? "unknown"}`);
         if (!startProjectionSwipe(event.touches[0].clientX)) {
           return;
         }
@@ -424,10 +463,12 @@
 
       projectionSwitcher.addEventListener("touchmove", (event) => {
         if (!useTouchProjectionSwipe) {
+          debugLog?.("touchmove ignored pointer-mode");
           return;
         }
 
         if (event.touches.length !== 1) {
+          debugLog?.(`touchmove ignored touches=${event.touches.length}`);
           return;
         }
 
@@ -440,9 +481,11 @@
 
       projectionSwitcher.addEventListener("touchend", () => {
         if (!useTouchProjectionSwipe) {
+          debugLog?.("touchend ignored pointer-mode");
           return;
         }
 
+        debugLog?.("touchend");
         endProjectionSwipe();
       }, { passive: true });
 
@@ -459,7 +502,20 @@
       projectionSwitcher.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          cycleProjection();
+          debugLog?.(`keydown ${event.key}`);
+        }
+      });
+
+      projectionSwitcher.addEventListener("click", (event) => {
+        debugLog?.(`click gesture suppress=${suppressNextClick} animating=${projectionSwipeAnimating}`);
+        if (suppressNextClick) {
+          suppressNextClick = false;
+          if (suppressNextClickResetTimer !== null) {
+            window.clearTimeout(suppressNextClickResetTimer);
+            suppressNextClickResetTimer = null;
+          }
+          debugLog?.("click consumed by suppress");
+          return;
         }
       });
     }

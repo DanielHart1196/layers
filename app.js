@@ -98,6 +98,9 @@ const hardReloadButton = document.getElementById("hardReloadButton");
 const clearCacheReloadButton = document.getElementById("clearCacheReloadButton");
 const projectionSwitcher = document.getElementById("projectionSwitcher");
 const projectionSwitcherTrack = document.getElementById("projectionSwitcherTrack");
+const projectionWheel = document.getElementById("projectionWheel");
+const projectionWheelWindow = document.getElementById("projectionWheelWindow");
+const projectionDebug = document.getElementById("projectionDebug");
 const layerButtons = Array.from(document.querySelectorAll(".layer-item"));
 const empireLayerButtons = Array.from(document.querySelectorAll("[data-empire-layer-id]"));
 const projectionPicker = document.getElementById("projectionPicker");
@@ -251,14 +254,32 @@ const PROJECTION_OPTIONS = [
   { value: "goode-homolosine", label: "Goode Homolosine" },
   { value: "waterman", label: "Waterman Butterfly" },
 ];
+const PROJECTION_WHEEL_DEBUG_VERSION = "projection-wheel-v1";
+const PROJECTION_WHEEL_VISIBLE_RADIUS = 2;
+const PROJECTION_WHEEL_ROW_HEIGHT = 46;
+const PROJECTION_WHEEL_VIEWPORT_HEIGHT = 220;
+const PROJECTION_WHEEL_REPEAT_CYCLES = 5;
 let overlayLayerRenderers = [];
 let empireLayerRenderer = null;
+let projectionDebugMode = "unknown";
+let projectionSwitcherBound = false;
 
 const projectionSwitcherItems = PROJECTION_SEQUENCE.map((projectionKind) => {
   const item = document.createElement("span");
   item.className = "projection-switcher-label";
   item.dataset.projection = projectionKind;
   projectionSwitcherTrack?.appendChild(item);
+  return item;
+});
+const projectionWheelItems = Array.from({ length: PROJECTION_SEQUENCE.length * PROJECTION_WHEEL_REPEAT_CYCLES }, (_, index) => {
+  const projectionKind = PROJECTION_SEQUENCE[index % PROJECTION_SEQUENCE.length];
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = "projection-wheel-item";
+  item.dataset.projectionWheelValue = projectionKind;
+  item.dataset.sequenceIndex = String(index);
+  item.textContent = getProjectionLabel(projectionKind);
+  projectionWheelWindow?.appendChild(item);
   return item;
 });
 
@@ -303,6 +324,15 @@ function getProjectionDistanceFromCurrent(projectionKind) {
   return distance;
 }
 
+function wrapProjectionSequenceIndex(index) {
+  const total = PROJECTION_SEQUENCE.length;
+  return ((index % total) + total) % total;
+}
+
+function getWrappedProjectionFromIndex(index) {
+  return PROJECTION_SEQUENCE[wrapProjectionSequenceIndex(index)];
+}
+
 function getProjectionSlotWidth() {
   return Math.max(164, (projectionSwitcher?.clientWidth ?? 208) + 16);
 }
@@ -319,8 +349,221 @@ function renderProjectionSwitcher(offset = 0) {
   });
 }
 
-projectionState.selectedProjection = normalizeProjectionSelection(projectionState.selectedProjection);
+projectionState.selectedProjection = normalizeProjectionSelection(
+  document.documentElement.dataset.bootProjection || projectionState.selectedProjection,
+);
 renderProjectionSwitcher(0);
+
+function syncProjectionWheelPosition() {
+  if (!projectionWheel || !projectionSwitcher) {
+    return;
+  }
+
+  const rect = projectionSwitcher.getBoundingClientRect();
+  const width = Math.max(196, Math.min(224, rect.width + 24));
+  const left = clamp(rect.left + (rect.width / 2), 16 + (width / 2), window.innerWidth - 16 - (width / 2));
+  const wheelHeight = 220;
+  const centeredTop = rect.top + (rect.height / 2) - (wheelHeight / 2);
+  const top = clamp(centeredTop, 16, window.innerHeight - 16 - wheelHeight);
+
+  projectionWheel.style.width = `${width}px`;
+  projectionWheel.style.left = `${left}px`;
+  projectionWheel.style.top = `${top}px`;
+}
+
+function getProjectionWheelCenterPadding() {
+  return (PROJECTION_WHEEL_VIEWPORT_HEIGHT - PROJECTION_WHEEL_ROW_HEIGHT) / 2;
+}
+
+function getProjectionWheelMiddleCycleOffset() {
+  return Math.floor(PROJECTION_WHEEL_REPEAT_CYCLES / 2) * PROJECTION_SEQUENCE.length;
+}
+
+function getProjectionWheelScrollTopForIndex(index) {
+  return index * PROJECTION_WHEEL_ROW_HEIGHT;
+}
+
+function getCenteredProjectionWheelIndex() {
+  if (!projectionWheelWindow) {
+    return 0;
+  }
+
+  return clamp(
+    Math.round(projectionWheelWindow.scrollTop / PROJECTION_WHEEL_ROW_HEIGHT),
+    0,
+    projectionWheelItems.length - 1,
+  );
+}
+
+function getCenteredProjectionWheelItem() {
+  return projectionWheelItems[getCenteredProjectionWheelIndex()] ?? null;
+}
+
+function syncProjectionWheelHighlight() {
+  if (!projectionWheelWindow) {
+    return;
+  }
+
+  const centeredIndex = getCenteredProjectionWheelIndex();
+
+  projectionWheelItems.forEach((item, index) => {
+    const distanceRows = index - centeredIndex;
+    const absOffset = Math.abs(distanceRows);
+    const opacity = clamp(1 - (absOffset * 0.28), 0.18, 1);
+    item.classList.toggle("is-center", index === centeredIndex);
+    item.style.transform = "";
+    item.style.opacity = `${opacity}`;
+  });
+}
+
+function centerProjectionWheelOnProjection(projectionKind, behavior = "auto") {
+  if (!projectionWheelWindow) {
+    return;
+  }
+
+  const projectionIndex = getProjectionIndex(projectionKind);
+  if (projectionIndex < 0) {
+    return;
+  }
+
+  const centeredIndex = getProjectionWheelMiddleCycleOffset() + projectionIndex;
+  projectionWheelWindow.scrollTo({
+    top: getProjectionWheelScrollTopForIndex(centeredIndex),
+    behavior,
+  });
+  syncProjectionWheelHighlight();
+}
+
+function setProjectionDebug(message) {
+  if (!projectionDebug) {
+    return;
+  }
+
+  const switcherRect = projectionSwitcher?.getBoundingClientRect?.();
+  const wheelRect = projectionWheel?.getBoundingClientRect?.();
+  const switcherSummary = switcherRect
+    ? `${Math.round(switcherRect.left)},${Math.round(switcherRect.top)} ${Math.round(switcherRect.width)}x${Math.round(switcherRect.height)}`
+    : "none";
+  const wheelSummary = wheelRect
+    ? `${Math.round(wheelRect.left)},${Math.round(wheelRect.top)} ${Math.round(wheelRect.width)}x${Math.round(wheelRect.height)}`
+    : "none";
+  const lines = [
+    `${PROJECTION_WHEEL_DEBUG_VERSION} ${projectionState.selectedProjection}`,
+    `bound=${projectionSwitcherBound} mode=${projectionDebugMode} open=${uiState.isProjectionWheelOpen}`,
+    `sw ${switcherSummary}`,
+    `wh ${wheelSummary} ${projectionWheel ? `${getComputedStyle(projectionWheel).opacity}/${getComputedStyle(projectionWheel).pointerEvents}` : "none"}`,
+    `msg ${message}`,
+  ];
+  projectionDebug.dataset.header = lines.join("\n");
+  const historyLines = projectionDebug.dataset.history
+    ? projectionDebug.dataset.history.split("\n").filter(Boolean)
+    : [];
+  projectionDebug.textContent = [...lines, ...historyLines.slice(0, 4)].join("\n");
+}
+
+function appendProjectionDebug(message) {
+  if (!projectionDebug) {
+    return;
+  }
+
+  const historyLines = projectionDebug.dataset.history
+    ? projectionDebug.dataset.history.split("\n").filter(Boolean)
+    : [];
+  historyLines.unshift(message);
+  projectionDebug.dataset.history = historyLines.slice(0, 4).join("\n");
+  const headerLines = projectionDebug.dataset.header
+    ? projectionDebug.dataset.header.split("\n")
+    : [
+      `${PROJECTION_WHEEL_DEBUG_VERSION} ${projectionState.selectedProjection}`,
+      `bound=${projectionSwitcherBound} mode=${projectionDebugMode} open=${uiState.isProjectionWheelOpen}`,
+      "sw unknown",
+      "wh unknown",
+      "msg init",
+    ];
+  projectionDebug.textContent = [...headerLines, ...historyLines.slice(0, 4)].join("\n");
+}
+
+function setProjectionDebugMode(mode) {
+  projectionDebugMode = mode;
+  setProjectionDebug(`mode=${mode}`);
+}
+
+function getProjectionDebugTargetLabel(target) {
+  if (!(target instanceof Element)) {
+    return String(target);
+  }
+
+  const id = target.id ? `#${target.id}` : "";
+  const classes = target.classList.length ? `.${Array.from(target.classList).join(".")}` : "";
+  return `${target.tagName.toLowerCase()}${id}${classes}`;
+}
+
+function logProjectionHitPoint(clientX, clientY, label = "hit") {
+  const hit = document.elementFromPoint(clientX, clientY);
+  appendProjectionDebug(
+    `${label} ${Math.round(clientX)},${Math.round(clientY)} -> ${getProjectionDebugTargetLabel(hit)}`,
+  );
+}
+
+function setProjectionWheelOpen(isOpen) {
+  if (!projectionWheel || !projectionSwitcher) {
+    return;
+  }
+
+  uiState.isProjectionWheelOpen = Boolean(isOpen);
+  projectionWheel.classList.toggle("is-open", uiState.isProjectionWheelOpen);
+  projectionWheel.setAttribute("aria-hidden", uiState.isProjectionWheelOpen ? "false" : "true");
+  projectionSwitcher.setAttribute("aria-expanded", uiState.isProjectionWheelOpen ? "true" : "false");
+
+  if (uiState.isProjectionWheelOpen) {
+    syncProjectionWheelPosition();
+    centerProjectionWheelOnProjection(projectionState.selectedProjection, "auto");
+  }
+
+  setProjectionDebug(`setWheelOpen(${uiState.isProjectionWheelOpen})`);
+}
+
+function enableProjectionDebugProbe() {
+  if (!projectionSwitcher) {
+    return;
+  }
+
+  setProjectionDebug("probe ready");
+
+  const logRawEvent = (label, event) => {
+    const touch = "changedTouches" in event && event.changedTouches?.[0]
+      ? event.changedTouches[0]
+      : null;
+    const clientX = touch?.clientX ?? event.clientX ?? 0;
+    const clientY = touch?.clientY ?? event.clientY ?? 0;
+    appendProjectionDebug(
+      `${label} target=${getProjectionDebugTargetLabel(event.target)} ${Math.round(clientX)},${Math.round(clientY)}`,
+    );
+    if (clientX || clientY) {
+      logProjectionHitPoint(clientX, clientY, `${label}-hit`);
+    }
+  };
+
+  projectionSwitcher.addEventListener("touchstart", (event) => {
+    logRawEvent("raw touchstart", event);
+  }, { passive: true });
+
+  projectionSwitcher.addEventListener("touchend", (event) => {
+    logRawEvent("raw touchend", event);
+  }, { passive: true });
+
+  projectionSwitcher.addEventListener("pointerdown", (event) => {
+    logRawEvent("raw pointerdown", event);
+  }, { passive: true });
+
+  projectionSwitcher.addEventListener("pointerup", (event) => {
+    logRawEvent("raw pointerup", event);
+  }, { passive: true });
+
+  projectionSwitcher.addEventListener("click", (event) => {
+    logRawEvent("raw click", event);
+  }, { passive: true });
+}
 
 function syncProjectionSwitcher() {
   if (!projectionSwitcherTrack) {
@@ -334,11 +577,26 @@ function syncProjectionSwitcher() {
 
 function cycleProjection(direction = 1) {
   projectionState.selectedProjection = getAdjacentProjection(direction);
+  setProjectionWheelOpen(false);
   zoomState.scale = clampZoomScale(zoomState.scale);
   syncFlatProjectionPanOffset();
   syncProjectionPicker();
   syncProjectionSwitcher();
   scheduleViewStateSave();
+  handleResize();
+}
+
+function applyProjectionSelection(projectionKind, { closeWheel = true } = {}) {
+  projectionState.selectedProjection = normalizeProjectionSelection(projectionKind);
+  if (closeWheel) {
+    setProjectionWheelOpen(false);
+  }
+  syncProjectionPicker();
+  zoomState.scale = clampZoomScale(zoomState.scale);
+  syncFlatProjectionPanOffset();
+  syncProjectionSwitcher();
+  scheduleViewStateSave();
+  releaseLayerPanelFocusAfterPointerInteraction(projectionPickerButton);
   handleResize();
 }
 
@@ -529,6 +787,7 @@ function enableMonthMenuToggle() {
 }
 
 async function init() {
+  enableProjectionDebugProbe();
   layerBodyComposer.composeLayerBodies({
     getBodyElement: getLayerBodyElement,
     getRowElement: getLayerRowElement,
@@ -537,6 +796,7 @@ async function init() {
   loadStyleSettings();
   loadViewState();
   projectionState.selectedProjection = normalizeProjectionSelection(projectionState.selectedProjection);
+  enableProjectionSwitcher();
   syncMobileMonthChrome();
   syncStageChrome();
   configureCanvases();
@@ -571,6 +831,7 @@ async function init() {
   syncEmpireQualityUi();
   syncEmpireGroupUi();
   drawAtlas();
+  document.documentElement.classList.remove("has-boot-stage-poster");
   document.documentElement.classList.remove("is-mobile-default-globe");
   enableDragging();
   enableZoomControls();
@@ -582,7 +843,7 @@ async function init() {
   enableMonthMenuToggle();
   enableLayerControls();
   enableProjectionControls();
-  enableProjectionSwitcher();
+  enableProjectionWheel();
   enableTemporalControls();
   window.addEventListener("resize", handleResize);
 }
@@ -2460,24 +2721,180 @@ function enableProjectionControls() {
   });
 }
 
+function enableProjectionWheel() {
+  if (!projectionWheel || !projectionWheelWindow || !projectionSwitcher) {
+    return;
+  }
+
+  let switcherTapPointerId = null;
+  let switcherTapStartX = 0;
+  let switcherTapStartY = 0;
+  let wheelSettleTimer = null;
+  let wheelSelectionLock = false;
+
+  const normalizeProjectionWheelScrollPosition = () => {
+    if (!projectionWheelWindow) {
+      return;
+    }
+
+    const centeredItem = getCenteredProjectionWheelItem();
+    const centeredProjection = centeredItem?.dataset.projectionWheelValue;
+    if (!centeredProjection) {
+      return;
+    }
+
+    const centeredIndex = Number.parseInt(centeredItem.dataset.sequenceIndex || "", 10);
+    const targetIndex = getProjectionWheelMiddleCycleOffset() + getProjectionIndex(centeredProjection);
+    if (!Number.isFinite(centeredIndex) || Math.abs(centeredIndex - targetIndex) < PROJECTION_SEQUENCE.length) {
+      return;
+    }
+
+    projectionWheelWindow.scrollTop = getProjectionWheelScrollTopForIndex(targetIndex);
+    syncProjectionWheelHighlight();
+  };
+
+  const queueProjectionWheelSettle = () => {
+    if (wheelSettleTimer !== null) {
+      window.clearTimeout(wheelSettleTimer);
+    }
+
+    wheelSettleTimer = window.setTimeout(() => {
+      wheelSettleTimer = null;
+      const centeredProjection = getCenteredProjectionWheelItem()?.dataset.projectionWheelValue;
+      if (!centeredProjection) {
+        return;
+      }
+
+      wheelSelectionLock = true;
+      centerProjectionWheelOnProjection(centeredProjection, "smooth");
+      applyProjectionSelection(centeredProjection, { closeWheel: false });
+      window.setTimeout(() => {
+        wheelSelectionLock = false;
+        normalizeProjectionWheelScrollPosition();
+        syncProjectionWheelHighlight();
+      }, 160);
+    }, 100);
+  };
+
+  projectionSwitcher.addEventListener("pointerdown", (event) => {
+    switcherTapPointerId = event.pointerId;
+    switcherTapStartX = event.clientX;
+    switcherTapStartY = event.clientY;
+  });
+
+  const releaseProjectionSwitcherTap = (event) => {
+    if (switcherTapPointerId !== event.pointerId) {
+      return;
+    }
+
+    const delta = Math.hypot(event.clientX - switcherTapStartX, event.clientY - switcherTapStartY);
+    switcherTapPointerId = null;
+    if (delta > 12) {
+      return;
+    }
+
+    setProjectionDebug("direct switcher tap");
+    setProjectionWheelOpen(!uiState.isProjectionWheelOpen);
+  };
+
+  projectionSwitcher.addEventListener("pointerup", releaseProjectionSwitcherTap);
+  projectionSwitcher.addEventListener("pointercancel", (event) => {
+    if (switcherTapPointerId === event.pointerId) {
+      switcherTapPointerId = null;
+    }
+  });
+
+  projectionSwitcher.addEventListener("click", (event) => {
+    event.preventDefault();
+  });
+
+  projectionSwitcher.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    setProjectionDebug(`direct key ${event.key}`);
+    setProjectionWheelOpen(!uiState.isProjectionWheelOpen);
+  });
+
+  projectionWheelWindow.addEventListener("pointerdown", (event) => {
+    setProjectionDebug(`wheel pointerdown y=${Math.round(event.clientY)}`);
+    logProjectionHitPoint(event.clientX, event.clientY, "wheel-hit");
+  });
+
+  projectionWheelWindow.addEventListener("scroll", () => {
+    if (wheelSelectionLock) {
+      return;
+    }
+
+    syncProjectionWheelHighlight();
+    normalizeProjectionWheelScrollPosition();
+    setProjectionDebug(`wheel scroll top=${Math.round(projectionWheelWindow.scrollTop)}`);
+    queueProjectionWheelSettle();
+  });
+
+  projectionWheelItems.forEach((item) => {
+    item.addEventListener("click", () => {
+      const projectionKind = item.dataset.projectionWheelValue;
+      if (!projectionKind) {
+        return;
+      }
+
+      setProjectionDebug(`wheel tap select=${projectionKind}`);
+      centerProjectionWheelOnProjection(projectionKind, "smooth");
+      applyProjectionSelection(projectionKind, { closeWheel: false });
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!uiState.isProjectionWheelOpen) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+
+    if (projectionWheel.contains(target) || projectionSwitcher.contains(target)) {
+      return;
+    }
+
+    setProjectionDebug("outside close");
+    setProjectionWheelOpen(false);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && uiState.isProjectionWheelOpen) {
+      setProjectionDebug("escape close");
+      setProjectionWheelOpen(false);
+      projectionSwitcher.focus();
+    }
+  });
+}
+
 function setProjectionFromPickerValue(projectionKind) {
-  projectionState.selectedProjection = normalizeProjectionSelection(projectionKind);
-  syncProjectionPicker();
-  zoomState.scale = clampZoomScale(zoomState.scale);
-  syncFlatProjectionPanOffset();
-  syncProjectionSwitcher();
-  scheduleViewStateSave();
-  releaseLayerPanelFocusAfterPointerInteraction(projectionPickerButton);
-  handleResize();
+  applyProjectionSelection(projectionKind, { closeWheel: true });
 }
 
 function enableProjectionSwitcher() {
+  projectionSwitcherBound = true;
+  setProjectionDebug("switcher bound");
   projectionSwitcherController.bind({
     projectionSwitcher,
     projectionSwitcherTrack,
     renderProjectionSwitcher,
     getProjectionSlotWidth,
     cycleProjection,
+    debugLog: appendProjectionDebug,
+    setDebugMode: setProjectionDebugMode,
+    getDebugTargetLabel: getProjectionDebugTargetLabel,
+  });
+
+  projectionSwitcher?.addEventListener("click", (event) => {
+    appendProjectionDebug(`click target=${getProjectionDebugTargetLabel(event.target)}`);
+    logProjectionHitPoint(event.clientX, event.clientY, "click-hit");
   });
 }
 
@@ -2542,6 +2959,9 @@ function handleResize() {
     glRenderer?.setTexture(earthTextureImage);
   }
   drawAtlas();
+  if (uiState.isProjectionWheelOpen) {
+    syncProjectionWheelPosition();
+  }
 }
 
 init().catch((error) => {

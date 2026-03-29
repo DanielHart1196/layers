@@ -19,9 +19,7 @@ body {
 body {
   display: grid;
   place-items: center;
-  background:
-    radial-gradient(circle at top, rgba(42, 115, 134, 0.14), transparent 30%),
-    linear-gradient(180deg, #efe8dc 0%, var(--paper) 100%);
+  background: #000;
 }
 
 body.is-viewport-stage {
@@ -124,6 +122,7 @@ body.is-viewport-stage .app-shell {
   display: none;
 }
 
+.has-boot-stage-poster .boot-stage-poster,
 .is-mobile-default-globe .boot-stage-poster {
   position: absolute;
   inset: 0;
@@ -135,6 +134,10 @@ body.is-viewport-stage .app-shell {
   z-index: 3;
 }
 
+.has-boot-stage-poster .atlas-canvas,
+.has-boot-stage-poster .atlas-empire-canvas,
+.has-boot-stage-poster .atlas-overlay-canvas,
+.has-boot-stage-poster .atlas-overlay,
 .is-mobile-default-globe .atlas-canvas,
 .is-mobile-default-globe .atlas-empire-canvas,
 .is-mobile-default-globe .atlas-overlay-canvas,
@@ -480,6 +483,123 @@ body:not(.is-earth-enabled) .month-overlay {
 .projection-switcher:focus-visible {
   outline: 2px solid rgba(176, 108, 44, 0.85);
   outline-offset: 3px;
+}
+
+.projection-wheel {
+  position: fixed;
+  top: 74px;
+  left: 50%;
+  z-index: 9;
+  width: min(224px, calc(100vw - 28px));
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(-8px) scale(0.96);
+  transition:
+    opacity 160ms ease,
+    transform 180ms ease;
+}
+
+.projection-wheel.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.projection-wheel-window {
+  position: relative;
+  height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 30px;
+  padding: 87px 0;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 251, 245, 0.8);
+  box-shadow: 0 16px 32px rgba(7, 31, 43, 0.14);
+  backdrop-filter: blur(14px);
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+  scrollbar-width: none;
+}
+
+.projection-wheel-window::-webkit-scrollbar {
+  display: none;
+}
+
+.projection-wheel-window::before,
+.projection-wheel-window::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 44px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.projection-wheel-window::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(255, 251, 245, 0.92), rgba(255, 251, 245, 0));
+}
+
+.projection-wheel-window::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(255, 251, 245, 0.92), rgba(255, 251, 245, 0));
+}
+
+.projection-wheel-item {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(15, 36, 48, 0.86);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-align: center;
+  transform-origin: center center;
+  scroll-snap-align: center;
+  transition:
+    opacity 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.projection-wheel-item.is-center {
+  background: transparent;
+  color: rgba(15, 36, 48, 0.94);
+  box-shadow: none;
+}
+
+.projection-wheel-item:focus-visible {
+  outline: 2px solid rgba(176, 108, 44, 0.85);
+  outline-offset: 2px;
+}
+
+.projection-debug {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 12;
+  width: min(220px, calc(100vw - 128px));
+  max-width: calc(100vw - 128px);
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(18, 34, 44, 0.88);
+  color: rgba(255, 250, 242, 0.96);
+  font: 11px/1.28 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  pointer-events: none;
 }
 
 .mobile-refresh-menu-item {

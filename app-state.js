@@ -14,6 +14,7 @@
       isWaterColorPaletteOpen: false,
       isRomanEmpireFillColorPaletteOpen: false,
       isProjectionMenuOpen: false,
+      isProjectionWheelOpen: false,
       isProjectionSwitcherReady: false,
       isInteracting: false,
     };

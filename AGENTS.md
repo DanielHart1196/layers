@@ -50,5 +50,23 @@
 - When something becomes sideways-scrollable, clipped, misaligned, or visually overflows, first identify which child element is exceeding its intended bounds and fix that element or its layout contract.
 - If the quickest available fix is a containment hack rather than a structural fix, say so explicitly before applying it.
 - Temporary on-screen debug UI in `layers` should default to a floating top-left position and should avoid covering primary controls like refresh, layer menu, projection pill, or month controls unless the user asks otherwise.
+- Debug overlays in `layers` must be sized and positioned conservatively on first pass:
+  - cap width so they do not drift into the top-center or top-right control zones
+  - prefer a compact stacked block over a wide panel
+  - if the screen is small, bias further left/up and reduce lines before allowing overlap
+- When adding temporary on-screen debug in `layers`, the first version should be good enough to answer the most likely failure split immediately:
+  - is the current code actually running
+  - is the target receiving raw input events
+  - is state changing
+  - is the relevant UI element visible/open
+  - is another element on top of the target
+- Prefer one high-signal debug pass over multiple weak passes. Initial debug instrumentation for interaction bugs in `layers` should usually include:
+  - a visible version/runtime token
+  - binding mode or active controller path
+  - raw event logging at the target element
+  - current state/open flags
+  - geometry/visibility data for the relevant element
+  - hit-testing info such as `elementFromPoint(...)` when input interception is plausible
+- Seed temporary debug output immediately on init, not only after the first successful interaction, so refresh-time bugs can be diagnosed from the first screenshot.
 - When using temporary runtime debug instrumentation in `layers`, include a visible version token or other runtime identity marker if browser caching could cause mixed old/new JS to be mistaken for current behavior.
 - Before trusting a browser-based diagnosis in `layers`, verify that the page is actually running the intended current code when cache inconsistency is plausible.
