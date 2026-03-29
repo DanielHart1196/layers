@@ -23,74 +23,12 @@ const earthGroupButton = document.getElementById("earthGroupButton");
 const earthGroupToggle = document.getElementById("earthGroupToggle");
 const graticuleLayerGroup = document.getElementById("graticuleLayerGroup");
 const graticuleGroupToggle = document.getElementById("graticuleGroupToggle");
-const graticuleWidthInput = document.getElementById("graticuleWidthInput");
-const graticuleWidthValue = document.getElementById("graticuleWidthValue");
-const graticuleOpacityInput = document.getElementById("graticuleOpacityInput");
-const graticuleColorInput = document.getElementById("graticuleColorInput");
-const graticuleColorValue = document.getElementById("graticuleColorValue");
-const graticuleColorInlineDot = document.getElementById("graticuleColorInlineDot");
-const graticuleColorSwatchButton = document.getElementById("graticuleColorSwatchButton");
-const graticuleColorCustoms = document.getElementById("graticuleColorCustoms");
-const graticuleColorPresetButtons = Array.from(document.querySelectorAll("[data-graticule-color]"));
-const graticuleColorPanel = document.getElementById("graticuleColorPanel");
-const graticuleColorField = document.getElementById("graticuleColorField");
-const graticuleColorFieldHandle = document.getElementById("graticuleColorFieldHandle");
-const graticuleColorHueSlider = document.getElementById("graticuleColorHueSlider");
-const graticuleColorHueHandle = document.getElementById("graticuleColorHueHandle");
-const graticuleColorAddButton = document.getElementById("graticuleColorAddButton");
 const borderLayerGroup = document.getElementById("borderLayerGroup");
 const borderGroupToggle = document.getElementById("borderGroupToggle");
 const borderWidthInput = document.getElementById("borderWidthInput");
 const borderWidthValue = document.getElementById("borderWidthValue");
 const borderOpacityInput = document.getElementById("borderOpacityInput");
-const borderColorInput = document.getElementById("borderColorInput");
-const borderColorValue = document.getElementById("borderColorValue");
-const borderColorInlineDot = document.getElementById("borderColorInlineDot");
-const borderColorSwatchButton = document.getElementById("borderColorSwatchButton");
-const borderColorCustoms = document.getElementById("borderColorCustoms");
-const borderColorPresetButtons = Array.from(document.querySelectorAll("[data-border-color]"));
-const borderColorPanel = document.getElementById("borderColorPanel");
-const borderColorField = document.getElementById("borderColorField");
-const borderColorFieldHandle = document.getElementById("borderColorFieldHandle");
-const borderColorHueSlider = document.getElementById("borderColorHueSlider");
-const borderColorHueHandle = document.getElementById("borderColorHueHandle");
-const borderColorAddButton = document.getElementById("borderColorAddButton");
-const romanEmpireFillColorInput = document.getElementById("romanEmpireFillColorInput");
-const romanEmpireFillColorValue = document.getElementById("romanEmpireFillColorValue");
-const romanEmpireFillColorInlineDot = document.getElementById("romanEmpireFillColorInlineDot");
-const romanEmpireFillColorSwatchButton = document.getElementById("romanEmpireFillColorSwatchButton");
-const romanEmpireFillColorCustoms = document.getElementById("romanEmpireFillColorCustoms");
-const romanEmpireFillColorPresetButtons = Array.from(document.querySelectorAll("[data-roman-empire-fill-color]"));
-const romanEmpireFillColorPanel = document.getElementById("romanEmpireFillColorPanel");
-const romanEmpireFillColorField = document.getElementById("romanEmpireFillColorField");
-const romanEmpireFillColorFieldHandle = document.getElementById("romanEmpireFillColorFieldHandle");
-const romanEmpireFillColorHueSlider = document.getElementById("romanEmpireFillColorHueSlider");
-const romanEmpireFillColorHueHandle = document.getElementById("romanEmpireFillColorHueHandle");
-const romanEmpireFillColorAddButton = document.getElementById("romanEmpireFillColorAddButton");
-const landColorInput = document.getElementById("landColorInput");
-const landColorValue = document.getElementById("landColorValue");
-const landColorInlineDot = document.getElementById("landColorInlineDot");
-const landColorSwatchButton = document.getElementById("landColorSwatchButton");
-const landColorCustoms = document.getElementById("landColorCustoms");
-const landColorPresetButtons = Array.from(document.querySelectorAll("[data-land-color]"));
-const landColorPanel = document.getElementById("landColorPanel");
-const landColorField = document.getElementById("landColorField");
-const landColorFieldHandle = document.getElementById("landColorFieldHandle");
-const landColorHueSlider = document.getElementById("landColorHueSlider");
-const landColorHueHandle = document.getElementById("landColorHueHandle");
-const landColorAddButton = document.getElementById("landColorAddButton");
-const waterColorInput = document.getElementById("waterColorInput");
-const waterColorValue = document.getElementById("waterColorValue");
-const waterColorInlineDot = document.getElementById("waterColorInlineDot");
-const waterColorSwatchButton = document.getElementById("waterColorSwatchButton");
-const waterColorCustoms = document.getElementById("waterColorCustoms");
-const waterColorPresetButtons = Array.from(document.querySelectorAll("[data-water-color]"));
-const waterColorPanel = document.getElementById("waterColorPanel");
-const waterColorField = document.getElementById("waterColorField");
-const waterColorFieldHandle = document.getElementById("waterColorFieldHandle");
-const waterColorHueSlider = document.getElementById("waterColorHueSlider");
-const waterColorHueHandle = document.getElementById("waterColorHueHandle");
-const waterColorAddButton = document.getElementById("waterColorAddButton");
+const borderOpacityValue = document.getElementById("borderOpacityValue");
 const mobileRefresh = document.getElementById("mobileRefresh");
 const mobileRefreshButton = document.getElementById("mobileRefreshButton");
 const mobileRefreshMenu = document.getElementById("mobileRefreshMenu");
@@ -131,6 +69,12 @@ const {
   createDefaultGraticuleStyleState,
   createDefaultLayerState,
   empireQualityLevels,
+  getColorControlDefinition,
+  getColorControlDefinitions,
+  getLayerRows,
+  getSliderControlDefinition,
+  getSliderControlDefinitions,
+  resolveStyleScope,
 } = window.AtlasLayersRegistry;
 const { createAppState } = window.AtlasAppState;
 const {
@@ -181,7 +125,6 @@ let layerScrollbarFadeTimer = null;
 let expandableLayoutFrame = null;
 let expandableLayoutSettleTimer = null;
 let layerPanelSavedScrollTop = 0;
-const SHARED_CUSTOM_COLORS_STORAGE_KEY = "atlas.colors.customColors";
 const LEGACY_CUSTOM_COLOR_STORAGE_KEYS = [
   "atlas.border.customColors",
   "atlas.graticule.customColors",
@@ -718,6 +661,8 @@ async function init() {
   enableMonthControlIsolation();
   enableMonthMenuToggle();
   enableLayerControls();
+  enableSharedColorControls();
+  enableSharedSliderControls();
   enableProjectionControls();
   enableProjectionWheel();
   enableTemporalControls();
@@ -984,14 +929,7 @@ function getEmpireRenderKey(scenes) {
 }
 
 function syncEmpireQualityUi() {
-  const quality = empireQualityState.romanComparison;
-  const qualityIndex = Math.max(0, EMPIRE_QUALITY_LEVELS.indexOf(quality));
-  if (empireQualityInput) {
-    empireQualityInput.value = String(qualityIndex);
-  }
-  if (empireQualityValue) {
-    empireQualityValue.textContent = quality === "low" ? "Low" : quality === "high" ? "High" : "Medium";
-  }
+  syncSliderControlUi("empireQuality");
 }
 
 function configureEmpireCanvas(viewDimensions, targetPixelRatio) {
@@ -1345,18 +1283,13 @@ function enableLayerControls() {
       graticule: graticuleGroupToggle,
       romanComparison: romanEmpireGroupToggle,
     },
-    empireQualityInput,
     layerState,
     empireLayerState,
-    empireQualityState,
     uiState,
-    clamp,
-    empireQualityLevels: EMPIRE_QUALITY_LEVELS,
     hasAnyEmpireChildEnabled,
     toggleLayerGroupOpen,
     toggleLayerEnabled,
     toggleEmpireSublayer,
-    setAllEmpireQuality,
     syncEmpireGroupUi,
     syncBorderGroupUi,
     syncGraticuleGroupUi,
@@ -1367,20 +1300,9 @@ function enableLayerControls() {
     scheduleViewStateSave,
     drawForLayerToggle,
     drawForEmpireSublayerToggle,
-    drawForEmpireQuality,
     releaseLayerPanelFocusAfterPointerInteraction,
     syncLayerPanelScrollbar,
     showLayerPanelScrollbarTemporarily,
-    syncEmpireQualityUi,
-    setEmpireQualityPreviewState: (isPreviewing) => {
-      setSliderPreviewState(empireQualityInput, isPreviewing);
-    },
-    invalidateEmpireRenderCache: () => {
-      lastEmpireRenderKey = null;
-    },
-    enableSharedColorControl,
-    enableGraticuleStyleControls,
-    enableBorderStyleControls,
   });
 }
 
@@ -1599,13 +1521,7 @@ function enableExpandableLayoutAutoSync() {
 }
 
 function syncColorControlParentSections(controlId) {
-  if (
-    controlId === "border"
-    || controlId === "graticule"
-    || controlId === "land"
-    || controlId === "water"
-    || controlId === "romanEmpireFill"
-  ) {
+  if (getColorControlDefinition(controlId)) {
     scheduleExpandableLayoutSync();
   }
 }
@@ -1625,6 +1541,7 @@ function syncEmpireGroupUi() {
     isEmpireParentActive,
     isEmpireChildDisplayed,
     scheduleExpandableLayoutSync,
+    syncSliderControlsForLayer,
     syncColorControlUi,
   });
 }
@@ -1634,27 +1551,101 @@ function formatBorderWidthLabel(width) {
   return `${width.toFixed(1)} px`;
 }
 
+function formatOpacityLabel(percent) {
+  return `${Math.round(percent)}%`;
+}
+
+function getSliderControlElements(controlId) {
+  const definition = getSliderControlDefinition(controlId);
+  if (!definition) {
+    return null;
+  }
+
+  return {
+    definition,
+    input: definition.inputId ? document.getElementById(definition.inputId) : null,
+    value: definition.valueElementId ? document.getElementById(definition.valueElementId) : null,
+  };
+}
+
+function getSliderDisplayValue(controlId) {
+  const definition = getSliderControlDefinition(controlId);
+  const binding = definition?.binding;
+  if (!binding) {
+    return null;
+  }
+
+  if (binding.kind === "empireQualityAll") {
+    return empireQualityState.romanComparison;
+  }
+
+  const scopeTarget = resolveStyleScope(binding.scope, {
+    borderStyleState,
+    graticuleStyleState,
+    earthStyleState,
+    empireStyleState,
+  });
+  return scopeTarget ? scopeTarget[binding.key] : null;
+}
+
+function formatSliderControlValue(controlId, value) {
+  const definition = getSliderControlDefinition(controlId);
+  switch (definition?.valueFormat) {
+    case "widthPx":
+      return formatBorderWidthLabel(value);
+    case "percent":
+      return formatOpacityLabel(value);
+    case "qualityLabel":
+      return value === "low" ? "Low" : value === "high" ? "High" : "Medium";
+    default:
+      return value == null ? "" : String(value);
+  }
+}
+
+function syncSliderControlUi(controlId) {
+  const elements = getSliderControlElements(controlId);
+  const definition = elements?.definition;
+  const binding = definition?.binding;
+  if (!definition || !binding || !(elements.input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  let rawValue = getSliderDisplayValue(controlId);
+  if (binding.kind === "empireQualityAll") {
+    const qualityIndex = Math.max(0, EMPIRE_QUALITY_LEVELS.indexOf(rawValue));
+    elements.input.value = String(qualityIndex);
+    if (elements.value) {
+      elements.value.textContent = formatSliderControlValue(controlId, rawValue);
+    }
+    return;
+  }
+
+  if (binding.kind === "percent") {
+    rawValue = clamp(rawValue, 0, 1) * 100;
+    elements.input.value = String(Math.round(rawValue));
+  } else {
+    elements.input.value = String(rawValue);
+  }
+
+  if (elements.value) {
+    elements.value.textContent = formatSliderControlValue(controlId, rawValue);
+  }
+}
+
+function syncSliderControlsForLayer(layerId) {
+  getLayerRows(layerId)
+    .filter((row) => row.type === "slider" && row.controlId)
+    .forEach((row) => {
+      syncSliderControlUi(row.controlId);
+    });
+}
+
 function clampOpacityPercent(value) {
   return clamp(Number.parseInt(String(value ?? "0"), 10) || 0, 0, 100);
 }
 
-function getRenderPassesForColorControl(controlId) {
-  switch (controlId) {
-    case "land":
-    case "water":
-      return ["overlay", "poster"];
-    case "romanEmpireFill":
-      return ["empire", "poster"];
-    case "border":
-    case "graticule":
-      return ["overlay", "poster"];
-    default:
-      return ["all"];
-  }
-}
-
 function drawForColorControl(controlId) {
-  drawAtlas(getRenderPassesForColorControl(controlId));
+  drawAtlas(getColorControlDefinition(controlId)?.renderPasses ?? ["all"]);
 }
 
 function drawForBorderStyle() {
@@ -1663,6 +1654,10 @@ function drawForBorderStyle() {
 
 function drawForGraticuleStyle() {
   drawAtlas(["overlay", "poster"]);
+}
+
+function drawForEmpireStyle() {
+  drawAtlas(["empire", "poster"]);
 }
 
 function drawForLayerToggle(layerId) {
@@ -1725,7 +1720,8 @@ function loadStoredCustomColors(storageKey) {
 }
 
 function loadSharedCustomColors() {
-  const primary = loadStoredCustomColors(SHARED_CUSTOM_COLORS_STORAGE_KEY);
+  const primaryStorageKey = getColorControlDefinition("border")?.storageKey ?? "atlas.colors.customColors";
+  const primary = loadStoredCustomColors(primaryStorageKey);
   if (primary.length > 0) {
     return primary;
   }
@@ -1761,6 +1757,8 @@ function loadStyleSettings() {
     setColorControlValue,
     borderStyleState,
     graticuleStyleState,
+    earthStyleState,
+    empireStyleState,
   });
 }
 
@@ -1882,138 +1880,71 @@ function hexToHsv(hexColor) {
 }
 
 function getColorControlConfig(controlId) {
-  const configs = {
-    border: {
-      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
-      datasetKey: "borderColor",
-      paletteOpenKey: "isBorderColorPaletteOpen",
-      input: borderColorInput,
-      value: borderColorValue,
-      inlineDot: borderColorInlineDot,
-      swatchButton: borderColorSwatchButton,
-      customs: borderColorCustoms,
-      presetButtons: borderColorPresetButtons,
-      panel: borderColorPanel,
-      field: borderColorField,
-      fieldHandle: borderColorFieldHandle,
-      hueSlider: borderColorHueSlider,
-      hueHandle: borderColorHueHandle,
-      addButton: borderColorAddButton,
-    },
-    graticule: {
-      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
-      datasetKey: "graticuleColor",
-      paletteOpenKey: "isGraticuleColorPaletteOpen",
-      input: graticuleColorInput,
-      value: graticuleColorValue,
-      inlineDot: graticuleColorInlineDot,
-      swatchButton: graticuleColorSwatchButton,
-      customs: graticuleColorCustoms,
-      presetButtons: graticuleColorPresetButtons,
-      panel: graticuleColorPanel,
-      field: graticuleColorField,
-      fieldHandle: graticuleColorFieldHandle,
-      hueSlider: graticuleColorHueSlider,
-      hueHandle: graticuleColorHueHandle,
-      addButton: graticuleColorAddButton,
-    },
-    land: {
-      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
-      datasetKey: "landColor",
-      paletteOpenKey: "isLandColorPaletteOpen",
-      input: landColorInput,
-      value: landColorValue,
-      inlineDot: landColorInlineDot,
-      swatchButton: landColorSwatchButton,
-      customs: landColorCustoms,
-      presetButtons: landColorPresetButtons,
-      panel: landColorPanel,
-      field: landColorField,
-      fieldHandle: landColorFieldHandle,
-      hueSlider: landColorHueSlider,
-      hueHandle: landColorHueHandle,
-      addButton: landColorAddButton,
-    },
-    water: {
-      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
-      datasetKey: "waterColor",
-      paletteOpenKey: "isWaterColorPaletteOpen",
-      input: waterColorInput,
-      value: waterColorValue,
-      inlineDot: waterColorInlineDot,
-      swatchButton: waterColorSwatchButton,
-      customs: waterColorCustoms,
-      presetButtons: waterColorPresetButtons,
-      panel: waterColorPanel,
-      field: waterColorField,
-      fieldHandle: waterColorFieldHandle,
-      hueSlider: waterColorHueSlider,
-      hueHandle: waterColorHueHandle,
-      addButton: waterColorAddButton,
-    },
-    romanEmpireFill: {
-      storageKey: SHARED_CUSTOM_COLORS_STORAGE_KEY,
-      datasetKey: "romanEmpireFillColor",
-      paletteOpenKey: "isRomanEmpireFillColorPaletteOpen",
-      input: romanEmpireFillColorInput,
-      value: romanEmpireFillColorValue,
-      inlineDot: romanEmpireFillColorInlineDot,
-      swatchButton: romanEmpireFillColorSwatchButton,
-      customs: romanEmpireFillColorCustoms,
-      presetButtons: romanEmpireFillColorPresetButtons,
-      panel: romanEmpireFillColorPanel,
-      field: romanEmpireFillColorField,
-      fieldHandle: romanEmpireFillColorFieldHandle,
-      hueSlider: romanEmpireFillColorHueSlider,
-      hueHandle: romanEmpireFillColorHueHandle,
-      addButton: romanEmpireFillColorAddButton,
-    },
+  const definition = getColorControlDefinition(controlId);
+  if (!definition) {
+    return null;
+  }
+
+  return {
+    ...definition,
+    input: definition.inputId ? document.getElementById(definition.inputId) : null,
+    value: definition.valueId ? document.getElementById(definition.valueId) : null,
+    inlineDot: definition.inlineDotId ? document.getElementById(definition.inlineDotId) : null,
+    swatchButton: definition.swatchButtonId ? document.getElementById(definition.swatchButtonId) : null,
+    customs: definition.customsId ? document.getElementById(definition.customsId) : null,
+    presetButtons: definition.presetSelector ? Array.from(document.querySelectorAll(definition.presetSelector)) : [],
+    panel: definition.panelId ? document.getElementById(definition.panelId) : null,
+    field: definition.fieldId ? document.getElementById(definition.fieldId) : null,
+    fieldHandle: definition.fieldHandleId ? document.getElementById(definition.fieldHandleId) : null,
+    hueSlider: definition.hueSliderId ? document.getElementById(definition.hueSliderId) : null,
+    hueHandle: definition.hueHandleId ? document.getElementById(definition.hueHandleId) : null,
+    addButton: definition.addButtonId ? document.getElementById(definition.addButtonId) : null,
   };
-  return configs[controlId];
 }
 
 function getColorStyleState(controlId) {
-  if (controlId === "border") {
-    return borderStyleState;
+  const definition = getColorControlDefinition(controlId);
+  const binding = definition?.styleBinding;
+  if (!binding) {
+    return null;
   }
-  if (controlId === "graticule") {
-    return graticuleStyleState;
+
+  const scopeTarget = resolveStyleScope(binding.scope, {
+    borderStyleState,
+    graticuleStyleState,
+    earthStyleState,
+    empireStyleState,
+  });
+  if (!scopeTarget) {
+    return null;
   }
-  if (controlId === "land") {
-    return earthStyleState.land;
-  }
-  if (controlId === "water") {
-    return earthStyleState.water;
-  }
-  if (controlId === "romanEmpireFill") {
-    return {
-      get color() {
-        return empireStyleState.romanComparison.fillColor;
-      },
-      set color(nextColor) {
-        empireStyleState.romanComparison.fillColor = nextColor;
-      },
-      get hue() {
-        return empireStyleState.romanComparison.fillHue;
-      },
-      set hue(nextHue) {
-        empireStyleState.romanComparison.fillHue = nextHue;
-      },
-      get saturation() {
-        return empireStyleState.romanComparison.fillSaturation;
-      },
-      set saturation(nextSaturation) {
-        empireStyleState.romanComparison.fillSaturation = nextSaturation;
-      },
-      get value() {
-        return empireStyleState.romanComparison.fillValue;
-      },
-      set value(nextValue) {
-        empireStyleState.romanComparison.fillValue = nextValue;
-      },
-    };
-  }
-  return null;
+
+  return {
+    get color() {
+      return scopeTarget[binding.colorKey];
+    },
+    set color(nextColor) {
+      scopeTarget[binding.colorKey] = nextColor;
+    },
+    get hue() {
+      return scopeTarget[binding.hueKey];
+    },
+    set hue(nextHue) {
+      scopeTarget[binding.hueKey] = nextHue;
+    },
+    get saturation() {
+      return scopeTarget[binding.saturationKey];
+    },
+    set saturation(nextSaturation) {
+      scopeTarget[binding.saturationKey] = nextSaturation;
+    },
+    get value() {
+      return scopeTarget[binding.valueKey];
+    },
+    set value(nextValue) {
+      scopeTarget[binding.valueKey] = nextValue;
+    },
+  };
 }
 
 function getCustomColorList(controlId) {
@@ -2033,7 +1964,7 @@ function saveCustomColors(controlId) {
 }
 
 function renderAllCustomColors() {
-  ["border", "graticule", "land", "water", "romanEmpireFill"].forEach((controlId) => {
+  Object.keys(getColorControlDefinitions()).forEach((controlId) => {
     renderCustomColors(controlId);
   });
 }
@@ -2135,24 +2066,11 @@ function syncBorderGroupUi() {
   layerPanelUi.syncBorderGroupUi({
     layerState,
     uiState,
-    borderStyleState,
     borderLayerGroup,
     borderGroupToggle,
     bordersButton: document.querySelector('[data-layer-id="borders"]'),
-    borderWidthInput,
-    borderWidthValue,
-    borderOpacityInput,
-    borderColorInput,
-    borderColorValue,
-    borderColorInlineDot,
-    borderColorFieldHandle,
-    borderColorField,
-    borderColorHueHandle,
-    borderColorHueSlider,
-    formatBorderWidthLabel,
-    clamp,
-    hsvToHex,
     scheduleExpandableLayoutSync,
+    syncSliderControlsForLayer,
     syncColorControlUi,
   });
 }
@@ -2161,16 +2079,11 @@ function syncGraticuleGroupUi() {
   layerPanelUi.syncGraticuleGroupUi({
     layerState,
     uiState,
-    graticuleStyleState,
     graticuleLayerGroup,
     graticuleGroupToggle,
     graticuleButton: document.querySelector('#graticuleLayerGroup [data-layer-id="graticule"]'),
-    graticuleWidthInput,
-    graticuleWidthValue,
-    graticuleOpacityInput,
-    formatBorderWidthLabel,
-    clamp,
     scheduleExpandableLayoutSync,
+    syncSliderControlsForLayer,
     syncColorControlUi,
   });
 }
@@ -2207,15 +2120,6 @@ function setColorControlPreviewState(controlId, previewTarget) {
   layerPanel?.classList.toggle("is-color-previewing", isPreviewing);
 }
 
-const sliderPreviewDebugHistory = [];
-
-function logSliderPreviewDebug(message) {
-  sliderPreviewDebugHistory.push(message);
-  if (sliderPreviewDebugHistory.length > 10) {
-    sliderPreviewDebugHistory.shift();
-  }
-}
-
 function clearSliderPreviewState() {
   layerPanel?.querySelectorAll(".is-previewing-slider").forEach((element) => {
     element.classList.remove("is-previewing-slider");
@@ -2245,12 +2149,15 @@ function setSliderPreviewState(inputElement, isPreviewing) {
     sliderGroup?.classList.add("is-previewing-slider-group");
     layerPanel?.classList.add("is-slider-previewing");
   }
-  logSliderPreviewDebug(
-    `${isPreviewing ? "start" : "end"} ${inputElement?.id || "unknown"} | row=${sliderRow?.dataset.layerRowKey || "none"} | body=${sliderBody?.dataset.layerBodyFor || "none"} | panel=${layerPanel?.classList.contains("is-slider-previewing") ? "preview" : "normal"}`,
-  );
 }
 
 function enableSharedColorControl(controlId) {
+  const runtime = colorControlRuntimeState[controlId];
+  if (!runtime || runtime.isBound) {
+    return;
+  }
+
+  runtime.isBound = true;
   bindSharedColorControl(controlId, {
     getConfig: getColorControlConfig,
     getRuntime: (id) => colorControlRuntimeState[id],
@@ -2281,112 +2188,103 @@ function enableSharedColorControl(controlId) {
   });
 }
 
-function enableBorderStyleControls() {
-  enableSharedColorControl("border");
-
-  borderWidthInput?.addEventListener("input", () => {
-    const nextWidth = Number.parseFloat(borderWidthInput.value);
-    if (!Number.isFinite(nextWidth)) {
-      return;
-    }
-
-    borderStyleState.width = nextWidth;
-    saveStyleSettings();
-    syncBorderGroupUi();
-    drawForBorderStyle();
+function enableSharedColorControls() {
+  Object.keys(getColorControlDefinitions()).forEach((controlId) => {
+    enableSharedColorControl(controlId);
   });
-
-  borderWidthInput?.addEventListener("pointerdown", () => {
-    setSliderPreviewState(borderWidthInput, true);
-  });
-
-  const endBorderWidthPreview = () => {
-    setSliderPreviewState(borderWidthInput, false);
-  };
-
-  borderWidthInput?.addEventListener("pointerup", endBorderWidthPreview);
-  borderWidthInput?.addEventListener("pointercancel", endBorderWidthPreview);
-  borderWidthInput?.addEventListener("touchend", endBorderWidthPreview, { passive: true });
-  borderWidthInput?.addEventListener("touchcancel", endBorderWidthPreview, { passive: true });
-
-  const applyBorderOpacityPercent = (value) => {
-    const nextPercent = clampOpacityPercent(value);
-    borderStyleState.opacity = nextPercent / 100;
-    saveStyleSettings();
-    syncBorderGroupUi();
-    drawForBorderStyle();
-  };
-
-  borderOpacityInput?.addEventListener("input", () => {
-    applyBorderOpacityPercent(borderOpacityInput.value);
-  });
-
-  borderOpacityInput?.addEventListener("pointerdown", () => {
-    setSliderPreviewState(borderOpacityInput, true);
-  });
-
-  const endOpacityPreview = () => {
-    setSliderPreviewState(borderOpacityInput, false);
-  };
-
-  borderOpacityInput?.addEventListener("pointerup", endOpacityPreview);
-  borderOpacityInput?.addEventListener("pointercancel", endOpacityPreview);
-  borderOpacityInput?.addEventListener("touchend", endOpacityPreview, { passive: true });
-  borderOpacityInput?.addEventListener("touchcancel", endOpacityPreview, { passive: true });
 }
 
-function enableGraticuleStyleControls() {
-  enableSharedColorControl("graticule");
+function getSliderControlBehavior(controlId) {
+  const elements = getSliderControlElements(controlId);
+  const definition = elements?.definition;
+  const binding = definition?.binding;
+  if (!definition || !binding) {
+    return null;
+  }
 
-  graticuleWidthInput?.addEventListener("input", () => {
-    const nextWidth = Number.parseFloat(graticuleWidthInput.value);
-    if (!Number.isFinite(nextWidth)) {
-      return;
-    }
+  return {
+    input: elements.input,
+    applyValue: (value) => {
+      if (binding.kind === "empireQualityAll") {
+        const nextIndex = clamp(Number.parseInt(value, 10) || 0, 0, EMPIRE_QUALITY_LEVELS.length - 1);
+        setAllEmpireQuality(empireQualityState, EMPIRE_QUALITY_LEVELS[nextIndex]);
+        syncEmpireQualityUi();
+        lastEmpireRenderKey = null;
+        scheduleViewStateSave();
+        drawAtlas(definition.renderPasses ?? ["empire", "poster"]);
+        return;
+      }
 
-    graticuleStyleState.width = nextWidth;
-    saveStyleSettings();
-    syncGraticuleGroupUi();
-    drawForGraticuleStyle();
+      const scopeTarget = resolveStyleScope(binding.scope, {
+        borderStyleState,
+        graticuleStyleState,
+        earthStyleState,
+        empireStyleState,
+      });
+      if (!scopeTarget) {
+        return;
+      }
+
+      if (binding.kind === "percent") {
+        scopeTarget[binding.key] = clampOpacityPercent(value) / 100;
+      } else if (binding.kind === "float") {
+        const nextValue = Number.parseFloat(value);
+        if (!Number.isFinite(nextValue)) {
+          return;
+        }
+        scopeTarget[binding.key] = nextValue;
+      } else {
+        return;
+      }
+
+      saveStyleSettings();
+      switch (definition.uiSync) {
+        case "border":
+          syncBorderGroupUi();
+          break;
+        case "graticule":
+          syncGraticuleGroupUi();
+          break;
+        case "empire":
+          syncEmpireGroupUi();
+          break;
+        default:
+          break;
+      }
+      drawAtlas(definition.renderPasses ?? ["all"]);
+    },
+  };
+}
+
+function bindSharedSliderControl(controlId) {
+  const behavior = getSliderControlBehavior(controlId);
+  const input = behavior?.input;
+  if (!(input instanceof HTMLInputElement) || input.dataset.sliderBound === "true") {
+    return;
+  }
+
+  input.dataset.sliderBound = "true";
+  input.addEventListener("input", () => {
+    behavior.applyValue(input.value);
+  });
+  input.addEventListener("pointerdown", () => {
+    setSliderPreviewState(input, true);
   });
 
-  graticuleWidthInput?.addEventListener("pointerdown", () => {
-    setSliderPreviewState(graticuleWidthInput, true);
-  });
-
-  const endGraticuleWidthPreview = () => {
-    setSliderPreviewState(graticuleWidthInput, false);
+  const endPreview = () => {
+    setSliderPreviewState(input, false);
   };
 
-  graticuleWidthInput?.addEventListener("pointerup", endGraticuleWidthPreview);
-  graticuleWidthInput?.addEventListener("pointercancel", endGraticuleWidthPreview);
-  graticuleWidthInput?.addEventListener("touchend", endGraticuleWidthPreview, { passive: true });
-  graticuleWidthInput?.addEventListener("touchcancel", endGraticuleWidthPreview, { passive: true });
+  input.addEventListener("pointerup", endPreview);
+  input.addEventListener("pointercancel", endPreview);
+  input.addEventListener("touchend", endPreview, { passive: true });
+  input.addEventListener("touchcancel", endPreview, { passive: true });
+}
 
-  const applyGraticuleOpacityPercent = (value) => {
-    const nextPercent = clampOpacityPercent(value);
-    graticuleStyleState.opacity = nextPercent / 100;
-    saveStyleSettings();
-    syncGraticuleGroupUi();
-    drawForGraticuleStyle();
-  };
-
-  graticuleOpacityInput?.addEventListener("input", () => {
-    applyGraticuleOpacityPercent(graticuleOpacityInput.value);
+function enableSharedSliderControls() {
+  Object.keys(getSliderControlDefinitions()).forEach((controlId) => {
+    bindSharedSliderControl(controlId);
   });
-
-  graticuleOpacityInput?.addEventListener("pointerdown", () => {
-    setSliderPreviewState(graticuleOpacityInput, true);
-  });
-
-  const endGraticuleOpacityPreview = () => {
-    setSliderPreviewState(graticuleOpacityInput, false);
-  };
-
-  graticuleOpacityInput?.addEventListener("pointerup", endGraticuleOpacityPreview);
-  graticuleOpacityInput?.addEventListener("pointercancel", endGraticuleOpacityPreview);
-  graticuleOpacityInput?.addEventListener("touchend", endGraticuleOpacityPreview, { passive: true });
-  graticuleOpacityInput?.addEventListener("touchcancel", endGraticuleOpacityPreview, { passive: true });
 }
 
 function clearRefreshMenuPressTimer() {

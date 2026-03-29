@@ -1,6 +1,8 @@
 (() => {
+  const { getColorControlDefinitions } = window.AtlasLayersRegistry;
+
   function createDefaultUiState() {
-    return {
+    const uiState = {
       isLayerPanelOpen: false,
       isMonthOverlayOpen: false,
       isEarthGroupOpen: false,
@@ -8,21 +10,24 @@
       isEmpireGroupOpen: false,
       isRomanEmpireGroupOpen: false,
       isBorderGroupOpen: false,
-      isBorderColorPaletteOpen: false,
-      isGraticuleColorPaletteOpen: false,
-      isLandColorPaletteOpen: false,
-      isWaterColorPaletteOpen: false,
-      isRomanEmpireFillColorPaletteOpen: false,
       isProjectionMenuOpen: false,
       isProjectionWheelOpen: false,
       isProjectionSwitcherReady: false,
       isInteracting: false,
     };
+
+    Object.values(getColorControlDefinitions()).forEach((definition) => {
+      if (definition?.paletteOpenKey) {
+        uiState[definition.paletteOpenKey] = false;
+      }
+    });
+
+    return uiState;
   }
 
   function createDefaultColorControlRuntimeState() {
-    return {
-      border: {
+    return Object.fromEntries(
+      Object.keys(getColorControlDefinitions()).map((controlId) => [controlId, {
         fieldDragState: null,
         hueDragState: null,
         duplicateFlashTimer: null,
@@ -30,44 +35,8 @@
         removePressTimer: null,
         removeTarget: null,
         longPressTriggered: false,
-      },
-      graticule: {
-        fieldDragState: null,
-        hueDragState: null,
-        duplicateFlashTimer: null,
-        duplicateFlashButton: null,
-        removePressTimer: null,
-        removeTarget: null,
-        longPressTriggered: false,
-      },
-      land: {
-        fieldDragState: null,
-        hueDragState: null,
-        duplicateFlashTimer: null,
-        duplicateFlashButton: null,
-        removePressTimer: null,
-        removeTarget: null,
-        longPressTriggered: false,
-      },
-      water: {
-        fieldDragState: null,
-        hueDragState: null,
-        duplicateFlashTimer: null,
-        duplicateFlashButton: null,
-        removePressTimer: null,
-        removeTarget: null,
-        longPressTriggered: false,
-      },
-      romanEmpireFill: {
-        fieldDragState: null,
-        hueDragState: null,
-        duplicateFlashTimer: null,
-        duplicateFlashButton: null,
-        removePressTimer: null,
-        removeTarget: null,
-        longPressTriggered: false,
-      },
-    };
+      }]),
+    );
   }
 
   function createAppState({

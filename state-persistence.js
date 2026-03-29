@@ -1,4 +1,23 @@
 (() => {
+  const {
+    getColorControlDefinitions,
+    getSliderControlDefinitions,
+    resolveStyleScope,
+  } = window.AtlasLayersRegistry;
+
+  function ensureScopeObject(root, scope) {
+    return scope.split(".").reduce((current, segment) => {
+      if (!current[segment] || typeof current[segment] !== "object") {
+        current[segment] = {};
+      }
+      return current[segment];
+    }, root);
+  }
+
+  function getScopeObject(root, scope) {
+    return scope.split(".").reduce((current, segment) => current?.[segment], root) ?? null;
+  }
+
   function saveStyleSettings({
     storage,
     storageKey,
@@ -8,33 +27,45 @@
     empireStyleState,
   }) {
     try {
+      const payload = {};
+
+      Object.values(getColorControlDefinitions()).forEach((definition) => {
+        const binding = definition?.styleBinding;
+        if (!binding) {
+          return;
+        }
+        const scopeTarget = resolveStyleScope(binding.scope, {
+          borderStyleState,
+          graticuleStyleState,
+          earthStyleState,
+          empireStyleState,
+        });
+        if (!scopeTarget) {
+          return;
+        }
+        ensureScopeObject(payload, binding.scope)[binding.colorKey] = scopeTarget[binding.colorKey];
+      });
+
+      Object.values(getSliderControlDefinitions()).forEach((definition) => {
+        const binding = definition?.binding;
+        if (!binding || binding.kind === "empireQualityAll") {
+          return;
+        }
+        const scopeTarget = resolveStyleScope(binding.scope, {
+          borderStyleState,
+          graticuleStyleState,
+          earthStyleState,
+          empireStyleState,
+        });
+        if (!scopeTarget) {
+          return;
+        }
+        ensureScopeObject(payload, binding.scope)[binding.key] = scopeTarget[binding.key];
+      });
+
       storage?.setItem(
         storageKey,
-        JSON.stringify({
-          border: {
-            color: borderStyleState.color,
-            opacity: borderStyleState.opacity,
-            width: borderStyleState.width,
-          },
-          graticule: {
-            color: graticuleStyleState.color,
-            opacity: graticuleStyleState.opacity,
-            width: graticuleStyleState.width,
-          },
-          earth: {
-            land: {
-              color: earthStyleState.land.color,
-            },
-            water: {
-              color: earthStyleState.water.color,
-            },
-          },
-          empires: {
-            romanComparison: {
-              fillColor: empireStyleState.romanComparison.fillColor,
-            },
-          },
-        }),
+        JSON.stringify(payload),
       );
     } catch (error) {
       // Ignore persistence failures and keep runtime state.
@@ -49,6 +80,8 @@
     setColorControlValue,
     borderStyleState,
     graticuleStyleState,
+    earthStyleState,
+    empireStyleState,
   }) {
     try {
       const stored = storage?.getItem(storageKey);
@@ -58,50 +91,44 @@
 
       const parsed = JSON.parse(stored);
 
-      const borderColor = normalizeHexColor(parsed?.border?.color);
-      if (borderColor) {
-        setColorControlValue("border", borderColor);
-      }
+      Object.values(getColorControlDefinitions()).forEach((definition) => {
+        const binding = definition?.styleBinding;
+        if (!binding) {
+          return;
+        }
+        const scopeObject = getScopeObject(parsed, binding.scope);
+        const colorValue = normalizeHexColor(scopeObject?.[binding.colorKey]);
+        if (colorValue) {
+          setColorControlValue(definition.controlId, colorValue);
+        }
+      });
 
-      const borderOpacity = Number(parsed?.border?.opacity);
-      if (Number.isFinite(borderOpacity)) {
-        borderStyleState.opacity = clamp(borderOpacity, 0, 1);
-      }
+      Object.values(getSliderControlDefinitions()).forEach((definition) => {
+        const binding = definition?.binding;
+        if (!binding || binding.kind === "empireQualityAll") {
+          return;
+        }
+        const scopeTarget = resolveStyleScope(binding.scope, {
+          borderStyleState,
+          graticuleStyleState,
+          earthStyleState,
+          empireStyleState,
+        });
+        const scopeObject = getScopeObject(parsed, binding.scope);
+        const rawValue = Number(scopeObject?.[binding.key]);
+        if (!scopeTarget || !Number.isFinite(rawValue)) {
+          return;
+        }
 
-      const borderWidth = Number(parsed?.border?.width);
-      if (Number.isFinite(borderWidth)) {
-        borderStyleState.width = clamp(borderWidth, 0.4, 3);
-      }
+        if (binding.kind === "percent") {
+          scopeTarget[binding.key] = clamp(rawValue, 0, 1);
+          return;
+        }
 
-      const graticuleColor = normalizeHexColor(parsed?.graticule?.color);
-      if (graticuleColor) {
-        setColorControlValue("graticule", graticuleColor);
-      }
-
-      const graticuleWidth = Number(parsed?.graticule?.width);
-      if (Number.isFinite(graticuleWidth)) {
-        graticuleStyleState.width = clamp(graticuleWidth, 0.4, 3);
-      }
-
-      const graticuleOpacity = Number(parsed?.graticule?.opacity);
-      if (Number.isFinite(graticuleOpacity)) {
-        graticuleStyleState.opacity = clamp(graticuleOpacity, 0, 1);
-      }
-
-      const landColor = normalizeHexColor(parsed?.earth?.land?.color);
-      if (landColor) {
-        setColorControlValue("land", landColor);
-      }
-
-      const waterColor = normalizeHexColor(parsed?.earth?.water?.color);
-      if (waterColor) {
-        setColorControlValue("water", waterColor);
-      }
-
-      const romanEmpireFillColor = normalizeHexColor(parsed?.empires?.romanComparison?.fillColor);
-      if (romanEmpireFillColor) {
-        setColorControlValue("romanEmpireFill", romanEmpireFillColor);
-      }
+        if (binding.kind === "float") {
+          scopeTarget[binding.key] = clamp(rawValue, definition.min, definition.max);
+        }
+      });
     } catch (error) {
       // Ignore invalid persisted data.
     }

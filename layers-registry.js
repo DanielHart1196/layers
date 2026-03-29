@@ -8,6 +8,10 @@
     min,
     max,
     step,
+    binding = null,
+    valueFormat = null,
+    uiSync = null,
+    renderPasses = null,
   }) {
     return {
       type: "slider",
@@ -19,8 +23,181 @@
       min,
       max,
       step,
+      binding,
+      valueFormat,
+      uiSync,
+      renderPasses,
     };
   }
+
+  function createColorRow({ controlId, rowElementId }) {
+    return {
+      type: "color",
+      controlId,
+      rowElementId,
+    };
+  }
+
+  const SHARED_COLOR_STORAGE_KEY = "atlas.colors.customColors";
+
+  const colorControlDefinitions = {
+    border: {
+      controlId: "border",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "borderColor",
+      paletteOpenKey: "isBorderColorPaletteOpen",
+      inputId: "borderColorInput",
+      valueId: "borderColorValue",
+      inlineDotId: "borderColorInlineDot",
+      swatchButtonId: "borderColorSwatchButton",
+      customsId: "borderColorCustoms",
+      presetSelector: "[data-border-color]",
+      panelId: "borderColorPanel",
+      fieldId: "borderColorField",
+      fieldHandleId: "borderColorFieldHandle",
+      hueSliderId: "borderColorHueSlider",
+      hueHandleId: "borderColorHueHandle",
+      addButtonId: "borderColorAddButton",
+      styleBinding: {
+        scope: "border",
+        colorKey: "color",
+        hueKey: "hue",
+        saturationKey: "saturation",
+        valueKey: "value",
+      },
+      renderPasses: ["overlay", "poster"],
+    },
+    graticule: {
+      controlId: "graticule",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "graticuleColor",
+      paletteOpenKey: "isGraticuleColorPaletteOpen",
+      inputId: "graticuleColorInput",
+      valueId: "graticuleColorValue",
+      inlineDotId: "graticuleColorInlineDot",
+      swatchButtonId: "graticuleColorSwatchButton",
+      customsId: "graticuleColorCustoms",
+      presetSelector: "[data-graticule-color]",
+      panelId: "graticuleColorPanel",
+      fieldId: "graticuleColorField",
+      fieldHandleId: "graticuleColorFieldHandle",
+      hueSliderId: "graticuleColorHueSlider",
+      hueHandleId: "graticuleColorHueHandle",
+      addButtonId: "graticuleColorAddButton",
+      styleBinding: {
+        scope: "graticule",
+        colorKey: "color",
+        hueKey: "hue",
+        saturationKey: "saturation",
+        valueKey: "value",
+      },
+      renderPasses: ["overlay", "poster"],
+    },
+    land: {
+      controlId: "land",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "landColor",
+      paletteOpenKey: "isLandColorPaletteOpen",
+      inputId: "landColorInput",
+      valueId: "landColorValue",
+      inlineDotId: "landColorInlineDot",
+      swatchButtonId: "landColorSwatchButton",
+      customsId: "landColorCustoms",
+      presetSelector: "[data-land-color]",
+      panelId: "landColorPanel",
+      fieldId: "landColorField",
+      fieldHandleId: "landColorFieldHandle",
+      hueSliderId: "landColorHueSlider",
+      hueHandleId: "landColorHueHandle",
+      addButtonId: "landColorAddButton",
+      styleBinding: {
+        scope: "earth.land",
+        colorKey: "color",
+        hueKey: "hue",
+        saturationKey: "saturation",
+        valueKey: "value",
+      },
+      renderPasses: ["overlay", "poster"],
+    },
+    water: {
+      controlId: "water",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "waterColor",
+      paletteOpenKey: "isWaterColorPaletteOpen",
+      inputId: "waterColorInput",
+      valueId: "waterColorValue",
+      inlineDotId: "waterColorInlineDot",
+      swatchButtonId: "waterColorSwatchButton",
+      customsId: "waterColorCustoms",
+      presetSelector: "[data-water-color]",
+      panelId: "waterColorPanel",
+      fieldId: "waterColorField",
+      fieldHandleId: "waterColorFieldHandle",
+      hueSliderId: "waterColorHueSlider",
+      hueHandleId: "waterColorHueHandle",
+      addButtonId: "waterColorAddButton",
+      styleBinding: {
+        scope: "earth.water",
+        colorKey: "color",
+        hueKey: "hue",
+        saturationKey: "saturation",
+        valueKey: "value",
+      },
+      renderPasses: ["overlay", "poster"],
+    },
+    romanEmpireFill: {
+      controlId: "romanEmpireFill",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "romanEmpireFillColor",
+      paletteOpenKey: "isRomanEmpireFillColorPaletteOpen",
+      inputId: "romanEmpireFillColorInput",
+      valueId: "romanEmpireFillColorValue",
+      inlineDotId: "romanEmpireFillColorInlineDot",
+      swatchButtonId: "romanEmpireFillColorSwatchButton",
+      customsId: "romanEmpireFillColorCustoms",
+      presetSelector: "[data-roman-empire-fill-color]",
+      panelId: "romanEmpireFillColorPanel",
+      fieldId: "romanEmpireFillColorField",
+      fieldHandleId: "romanEmpireFillColorFieldHandle",
+      hueSliderId: "romanEmpireFillColorHueSlider",
+      hueHandleId: "romanEmpireFillColorHueHandle",
+      addButtonId: "romanEmpireFillColorAddButton",
+      styleBinding: {
+        scope: "empires.romanComparison",
+        colorKey: "fillColor",
+        hueKey: "fillHue",
+        saturationKey: "fillSaturation",
+        valueKey: "fillValue",
+      },
+      renderPasses: ["empire", "poster"],
+    },
+    romanEmpireBorder: {
+      controlId: "romanEmpireBorder",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "romanEmpireBorderColor",
+      paletteOpenKey: "isRomanEmpireBorderColorPaletteOpen",
+      inputId: "romanEmpireBorderColorInput",
+      valueId: "romanEmpireBorderColorValue",
+      inlineDotId: "romanEmpireBorderColorInlineDot",
+      swatchButtonId: "romanEmpireBorderColorSwatchButton",
+      customsId: "romanEmpireBorderColorCustoms",
+      presetSelector: "[data-roman-empire-border-color]",
+      panelId: "romanEmpireBorderColorPanel",
+      fieldId: "romanEmpireBorderColorField",
+      fieldHandleId: "romanEmpireBorderColorFieldHandle",
+      hueSliderId: "romanEmpireBorderColorHueSlider",
+      hueHandleId: "romanEmpireBorderColorHueHandle",
+      addButtonId: "romanEmpireBorderColorAddButton",
+      styleBinding: {
+        scope: "empires.romanComparison",
+        colorKey: "strokeColor",
+        hueKey: "strokeHue",
+        saturationKey: "strokeSaturation",
+        valueKey: "strokeValue",
+      },
+      renderPasses: ["empire", "poster"],
+    },
+  };
 
   const layerDefinitions = {
     earth: {
@@ -35,8 +212,8 @@
       children: ["graticule", "tissot"],
       controls: ["landColor", "waterColor"],
       rows: [
-        { type: "color", controlId: "land", rowElementId: "landColorRow" },
-        { type: "color", controlId: "water", rowElementId: "waterColorRow" },
+        createColorRow({ controlId: "land", rowElementId: "landColorRow" }),
+        createColorRow({ controlId: "water", rowElementId: "waterColorRow" }),
         { type: "layer", layerId: "graticule", rowElementId: "graticuleLayerGroup" },
         { type: "layer", layerId: "tissot", rowElementId: "tissotLayerRow" },
       ],
@@ -65,6 +242,10 @@
           min: 0,
           max: 2,
           step: 1,
+          binding: { kind: "empireQualityAll" },
+          valueFormat: "qualityLabel",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
         }),
         { type: "layer", layerId: "romanComparison", rowElementId: "romanEmpireLayerGroup" },
         { type: "layer", layerId: "mongol", rowElementId: "mongolLayerRow" },
@@ -94,16 +275,25 @@
           min: 0.4,
           max: 3,
           step: 0.1,
+          binding: { kind: "float", scope: "border", key: "width" },
+          valueFormat: "widthPx",
+          uiSync: "border",
+          renderPasses: ["overlay", "poster"],
         }),
-        { type: "color", controlId: "border", rowElementId: "borderColorRow" },
+        createColorRow({ controlId: "border", rowElementId: "borderColorRow" }),
         createSliderRow({
           controlId: "borderOpacity",
           rowElementId: "borderOpacityRow",
           label: "Opacity",
           inputId: "borderOpacityInput",
+          valueElementId: "borderOpacityValue",
           min: 0,
           max: 100,
           step: 1,
+          binding: { kind: "percent", scope: "border", key: "opacity" },
+          valueFormat: "percent",
+          uiSync: "border",
+          renderPasses: ["overlay", "poster"],
         }),
       ],
       bodySectionId: "borderLayerControls",
@@ -130,16 +320,25 @@
           min: 0.4,
           max: 3,
           step: 0.1,
+          binding: { kind: "float", scope: "graticule", key: "width" },
+          valueFormat: "widthPx",
+          uiSync: "graticule",
+          renderPasses: ["overlay", "poster"],
         }),
-        { type: "color", controlId: "graticule", rowElementId: "graticuleColorRow" },
+        createColorRow({ controlId: "graticule", rowElementId: "graticuleColorRow" }),
         createSliderRow({
           controlId: "graticuleOpacity",
           rowElementId: "graticuleOpacityRow",
           label: "Opacity",
           inputId: "graticuleOpacityInput",
+          valueElementId: "graticuleOpacityValue",
           min: 0,
           max: 100,
           step: 1,
+          binding: { kind: "percent", scope: "graticule", key: "opacity" },
+          valueFormat: "percent",
+          uiSync: "graticule",
+          renderPasses: ["overlay", "poster"],
         }),
       ],
       bodySectionId: "graticuleLayerControls",
@@ -169,9 +368,52 @@
       uiOpenKey: "isRomanEmpireGroupOpen",
       uiSection: "layers",
       children: [],
-      controls: ["romanEmpireFill"],
+      controls: ["romanEmpireFill", "romanEmpireFillOpacity", "romanEmpireBorder", "romanEmpireBorderWidth", "romanEmpireBorderOpacity"],
       rows: [
-        { type: "color", controlId: "romanEmpireFill", rowElementId: "romanEmpireFillRow" },
+        createColorRow({ controlId: "romanEmpireFill", rowElementId: "romanEmpireFillRow" }),
+        createSliderRow({
+          controlId: "romanEmpireFillOpacity",
+          rowElementId: "romanEmpireFillOpacityRow",
+          label: "Fill Opacity",
+          inputId: "romanEmpireFillOpacityInput",
+          valueElementId: "romanEmpireFillOpacityValue",
+          min: 0,
+          max: 100,
+          step: 1,
+          binding: { kind: "percent", scope: "empires.romanComparison", key: "fillOpacity" },
+          valueFormat: "percent",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
+        }),
+        createColorRow({ controlId: "romanEmpireBorder", rowElementId: "romanEmpireBorderRow" }),
+        createSliderRow({
+          controlId: "romanEmpireBorderWidth",
+          rowElementId: "romanEmpireBorderWidthRow",
+          label: "Stroke Width",
+          inputId: "romanEmpireBorderWidthInput",
+          valueElementId: "romanEmpireBorderWidthValue",
+          min: 0.4,
+          max: 3,
+          step: 0.1,
+          binding: { kind: "float", scope: "empires.romanComparison", key: "strokeWidth" },
+          valueFormat: "widthPx",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
+        }),
+        createSliderRow({
+          controlId: "romanEmpireBorderOpacity",
+          rowElementId: "romanEmpireBorderOpacityRow",
+          label: "Border Opacity",
+          inputId: "romanEmpireBorderOpacityInput",
+          valueElementId: "romanEmpireBorderOpacityValue",
+          min: 0,
+          max: 100,
+          step: 1,
+          binding: { kind: "percent", scope: "empires.romanComparison", key: "strokeOpacity" },
+          valueFormat: "percent",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
+        }),
       ],
       bodySectionId: "romanEmpireLayerControls",
       renderSource: "romanComparison",
@@ -244,9 +486,16 @@
   const defaultEmpireStyleState = {
     romanComparison: {
       fillColor: "#C48B35",
+      fillOpacity: 0.22,
       fillHue: 35,
       fillSaturation: 0.73,
       fillValue: 0.77,
+      strokeColor: "#B07825",
+      strokeOpacity: 0.9,
+      strokeWidth: 1.1,
+      strokeHue: 37,
+      strokeSaturation: 0.79,
+      strokeValue: 0.69,
     },
   };
 
@@ -266,6 +515,14 @@
 
   function getLayerDefinition(layerId) {
     return layerDefinitions[layerId] ?? null;
+  }
+
+  function getColorControlDefinition(controlId) {
+    return cloneValue(colorControlDefinitions[controlId] ?? null);
+  }
+
+  function getColorControlDefinitions() {
+    return cloneValue(colorControlDefinitions);
   }
 
   function getLayerChildrenDefinitions(layerId) {
@@ -292,6 +549,46 @@
 
   function getLayerRows(layerId) {
     return cloneValue(getLayerDefinition(layerId)?.rows ?? []);
+  }
+
+  function getSliderControlDefinition(controlId) {
+    return cloneValue(
+      Object.values(layerDefinitions)
+        .flatMap((definition) => definition.rows ?? [])
+        .find((row) => row.type === "slider" && row.controlId === controlId)
+        ?? null,
+    );
+  }
+
+  function getSliderControlDefinitions() {
+    return Object.fromEntries(
+      Object.values(layerDefinitions)
+        .flatMap((definition) => definition.rows ?? [])
+        .filter((row) => row.type === "slider" && row.controlId)
+        .map((row) => [row.controlId, cloneValue(row)]),
+    );
+  }
+
+  function resolveStyleScope(scope, {
+    borderStyleState,
+    graticuleStyleState,
+    earthStyleState,
+    empireStyleState,
+  }) {
+    switch (scope) {
+      case "border":
+        return borderStyleState;
+      case "graticule":
+        return graticuleStyleState;
+      case "earth.land":
+        return earthStyleState.land;
+      case "earth.water":
+        return earthStyleState.water;
+      case "empires.romanComparison":
+        return empireStyleState.romanComparison;
+      default:
+        return null;
+    }
   }
 
   function isExpandableLayer(layerId) {
@@ -394,6 +691,7 @@
   }
 
   window.AtlasLayersRegistry = {
+    colorControlDefinitions,
     createDefaultBorderStyleState,
     createDefaultEarthStyleState,
     createDefaultEmpireLayerState,
@@ -404,6 +702,8 @@
     createLayerInstance,
     createSystemLayerInstances,
     empireQualityLevels,
+    getColorControlDefinition,
+    getColorControlDefinitions,
     getDefaultEmpireChildOnEnable,
     getDefinitionsBySection,
     getExpandableLayerDefinitions,
@@ -418,6 +718,9 @@
     getLayerGroupUiKey,
     getLayerRows,
     getRootLayerDefinitions,
+    getSliderControlDefinition,
+    getSliderControlDefinitions,
+    resolveStyleScope,
     isExpandableLayer,
     layerDefinitions,
   };

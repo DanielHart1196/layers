@@ -73,24 +73,11 @@
   function syncBorderGroupUi({
     layerState,
     uiState,
-    borderStyleState,
     borderLayerGroup,
     borderGroupToggle,
     bordersButton,
-    borderWidthInput,
-    borderWidthValue,
-    borderOpacityInput,
-    borderColorInput,
-    borderColorValue,
-    borderColorInlineDot,
-    borderColorFieldHandle,
-    borderColorField,
-    borderColorHueHandle,
-    borderColorHueSlider,
-    formatBorderWidthLabel,
-    clamp,
-    hsvToHex,
     scheduleExpandableLayoutSync,
+    syncSliderControlsForLayer,
     syncColorControlUi,
   }) {
     syncGroupChrome({
@@ -102,45 +89,18 @@
     });
     scheduleExpandableLayoutSync();
 
-    if (borderWidthInput) {
-      borderWidthInput.value = String(borderStyleState.width);
-    }
-    if (borderWidthValue) {
-      borderWidthValue.textContent = formatBorderWidthLabel(borderStyleState.width);
-    }
-    if (borderOpacityInput) {
-      borderOpacityInput.value = String(Math.round(clamp(borderStyleState.opacity, 0, 1) * 100));
-    }
-    if (borderColorInput) {
-      borderColorInput.value = borderStyleState.color.toUpperCase();
-    }
-    if (borderColorValue) {
-      borderColorValue.textContent = borderStyleState.color.toUpperCase();
-    }
-    borderColorInlineDot?.style.setProperty("--layer-active-color", borderStyleState.color);
-    borderColorFieldHandle?.style.setProperty("--layer-active-color", borderStyleState.color);
-    borderColorField?.style.setProperty("--layer-color-field-hue", hsvToHex(borderStyleState.hue, 1, 1));
-    borderColorField?.style.setProperty("--layer-color-field-x", `${clamp(borderStyleState.saturation, 0, 1) * 100}%`);
-    borderColorField?.style.setProperty("--layer-color-field-y", `${(1 - clamp(borderStyleState.value, 0, 1)) * 100}%`);
-    borderColorHueHandle?.style.setProperty("--layer-color-field-hue", hsvToHex(borderStyleState.hue, 1, 1));
-    borderColorHueSlider?.style.setProperty("--layer-color-hue-x", `${(borderStyleState.hue / 360) * 100}%`);
-
+    syncSliderControlsForLayer("borders");
     syncColorControlUi("border");
   }
 
   function syncGraticuleGroupUi({
     layerState,
     uiState,
-    graticuleStyleState,
     graticuleLayerGroup,
     graticuleGroupToggle,
     graticuleButton,
-    graticuleWidthInput,
-    graticuleWidthValue,
-    graticuleOpacityInput,
-    formatBorderWidthLabel,
-    clamp,
     scheduleExpandableLayoutSync,
+    syncSliderControlsForLayer,
     syncColorControlUi,
   }) {
     syncGroupChrome({
@@ -152,15 +112,7 @@
     });
     scheduleExpandableLayoutSync();
 
-    if (graticuleWidthInput) {
-      graticuleWidthInput.value = String(graticuleStyleState.width);
-    }
-    if (graticuleWidthValue) {
-      graticuleWidthValue.textContent = formatBorderWidthLabel(graticuleStyleState.width);
-    }
-    if (graticuleOpacityInput) {
-      graticuleOpacityInput.value = String(Math.round(clamp(graticuleStyleState.opacity, 0, 1) * 100));
-    }
+    syncSliderControlsForLayer("graticule");
 
     syncColorControlUi("graticule");
   }
@@ -179,6 +131,7 @@
     isEmpireParentActive,
     isEmpireChildDisplayed,
     scheduleExpandableLayoutSync,
+    syncSliderControlsForLayer,
     syncColorControlUi,
   }) {
     const parentIsActive = isEmpireParentActive(layerState, empireLayerState);
@@ -210,7 +163,10 @@
       isOpen: uiState.isRomanEmpireGroupOpen,
     });
 
+    syncSliderControlsForLayer("romanComparison");
+
     syncColorControlUi("romanEmpireFill");
+    syncColorControlUi("romanEmpireBorder");
     scheduleExpandableLayoutSync();
   }
 

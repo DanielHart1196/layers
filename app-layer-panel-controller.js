@@ -51,18 +51,13 @@
     empireLayerButtons,
     earthGroupButton,
     toggleElementsByLayerId,
-    empireQualityInput,
     layerState,
     empireLayerState,
-    empireQualityState,
     uiState,
-    clamp,
-    empireQualityLevels,
     hasAnyEmpireChildEnabled,
     toggleLayerGroupOpen,
     toggleLayerEnabled,
     toggleEmpireSublayer,
-    setAllEmpireQuality,
     syncEmpireGroupUi,
     syncBorderGroupUi,
     syncGraticuleGroupUi,
@@ -73,16 +68,9 @@
     scheduleViewStateSave,
     drawForLayerToggle,
     drawForEmpireSublayerToggle,
-    drawForEmpireQuality,
     releaseLayerPanelFocusAfterPointerInteraction,
     syncLayerPanelScrollbar,
     showLayerPanelScrollbarTemporarily,
-    syncEmpireQualityUi,
-    setEmpireQualityPreviewState,
-    invalidateEmpireRenderCache,
-    enableSharedColorControl,
-    enableGraticuleStyleControls,
-    enableBorderStyleControls,
   }) {
     const expandableLayersById = Object.fromEntries(
       getExpandableLayerDefinitions().map((definition) => [definition.id, definition]),
@@ -190,37 +178,9 @@
       });
     });
 
-    empireQualityInput?.addEventListener("input", () => {
-      const nextIndex = clamp(Number.parseInt(empireQualityInput.value, 10) || 0, 0, empireQualityLevels.length - 1);
-      const nextQuality = empireQualityLevels[nextIndex];
-      setAllEmpireQuality(empireQualityState, nextQuality);
-      syncEmpireQualityUi();
-      invalidateEmpireRenderCache();
-      scheduleViewStateSave();
-      drawForEmpireQuality();
-    });
-
-    empireQualityInput?.addEventListener("pointerdown", () => {
-      setEmpireQualityPreviewState?.(true);
-    });
-
-    const endEmpireQualityPreview = () => {
-      setEmpireQualityPreviewState?.(false);
-    };
-
-    empireQualityInput?.addEventListener("pointerup", endEmpireQualityPreview);
-    empireQualityInput?.addEventListener("pointercancel", endEmpireQualityPreview);
-    empireQualityInput?.addEventListener("touchend", endEmpireQualityPreview, { passive: true });
-    empireQualityInput?.addEventListener("touchcancel", endEmpireQualityPreview, { passive: true });
-
     syncEmpireGroupUi();
-    enableSharedColorControl("romanEmpireFill");
-    enableSharedColorControl("land");
-    enableSharedColorControl("water");
     syncEarthGroupUi();
-    enableGraticuleStyleControls();
     syncGraticuleGroupUi();
-    enableBorderStyleControls();
     syncBorderGroupUi();
   }
 

@@ -214,6 +214,28 @@
   - stage/canvas sizing
   - layer compositing
 - When the issue is visually ambiguous, prefer targeted layer-isolation or numeric bounds debug over repeated subjective screenshot interpretation.
+- `localhost` and `127.0.0.1` are different origins and can diverge due to separate caches. Do not treat one working origin as proof that the other is running the same code.
+- Hand-versioning individual local script tags is fragile and can leave the app running a mixed module set after shared-interface changes.
+
+## Build System Direction
+- The long-term fix for cache/version drift is a real frontend build pipeline with hashed assets, not manual query-string management.
+- Preferred direction:
+  - adopt a minimal build tool such as Vite
+  - migrate local JS from global ordered scripts toward module imports
+  - emit hashed build assets so the browser cannot mix incompatible versions
+- Recommended migration order:
+  - audit the current script dependency graph from `index.html`
+  - create one real app entry point
+  - migrate leaf/helper modules first
+  - migrate state/persistence/registry modules
+  - migrate UI/controller modules
+  - migrate render/core modules
+  - remove legacy `window.Atlas...` script-order assumptions last
+- Keep the first build milestone narrow:
+  - one working app entry
+  - hashed output
+  - no fancy code splitting unless it clearly helps
+- Do not mix build-system migration with unrelated feature work. Treat it as its own refactor track.
 
 ## Target App Architecture
 - Current app-level complexity is concentrated too heavily in `app.js`.
