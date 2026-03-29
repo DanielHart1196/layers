@@ -18,6 +18,7 @@
           if (Number.isFinite(zoom) && zoom > 1.01) {
             document.documentElement.classList.add("is-mobile-boot-zoomed");
           }
+
         }
       } catch (error) {
         // Ignore storage access failures during boot.
@@ -49,6 +50,18 @@
     <script src="./atlas-adapters.js"></script>
     <script src="./atlas-earth.js"></script>
     <script src="./atlas-layers.js"></script>
+    <script src="./layers-registry.js"></script>
+    <script src="./layers-selectors.js"></script>
+    <script src="./app-state.js"></script>
+    <script src="./app-actions.js"></script>
+    <script src="./app-gestures.js"></script>
+    <script src="./app-render-state.js"></script>
+    <script src="./app-renderer.js"></script>
+    <script src="./app-color-model.js"></script>
+    <script src="./app-color-controls.js"></script>
+    <script src="./app-layer-panel.js"></script>
+    <script src="./app-layer-panel-controller.js"></script>
+    <script src="./state-persistence.js"></script>
   </head>
   <body>
     <main class="app-shell">
@@ -560,18 +573,6 @@
                         <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-border-color="#8C5BD6" aria-label="Purple"><span class="layer-inline-color-dot" style="--layer-active-color:#8C5BD6;" aria-hidden="true"></span></button>
                       </div>
                     </div>
-                    <div class="layer-opacity-control">
-                      <label class="layer-opacity-label" for="borderOpacityInput">Opacity</label>
-                      <input
-                        class="layer-opacity-range"
-                        id="borderOpacityInput"
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value="36"
-                      />
-                    </div>
                     <div class="layer-color-panel" id="borderColorPanel" aria-hidden="true">
                       <div
                         class="layer-color-field"
@@ -606,6 +607,18 @@
                         </button>
                       </div>
                     </div>
+                  </div>
+                  <div class="layer-opacity-control">
+                    <label class="layer-opacity-label" for="borderOpacityInput">Opacity</label>
+                    <input
+                      class="layer-opacity-range"
+                      id="borderOpacityInput"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value="36"
+                    />
                   </div>
                 </div>
               </section>
@@ -646,14 +659,70 @@
                       value="1"
                     />
                   </label>
-                  <button class="layer-item layer-item-sub" data-empire-layer-id="romanComparison" type="button">
-                    <span class="layer-checkbox" aria-hidden="true">
-                      <span class="layer-checkmark"></span>
-                    </span>
-                    <span class="layer-copy">
-                      <strong>Roman (117 AD)</strong>
-                    </span>
-                  </button>
+                  <section class="layer-group layer-group-empires" id="romanEmpireLayerGroup">
+                    <div class="layer-group-head">
+                      <button class="layer-item layer-item-sub layer-item-group" id="romanEmpireRow" data-empire-layer-id="romanComparison" type="button">
+                        <span class="layer-checkbox" aria-hidden="true">
+                          <span class="layer-checkmark"></span>
+                        </span>
+                        <span class="layer-copy">
+                          <strong>Roman (117 AD)</strong>
+                        </span>
+                        <span
+                          class="layer-group-toggle"
+                          id="romanEmpireGroupToggle"
+                          aria-label="Toggle Roman Empire controls"
+                          aria-controls="romanEmpireLayerControls"
+                          aria-expanded="false"
+                        >
+                          <span class="layer-group-chevron" aria-hidden="true"></span>
+                        </span>
+                      </button>
+                    </div>
+                    <div class="layer-sublist layer-sublist-controls" id="romanEmpireLayerControls">
+                    <div class="layer-control layer-control-color">
+                      <div class="layer-control-copy">
+                        <strong>Fill Color</strong>
+                        <small id="romanEmpireFillColorValue">#C48B35</small>
+                        <span class="layer-inline-color-dot" id="romanEmpireFillColorInlineDot" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-swatch-scroll">
+                        <div class="layer-color-swatch-row" aria-label="Roman Empire fill color presets">
+                          <button
+                            class="layer-inline-color-button layer-inline-color-button-plus"
+                            id="romanEmpireFillColorSwatchButton"
+                            type="button"
+                            aria-label="Open custom Roman Empire fill color picker"
+                            aria-expanded="false"
+                          >
+                            <span class="layer-inline-color-plus" aria-hidden="true">+</span>
+                          </button>
+                          <div class="layer-inline-color-customs" id="romanEmpireFillColorCustoms"></div>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-roman-empire-fill-color="#FFFFFF" aria-label="White"><span class="layer-inline-color-dot" style="--layer-active-color:#FFFFFF;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-roman-empire-fill-color="#0F2430" aria-label="Black"><span class="layer-inline-color-dot" style="--layer-active-color:#0F2430;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-roman-empire-fill-color="#D94B4B" aria-label="Red"><span class="layer-inline-color-dot" style="--layer-active-color:#D94B4B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-roman-empire-fill-color="#E58A2B" aria-label="Orange"><span class="layer-inline-color-dot" style="--layer-active-color:#E58A2B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-roman-empire-fill-color="#E5C84A" aria-label="Yellow"><span class="layer-inline-color-dot" style="--layer-active-color:#E5C84A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-roman-empire-fill-color="#5B8C5A" aria-label="Green"><span class="layer-inline-color-dot" style="--layer-active-color:#5B8C5A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-roman-empire-fill-color="#4B6ED9" aria-label="Blue"><span class="layer-inline-color-dot" style="--layer-active-color:#4B6ED9;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-roman-empire-fill-color="#8C5BD6" aria-label="Purple"><span class="layer-inline-color-dot" style="--layer-active-color:#8C5BD6;" aria-hidden="true"></span></button>
+                        </div>
+                      </div>
+                      <div class="layer-color-panel" id="romanEmpireFillColorPanel" aria-hidden="true">
+                        <div class="layer-color-field" id="romanEmpireFillColorField" role="application" aria-label="Roman Empire fill color gradient field">
+                          <span class="layer-color-field-handle" id="romanEmpireFillColorFieldHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-hue-slider" id="romanEmpireFillColorHueSlider" role="slider" aria-label="Roman Empire fill hue slider">
+                          <span class="layer-color-hue-handle" id="romanEmpireFillColorHueHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-input-row">
+                          <input class="layer-hex-input" id="romanEmpireFillColorInput" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" value="#C48B35" aria-label="Roman Empire fill color hex code" />
+                          <button class="layer-color-add-button" id="romanEmpireFillColorAddButton" type="button">Add</button>
+                        </div>
+                      </div>
+                    </div>
+                    </div>
+                  </section>
                   <button class="layer-item layer-item-sub" data-empire-layer-id="mongol" type="button">
                     <span class="layer-checkbox" aria-hidden="true">
                       <span class="layer-checkmark"></span>

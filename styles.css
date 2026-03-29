@@ -1140,7 +1140,6 @@ body:not(.is-earth-enabled) .month-overlay {
 
 .layer-group.is-open > .layer-sublist {
   opacity: 1;
-  max-height: 140px;
   padding-bottom: 10px;
   overflow: hidden;
 }
@@ -1243,10 +1242,25 @@ body:not(.is-earth-enabled) .month-overlay {
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.72);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .layer-group-empires.is-disabled .layer-item-sub {
   opacity: 0.5;
+}
+
+.layer-group-empires .layer-sublist {
+  min-width: 0;
+}
+
+.layer-group-empires .layer-sublist > * {
+  min-width: 0;
+}
+
+#romanEmpireLayerControls {
+  padding-top: 0;
 }
 
 .layer-control {
@@ -1528,10 +1542,12 @@ body:not(.is-earth-enabled) .month-overlay {
 }
 
 .layer-control-color.is-panel-open .layer-color-panel {
+  display: grid;
   opacity: 1;
   pointer-events: auto;
-  max-height: 340px;
+  max-height: none;
   padding-top: 8px;
+  overflow: visible;
 }
 
 .layer-control-color.is-previewing-color {

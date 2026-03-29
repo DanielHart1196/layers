@@ -15,6 +15,9 @@ const empireLayerGroup = document.getElementById("empireLayerGroup");
 const empireGroupToggle = document.getElementById("empireGroupToggle");
 const empireQualityInput = document.getElementById("empireQualityInput");
 const empireQualityValue = document.getElementById("empireQualityValue");
+const romanEmpireLayerGroup = document.getElementById("romanEmpireLayerGroup");
+const romanEmpireRow = document.getElementById("romanEmpireRow");
+const romanEmpireGroupToggle = document.getElementById("romanEmpireGroupToggle");
 const earthLayerGroup = document.getElementById("earthLayerGroup");
 const earthGroupButton = document.getElementById("earthGroupButton");
 const earthGroupToggle = document.getElementById("earthGroupToggle");
@@ -52,6 +55,18 @@ const borderColorFieldHandle = document.getElementById("borderColorFieldHandle")
 const borderColorHueSlider = document.getElementById("borderColorHueSlider");
 const borderColorHueHandle = document.getElementById("borderColorHueHandle");
 const borderColorAddButton = document.getElementById("borderColorAddButton");
+const romanEmpireFillColorInput = document.getElementById("romanEmpireFillColorInput");
+const romanEmpireFillColorValue = document.getElementById("romanEmpireFillColorValue");
+const romanEmpireFillColorInlineDot = document.getElementById("romanEmpireFillColorInlineDot");
+const romanEmpireFillColorSwatchButton = document.getElementById("romanEmpireFillColorSwatchButton");
+const romanEmpireFillColorCustoms = document.getElementById("romanEmpireFillColorCustoms");
+const romanEmpireFillColorPresetButtons = Array.from(document.querySelectorAll("[data-roman-empire-fill-color]"));
+const romanEmpireFillColorPanel = document.getElementById("romanEmpireFillColorPanel");
+const romanEmpireFillColorField = document.getElementById("romanEmpireFillColorField");
+const romanEmpireFillColorFieldHandle = document.getElementById("romanEmpireFillColorFieldHandle");
+const romanEmpireFillColorHueSlider = document.getElementById("romanEmpireFillColorHueSlider");
+const romanEmpireFillColorHueHandle = document.getElementById("romanEmpireFillColorHueHandle");
+const romanEmpireFillColorAddButton = document.getElementById("romanEmpireFillColorAddButton");
 const landColorInput = document.getElementById("landColorInput");
 const landColorValue = document.getElementById("landColorValue");
 const landColorInlineDot = document.getElementById("landColorInlineDot");
@@ -105,6 +120,38 @@ const {
   getDefaultMonth,
   lightDirection,
 } = window.AtlasCore;
+const {
+  createDefaultBorderStyleState,
+  createDefaultEarthStyleState,
+  createDefaultEmpireLayerState,
+  createDefaultEmpireQualityState,
+  createDefaultEmpireStyleState,
+  createDefaultGraticuleStyleState,
+  createDefaultLayerState,
+  empireQualityLevels,
+} = window.AtlasLayersRegistry;
+const { createAppState } = window.AtlasAppState;
+const {
+  setAllEmpireQuality,
+  toggleEmpireSublayer,
+  toggleLayerEnabled,
+  toggleLayerGroupOpen,
+} = window.AtlasAppActions;
+const {
+  createMapGestureController,
+  createProjectionSwitcherController,
+} = window.AtlasGestures;
+const { createRenderInvalidationManager } = window.AtlasRenderState;
+const { createRenderer } = window.AtlasRenderer;
+const colorModel = window.AtlasColorModel;
+const { bindSharedColorControl } = window.AtlasColorControls;
+const layerPanelUi = window.AtlasLayerPanel;
+const layerPanelController = window.AtlasLayerPanelController;
+const {
+  hasAnyEmpireChildEnabled,
+  isEmpireChildDisplayed,
+  isEmpireParentActive,
+} = window.AtlasLayerSelectors;
 
 let worldData;
 let assetManifest;
@@ -114,33 +161,26 @@ let rotationOffset = { lambda: 0, phi: 0 };
 let pixelRatio = 1;
 let lastEmpireRenderKey = null;
 let currentEmpirePixelRatio = 1;
-let renderScheduled = false;
 const earthTextureStore = window.AtlasLayers.createEarthTextureStore();
+const renderInvalidation = createRenderInvalidationManager();
+const renderer = createRenderer({ renderInvalidation });
 const mobileLayerMenuMediaQuery = window.matchMedia("(max-width: 800px)");
-const activeGesturePointers = new Map();
-let isPinchZooming = false;
-let pinchDistance = null;
-let lastTapTimestamp = 0;
 const EMPIRE_INTERACTION_PIXEL_RATIO = 0.6;
-let lastTapPosition = null;
-let doubleTapHoldState = null;
+const mapGestureController = createMapGestureController();
+const projectionSwitcherController = createProjectionSwitcherController();
 let refreshMenuPressTimer = null;
 let refreshMenuLongPressTriggered = false;
-let projectionSwipeStartX = null;
-let projectionSwipeStartTime = 0;
-let projectionSwipePointerId = null;
-let projectionSwipeDeltaX = 0;
-let projectionSwipeAnimating = false;
-let projectionSwipeSettleTimer = null;
 let interactionSettleTimer = null;
 let bootStagePosterSnapshotTimer = null;
 let viewStateSaveTimer = null;
 let layerScrollbarDragState = null;
 let layerScrollbarFadeTimer = null;
+let expandableLayoutFrame = null;
 const BORDER_COLOR_STORAGE_KEY = "atlas.border.customColors";
 const GRATICULE_COLOR_STORAGE_KEY = "atlas.graticule.customColors";
 const LAND_COLOR_STORAGE_KEY = "atlas.earth.land.customColors";
 const WATER_COLOR_STORAGE_KEY = "atlas.earth.water.customColors";
+const ROMAN_EMPIRE_FILL_COLOR_STORAGE_KEY = "atlas.empires.roman.fill.customColors";
 const STYLE_SETTINGS_STORAGE_KEY = "atlas.style.settings";
 const VIEW_STATE_STORAGE_KEY = "atlas.view.state";
 const MAX_CUSTOM_BORDER_COLORS = 10;
@@ -149,128 +189,41 @@ let customBorderColors = [];
 let customGraticuleColors = [];
 let customLandColors = [];
 let customWaterColors = [];
+let customRomanEmpireFillColors = [];
 const flatProjectionPanOffsets = {
   "natural-earth-ii": { x: 0, y: 0 },
   "goode-homolosine": { x: 0, y: 0 },
   "waterman": { x: 0, y: 0 },
 };
 
-const layerState = {
-  earth: false,
-  empires: false,
-  borders: true,
-  graticule: true,
-  tissot: false,
-};
-const empireLayerState = {
-  romanComparison: true,
-  mongol: false,
-  british: false,
-};
-const empireQualityState = {
-  romanComparison: "medium",
-  mongol: "medium",
-  british: "medium",
-};
-const EMPIRE_QUALITY_LEVELS = ["low", "medium", "high"];
-
-const temporalState = {
-  selectedMonth: getDefaultMonth(),
-};
-
 function getDefaultProjection() {
   return mobileLayerMenuMediaQuery.matches ? "orthographic" : "azimuthal-equidistant";
 }
 
-const projectionState = {
-  selectedProjection: getDefaultProjection(),
-};
-const zoomState = {
-  scale: 1,
-};
-const uiState = {
-  isLayerPanelOpen: false,
-  isMonthOverlayOpen: false,
-  isEarthGroupOpen: false,
-  isGraticuleGroupOpen: false,
-  isEmpireGroupOpen: false,
-  isBorderGroupOpen: false,
-  isBorderColorPaletteOpen: false,
-  isGraticuleColorPaletteOpen: false,
-  isLandColorPaletteOpen: false,
-  isWaterColorPaletteOpen: false,
-  isProjectionMenuOpen: false,
-  isProjectionSwitcherReady: false,
-  isInteracting: false,
-};
-const earthStyleState = {
-  land: {
-    color: "#98B977",
-    hue: 88,
-    saturation: 0.37,
-    value: 0.73,
-  },
-  water: {
-    color: "#2F7398",
-    hue: 201,
-    saturation: 0.69,
-    value: 0.6,
-  },
-};
-const borderStyleState = {
-  color: "#ffffff",
-  opacity: 0.36,
-  width: 0.8,
-  hue: 0,
-  saturation: 0,
-  value: 1,
-};
-const graticuleStyleState = {
-  color: "#ffffff",
-  opacity: 0.12,
-  width: 0.7,
-  hue: 0,
-  saturation: 0,
-  value: 1,
-};
-const colorControlRuntimeState = {
-  border: {
-    fieldDragState: null,
-    hueDragState: null,
-    duplicateFlashTimer: null,
-    duplicateFlashButton: null,
-    removePressTimer: null,
-    removeTarget: null,
-    longPressTriggered: false,
-  },
-  graticule: {
-    fieldDragState: null,
-    hueDragState: null,
-    duplicateFlashTimer: null,
-    duplicateFlashButton: null,
-    removePressTimer: null,
-    removeTarget: null,
-    longPressTriggered: false,
-  },
-  land: {
-    fieldDragState: null,
-    hueDragState: null,
-    duplicateFlashTimer: null,
-    duplicateFlashButton: null,
-    removePressTimer: null,
-    removeTarget: null,
-    longPressTriggered: false,
-  },
-  water: {
-    fieldDragState: null,
-    hueDragState: null,
-    duplicateFlashTimer: null,
-    duplicateFlashButton: null,
-    removePressTimer: null,
-    removeTarget: null,
-    longPressTriggered: false,
-  },
-};
+const appState = createAppState({
+  getDefaultMonth,
+  getDefaultProjection,
+  createDefaultLayerState,
+  createDefaultEmpireLayerState,
+  createDefaultEmpireQualityState,
+  createDefaultEarthStyleState,
+  createDefaultBorderStyleState,
+  createDefaultGraticuleStyleState,
+  createDefaultEmpireStyleState,
+});
+const layerState = appState.layers;
+const empireLayerState = appState.empireSublayers;
+const empireQualityState = appState.empireQuality;
+const temporalState = appState.temporal;
+const projectionState = appState.projection;
+const zoomState = appState.zoom;
+const uiState = appState.ui;
+const earthStyleState = appState.styles.earth;
+const borderStyleState = appState.styles.borders;
+const graticuleStyleState = appState.styles.graticule;
+const empireStyleState = appState.styles.empires;
+const colorControlRuntimeState = appState.controlRuntime;
+const EMPIRE_QUALITY_LEVELS = empireQualityLevels;
 const SUPPORTED_PROJECTIONS = new Set([
   "orthographic",
   "azimuthal-equidistant",
@@ -575,6 +528,7 @@ async function init() {
   customGraticuleColors = loadStoredCustomColors(GRATICULE_COLOR_STORAGE_KEY);
   customLandColors = loadStoredCustomColors(LAND_COLOR_STORAGE_KEY);
   customWaterColors = loadStoredCustomColors(WATER_COLOR_STORAGE_KEY);
+  customRomanEmpireFillColors = loadStoredCustomColors(ROMAN_EMPIRE_FILL_COLOR_STORAGE_KEY);
   loadStyleSettings();
   loadViewState();
   projectionState.selectedProjection = normalizeProjectionSelection(projectionState.selectedProjection);
@@ -596,6 +550,7 @@ async function init() {
       borderStyle: borderStyleState,
       graticuleStyle: graticuleStyleState,
       earthStyle: earthStyleState,
+      empireStyles: empireStyleState,
       isInteracting: uiState.isInteracting,
     }),
     earthTextureRef: () => earthTextureImage,
@@ -609,6 +564,7 @@ async function init() {
     await refreshEarthTexture();
   }
   syncEmpireQualityUi();
+  syncEmpireGroupUi();
   drawAtlas();
   document.documentElement.classList.remove("is-mobile-default-globe");
   enableDragging();
@@ -782,7 +738,7 @@ async function refreshEarthTexture() {
     glRenderer?.setTexture(null);
   }
 
-  drawAtlas();
+  drawAtlas(["earth", "overlay", "poster"]);
 }
 
 function getActiveMonth() {
@@ -800,38 +756,55 @@ function markInteractionActivity() {
     interactionSettleTimer = null;
     uiState.isInteracting = false;
     syncMobileMonthChrome();
-    requestRender();
+    requestRender(["overlay", "empire", "poster"]);
   }, 140);
 }
 
-function drawAtlas() {
-  const scenes = getResolvedScenes();
-  const isMercator = projectionState.selectedProjection === "mercator";
-  const isViewportStage =
-    projectionState.selectedProjection === "mercator" ||
-    projectionState.selectedProjection === "orthographic" ||
-    projectionState.selectedProjection === "natural-earth-ii" ||
-    projectionState.selectedProjection === "goode-homolosine" ||
-    projectionState.selectedProjection === "waterman";
-  const isFlatProjection =
-    isMercator ||
-    projectionState.selectedProjection === "natural-earth-ii" ||
-    projectionState.selectedProjection === "goode-homolosine" ||
-    projectionState.selectedProjection === "waterman" ||
-    projectionState.selectedProjection === "dymaxion";
-  document.body.classList.toggle("is-viewport-stage", isViewportStage);
-  stage.classList.toggle("is-single-globe", projectionState.selectedProjection === "orthographic");
-  stage.classList.toggle("is-viewport-stage", isViewportStage);
-  stage.classList.toggle("is-flat-projection", isFlatProjection);
-  stage.classList.toggle("is-mercator", isMercator);
-  stage.classList.toggle("is-natural-earth-ii", projectionState.selectedProjection === "natural-earth-ii");
-  stage.classList.toggle("is-goode-homolosine", projectionState.selectedProjection === "goode-homolosine");
-  stage.classList.toggle("is-waterman", projectionState.selectedProjection === "waterman");
-  stage.classList.toggle("is-dymaxion", projectionState.selectedProjection === "dymaxion");
-  drawEarthPass(scenes);
-  drawEmpirePass(scenes);
-  drawOverlayPass(scenes);
-  scheduleBootStagePosterSnapshot();
+function drawAtlas(passes = ["all"]) {
+  renderer.draw({
+    passes: ["all"],
+    render: (dirtyPasses) => {
+      const scenes = getResolvedScenes();
+      const isMercator = projectionState.selectedProjection === "mercator";
+      const isViewportStage =
+        projectionState.selectedProjection === "mercator" ||
+        projectionState.selectedProjection === "orthographic" ||
+        projectionState.selectedProjection === "natural-earth-ii" ||
+        projectionState.selectedProjection === "goode-homolosine" ||
+        projectionState.selectedProjection === "waterman";
+      const isFlatProjection =
+        isMercator ||
+        projectionState.selectedProjection === "natural-earth-ii" ||
+        projectionState.selectedProjection === "goode-homolosine" ||
+        projectionState.selectedProjection === "waterman" ||
+        projectionState.selectedProjection === "dymaxion";
+
+      if (dirtyPasses.has("chrome")) {
+        document.body.classList.toggle("is-viewport-stage", isViewportStage);
+        stage.classList.toggle("is-single-globe", projectionState.selectedProjection === "orthographic");
+        stage.classList.toggle("is-viewport-stage", isViewportStage);
+        stage.classList.toggle("is-flat-projection", isFlatProjection);
+        stage.classList.toggle("is-mercator", isMercator);
+        stage.classList.toggle("is-natural-earth-ii", projectionState.selectedProjection === "natural-earth-ii");
+        stage.classList.toggle("is-goode-homolosine", projectionState.selectedProjection === "goode-homolosine");
+        stage.classList.toggle("is-waterman", projectionState.selectedProjection === "waterman");
+        stage.classList.toggle("is-dymaxion", projectionState.selectedProjection === "dymaxion");
+      }
+
+      if (dirtyPasses.has("earth")) {
+        drawEarthPass(scenes);
+      }
+      if (dirtyPasses.has("empire")) {
+        drawEmpirePass(scenes);
+      }
+      if (dirtyPasses.has("overlay")) {
+        drawOverlayPass(scenes);
+      }
+      if (dirtyPasses.has("poster")) {
+        scheduleBootStagePosterSnapshot();
+      }
+    },
+  });
 }
 
 function getEmpireRenderKey(scenes) {
@@ -839,6 +812,8 @@ function getEmpireRenderKey(scenes) {
     projection: projectionState.selectedProjection,
     empiresEnabled: layerState.empires,
     empireSublayers: empireLayerState,
+    empireStyles: empireStyleState,
+    empireQuality: empireQualityState,
     empirePixelRatio: currentEmpirePixelRatio,
     scenes: scenes.map((scene) => ({
       projectionKind: scene.projectionKind,
@@ -1104,61 +1079,32 @@ function getProjectionPhiClampRange() {
 }
 
 function enableDragging() {
-  d3.select(stage).call(
-    d3
-      .drag()
-      .filter((event) => {
-        const sourceEvent = event.sourceEvent;
-        if (isPinchZooming || doubleTapHoldState) {
-          return false;
-        }
-
-        if (isWithinMonthControls(sourceEvent?.target)) {
-          return false;
-        }
-
-        if (sourceEvent?.touches && sourceEvent.touches.length > 1) {
-          return false;
-        }
-
-        return true;
-      })
-      .on("drag", (event) => {
-        if (isPinchZooming || doubleTapHoldState) {
-          return;
-        }
-
-        if (
-          projectionState.selectedProjection === "dymaxion" ||
-          (usesFlatProjectionPan() && zoomState.scale <= 1.01)
-        ) {
-          return;
-        }
-
-        const effectiveDragSensitivity = getEffectiveDragSensitivity();
-        if (usesFlatProjectionPan()) {
-          const currentOffset = getFlatProjectionPanOffset();
-          flatProjectionPanOffsets[projectionState.selectedProjection] = clampFlatProjectionPanOffset({
-            x: currentOffset.x + event.dx,
-            y: currentOffset.y + event.dy,
-          });
-          markInteractionActivity();
-          requestRender();
-          return;
-        }
-
-        rotationOffset.lambda += event.dx * effectiveDragSensitivity;
-        rotationOffset.phi -= event.dy * effectiveDragSensitivity * getMercatorPhiSensitivityMultiplier();
-        const phiClampRange = getProjectionPhiClampRange();
-        rotationOffset.phi = clamp(
-          rotationOffset.phi,
-          -phiClampRange,
-          phiClampRange,
-        );
-        markInteractionActivity();
-        requestRender();
-      }),
-  );
+  mapGestureController.enableDragging({
+    stage,
+    d3,
+    isWithinMonthControls,
+    getSelectedProjection: () => projectionState.selectedProjection,
+    usesFlatProjectionPan,
+    getZoomScale: () => zoomState.scale,
+    onFlatPan: (event) => {
+      const currentOffset = getFlatProjectionPanOffset();
+      flatProjectionPanOffsets[projectionState.selectedProjection] = clampFlatProjectionPanOffset({
+        x: currentOffset.x + event.dx,
+        y: currentOffset.y + event.dy,
+      });
+      markInteractionActivity();
+      requestRender(["earth", "empire", "overlay", "poster"]);
+    },
+    onRotate: (event) => {
+      const effectiveDragSensitivity = getEffectiveDragSensitivity();
+      rotationOffset.lambda += event.dx * effectiveDragSensitivity;
+      rotationOffset.phi -= event.dy * effectiveDragSensitivity * getMercatorPhiSensitivityMultiplier();
+      const phiClampRange = getProjectionPhiClampRange();
+      rotationOffset.phi = clamp(rotationOffset.phi, -phiClampRange, phiClampRange);
+      markInteractionActivity();
+      requestRender(["earth", "empire", "overlay", "poster"]);
+    },
+  });
 }
 
 function getProjectionZoomBounds() {
@@ -1201,319 +1147,68 @@ function setZoomScale(nextScale) {
   syncMobileMonthChrome();
   syncStageChrome();
   markInteractionActivity();
-  requestRender();
+  requestRender(["chrome", "earth", "empire", "overlay", "poster"]);
 }
 
 function adjustZoomBy(delta) {
   setZoomScale(zoomState.scale * delta);
 }
 
-function getPointerDistance(pointerA, pointerB) {
-  return Math.hypot(pointerA.clientX - pointerB.clientX, pointerA.clientY - pointerB.clientY);
-}
-
-function handleDoubleTapPointerStart(event) {
-  if (!mobileLayerMenuMediaQuery.matches || !canZoomCurrentProjection()) {
-    return false;
-  }
-
-  const now = Date.now();
-  const tapPosition = { x: event.clientX, y: event.clientY };
-  const isDoubleTap = now - lastTapTimestamp < 280
-    && lastTapPosition
-    && Math.hypot(tapPosition.x - lastTapPosition.x, tapPosition.y - lastTapPosition.y) < 32;
-
-  lastTapTimestamp = now;
-  lastTapPosition = tapPosition;
-
-  if (!isDoubleTap) {
-    doubleTapHoldState = null;
-    return false;
-  }
-
-  event.preventDefault();
-  doubleTapHoldState = {
-    pointerId: event.pointerId,
-    startY: event.clientY,
-    startScale: zoomState.scale,
-    activated: false,
-  };
-  return true;
-}
-
-function handleDoubleTapPointerMove(event) {
-  if (!doubleTapHoldState || doubleTapHoldState.pointerId !== event.pointerId) {
-    return false;
-  }
-
-  const deltaY = event.clientY - doubleTapHoldState.startY;
-
-  if (!doubleTapHoldState.activated && Math.abs(deltaY) < 8) {
-    return true;
-  }
-
-  event.preventDefault();
-  doubleTapHoldState.activated = true;
-  setZoomScale(doubleTapHoldState.startScale * Math.exp(deltaY * 0.0075));
-  return true;
-}
-
-function handleDoubleTapPointerEnd(pointerId) {
-  if (!doubleTapHoldState || doubleTapHoldState.pointerId !== pointerId) {
-    return;
-  }
-
-  const wasActivated = doubleTapHoldState.activated;
-  doubleTapHoldState = null;
-
-  if (!wasActivated) {
-    adjustZoomBy(1.6);
-  }
-}
-
 function enableZoomControls() {
-  document.addEventListener(
-    "wheel",
-    (event) => {
-      if (!canZoomCurrentProjection()) {
-        return;
-      }
-
-      if (isWithinInteractiveUi(event.target)) {
-        return;
-      }
-
-      event.preventDefault();
-      const delta = Math.exp(-event.deltaY * 0.0015);
-      adjustZoomBy(delta);
-    },
-    { passive: false },
-  );
-
-  const syncPinchState = () => {
-    if (activeGesturePointers.size < 2) {
-      isPinchZooming = false;
-      pinchDistance = null;
-      return;
-    }
-
-    const [pointerA, pointerB] = Array.from(activeGesturePointers.values());
-    const nextDistance = getPointerDistance(pointerA, pointerB);
-    if (!Number.isFinite(nextDistance) || nextDistance <= 0) {
-      return;
-    }
-
-    if (!isPinchZooming || !pinchDistance) {
-      isPinchZooming = true;
-      pinchDistance = nextDistance;
-      return;
-    }
-
-    setZoomScale(zoomState.scale * (nextDistance / pinchDistance));
-    pinchDistance = nextDistance;
-  };
-
-  document.addEventListener("pointerdown", (event) => {
-    if (!canZoomCurrentProjection()) {
-      return;
-    }
-
-    if (event.pointerType !== "touch" && event.pointerType !== "pen") {
-      return;
-    }
-
-    if (isWithinInteractiveUi(event.target)) {
-      return;
-    }
-
-    activeGesturePointers.set(event.pointerId, {
-      pointerId: event.pointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
-
-    if (activeGesturePointers.size === 1) {
-      handleDoubleTapPointerStart(event);
-      return;
-    }
-
-    doubleTapHoldState = null;
-    event.preventDefault();
-    syncPinchState();
-  }, { passive: false });
-
-  document.addEventListener("pointermove", (event) => {
-    if (!activeGesturePointers.has(event.pointerId)) {
-      return;
-    }
-
-    activeGesturePointers.set(event.pointerId, {
-      pointerId: event.pointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
-
-    if (handleDoubleTapPointerMove(event)) {
-      return;
-    }
-
-    if (activeGesturePointers.size < 2) {
-      return;
-    }
-
-    event.preventDefault();
-    syncPinchState();
-  }, { passive: false });
-
-  const releasePointer = (event) => {
-    handleDoubleTapPointerEnd(event.pointerId);
-    activeGesturePointers.delete(event.pointerId);
-
-    if (activeGesturePointers.size < 2) {
-      isPinchZooming = false;
-      pinchDistance = null;
-    } else {
-      syncPinchState();
-    }
-
-  };
-
-  document.addEventListener("pointerup", releasePointer, { passive: true });
-  document.addEventListener("pointercancel", (event) => {
-    doubleTapHoldState = null;
-    activeGesturePointers.delete(event.pointerId);
-    if (activeGesturePointers.size < 2) {
-      isPinchZooming = false;
-      pinchDistance = null;
-    }
-  }, { passive: true });
+  mapGestureController.enableZoomControls({
+    documentTarget: document,
+    mobileLayerMenuMediaQuery,
+    canZoomCurrentProjection,
+    isWithinInteractiveUi,
+    getZoomScale: () => zoomState.scale,
+    setZoomScale,
+    adjustZoomBy,
+  });
 }
 
 function enableLayerControls() {
-  layerButtons.forEach((button) => {
-    const layerId = button.dataset.layerId;
-    if (button.dataset.empireLayerId) {
-      return;
-    }
-
-    if (!layerId || !(layerId in layerState)) {
-      return;
-    }
-
-    button.classList.toggle("is-active", Boolean(layerState[layerId]));
-    button.closest(".layer-group")?.classList.toggle("is-active", Boolean(layerState[layerId]));
-
-    button.addEventListener("click", async (event) => {
-      if (layerId === "empires" && empireGroupToggle && event.target instanceof Node && empireGroupToggle.contains(event.target)) {
-        uiState.isEmpireGroupOpen = !uiState.isEmpireGroupOpen;
-        syncEmpireGroupUi();
-        syncLayerPanelScrollbar();
-        showLayerPanelScrollbarTemporarily();
-        releaseLayerPanelFocusAfterPointerInteraction(button);
-        return;
-      }
-
-      if (layerId === "borders" && borderGroupToggle && event.target instanceof Node && borderGroupToggle.contains(event.target)) {
-        uiState.isBorderGroupOpen = !uiState.isBorderGroupOpen;
-        syncBorderGroupUi();
-        syncLayerPanelScrollbar();
-        showLayerPanelScrollbarTemporarily();
-        releaseLayerPanelFocusAfterPointerInteraction(button);
-        return;
-      }
-
-      if (layerId === "graticule" && graticuleGroupToggle && event.target instanceof Node && graticuleGroupToggle.contains(event.target)) {
-        uiState.isGraticuleGroupOpen = !uiState.isGraticuleGroupOpen;
-        syncGraticuleGroupUi();
-        syncLayerPanelScrollbar();
-        showLayerPanelScrollbarTemporarily();
-        releaseLayerPanelFocusAfterPointerInteraction(button);
-        return;
-      }
-
-      if (layerId === "empires") {
-        const nextEmpireVisibility = !layerState.empires;
-        if (nextEmpireVisibility && !Object.values(empireLayerState).some(Boolean)) {
-          empireLayerState.romanComparison = true;
-        }
-        layerState.empires = nextEmpireVisibility;
-      } else {
-        layerState[layerId] = !layerState[layerId];
-      }
-      if (layerId !== "empires") {
-        button.classList.toggle("is-active", layerState[layerId]);
-        button.closest(".layer-group")?.classList.toggle("is-active", layerState[layerId]);
-      }
-      if (layerId === "earth") {
-        syncMobileMonthChrome();
-        if (layerState.earth && !earthTextureImage) {
-          await refreshEarthTexture();
-        }
-      }
-      if (layerId === "empires") {
-        syncEmpireGroupUi();
-      }
-      if (layerId === "borders") {
-        syncBorderGroupUi();
-      }
-      if (layerId === "graticule") {
-        syncGraticuleGroupUi();
-      }
-      scheduleViewStateSave();
-      drawAtlas();
-      releaseLayerPanelFocusAfterPointerInteraction(button);
-    });
+  layerPanelController.bindLayerControls({
+    layerButtons,
+    empireLayerButtons,
+    earthGroupButton,
+    empireGroupToggle,
+    borderGroupToggle,
+    graticuleGroupToggle,
+    romanEmpireGroupToggle,
+    empireQualityInput,
+    layerState,
+    empireLayerState,
+    empireQualityState,
+    uiState,
+    clamp,
+    empireQualityLevels: EMPIRE_QUALITY_LEVELS,
+    hasAnyEmpireChildEnabled,
+    toggleLayerGroupOpen,
+    toggleLayerEnabled,
+    toggleEmpireSublayer,
+    setAllEmpireQuality,
+    syncEmpireGroupUi,
+    syncBorderGroupUi,
+    syncGraticuleGroupUi,
+    syncEarthGroupUi,
+    syncMobileMonthChrome,
+    refreshEarthTexture,
+    hasEarthTexture: () => Boolean(earthTextureImage),
+    scheduleViewStateSave,
+    drawForLayerToggle,
+    drawForEmpireSublayerToggle,
+    drawForEmpireQuality,
+    releaseLayerPanelFocusAfterPointerInteraction,
+    syncLayerPanelScrollbar,
+    showLayerPanelScrollbarTemporarily,
+    syncEmpireQualityUi,
+    invalidateEmpireRenderCache: () => {
+      lastEmpireRenderKey = null;
+    },
+    enableSharedColorControl,
+    enableGraticuleStyleControls,
+    enableBorderStyleControls,
   });
-
-  earthGroupButton?.addEventListener("click", () => {
-    uiState.isEarthGroupOpen = !uiState.isEarthGroupOpen;
-    syncEarthGroupUi();
-    syncLayerPanelScrollbar();
-    showLayerPanelScrollbarTemporarily();
-    releaseLayerPanelFocusAfterPointerInteraction(earthGroupButton);
-  });
-
-  empireLayerButtons.forEach((button) => {
-    const empireLayerId = button.dataset.empireLayerId;
-    if (!empireLayerId) {
-      return;
-    }
-
-    button.classList.toggle("is-active", Boolean(empireLayerState[empireLayerId]));
-    button.addEventListener("click", () => {
-      if (!layerState.empires) {
-        empireLayerState[empireLayerId] = true;
-      } else {
-        empireLayerState[empireLayerId] = !empireLayerState[empireLayerId];
-      }
-      layerState.empires = Object.values(empireLayerState).some(Boolean);
-      syncEmpireGroupUi();
-      scheduleViewStateSave();
-      drawAtlas();
-      releaseLayerPanelFocusAfterPointerInteraction(button);
-    });
-  });
-
-  empireQualityInput?.addEventListener("input", () => {
-    const nextIndex = clamp(Number.parseInt(empireQualityInput.value, 10) || 0, 0, EMPIRE_QUALITY_LEVELS.length - 1);
-    const nextQuality = EMPIRE_QUALITY_LEVELS[nextIndex];
-    Object.keys(empireQualityState).forEach((empireKey) => {
-      empireQualityState[empireKey] = nextQuality;
-    });
-    syncEmpireQualityUi();
-    lastEmpireRenderKey = null;
-    scheduleViewStateSave();
-    drawAtlas();
-  });
-
-  syncEmpireGroupUi();
-  enableSharedColorControl("land");
-  enableSharedColorControl("water");
-  syncEarthGroupUi();
-  enableGraticuleStyleControls();
-  syncGraticuleGroupUi();
-  enableBorderStyleControls();
-  syncBorderGroupUi();
 }
 
 function setLayerPanelOpen(isOpen) {
@@ -1667,46 +1362,52 @@ function setRefreshMenuOpen(isOpen) {
   mobileRefreshButton?.setAttribute("aria-expanded", String(isOpen));
 }
 
-function syncEmpireGroupUi() {
-  const hasEnabledEmpireLayer = Object.values(empireLayerState).some(Boolean);
-  const parentIsActive = layerState.empires && hasEnabledEmpireLayer;
-  const empiresButton = document.querySelector('[data-layer-id="empires"]');
-  const empireSubLayers = document.getElementById("empireSubLayers");
-
-  empireLayerGroup?.classList.toggle("is-active", parentIsActive);
-  empireLayerGroup?.classList.toggle("is-disabled", !layerState.empires);
-  empireLayerGroup?.classList.toggle("is-open", uiState.isEmpireGroupOpen);
-  empireGroupToggle?.setAttribute("aria-expanded", String(uiState.isEmpireGroupOpen));
-  empiresButton?.classList.toggle("is-active", parentIsActive);
-
-  if (empireSubLayers) {
-    if (uiState.isEmpireGroupOpen) {
-      requestAnimationFrame(() => {
-        const children = Array.from(empireSubLayers.children);
-        const firstChild = children[0];
-        const lastChild = children[children.length - 1];
-        if (!(firstChild instanceof HTMLElement) || !(lastChild instanceof HTMLElement)) {
-          empireSubLayers.style.maxHeight = "0px";
-          return;
-        }
-
-        const firstTop = firstChild.offsetTop;
-        const lastBottom = lastChild.offsetTop + lastChild.offsetHeight + parseFloat(window.getComputedStyle(lastChild).marginBottom || "0");
-        const contentHeight = Math.max(0, Math.ceil(lastBottom - firstTop));
-        empireSubLayers.style.maxHeight = `${contentHeight}px`;
-      });
-    } else {
-      empireSubLayers.style.maxHeight = "0px";
-    }
+function scheduleExpandableLayoutSync() {
+  if (expandableLayoutFrame !== null) {
+    return;
   }
 
-  empireLayerButtons.forEach((button) => {
-    const empireLayerId = button.dataset.empireLayerId;
-    const storedIsActive = Boolean(empireLayerId && empireLayerState[empireLayerId]);
-    const displayIsActive = layerState.empires && storedIsActive;
-    button.classList.toggle("is-active", displayIsActive);
-    button.disabled = false;
-    button.setAttribute("aria-disabled", "false");
+  expandableLayoutFrame = requestAnimationFrame(() => {
+    expandableLayoutFrame = null;
+
+    layerPanelUi.syncExpandableSections({
+      uiState,
+      empireSubLayers: document.getElementById("empireSubLayers"),
+    });
+
+    syncLayerPanelScrollbar();
+    showLayerPanelScrollbarTemporarily();
+  });
+}
+
+function syncColorControlParentSections(controlId) {
+  if (
+    controlId === "border"
+    || controlId === "graticule"
+    || controlId === "land"
+    || controlId === "water"
+    || controlId === "romanEmpireFill"
+  ) {
+    scheduleExpandableLayoutSync();
+  }
+}
+
+function syncEmpireGroupUi() {
+  layerPanelUi.syncEmpireGroupUi({
+    layerState,
+    empireLayerState,
+    uiState,
+    empireLayerGroup,
+    empireGroupToggle,
+    empiresButton: document.querySelector('[data-layer-id="empires"]'),
+    empireLayerButtons,
+    romanEmpireLayerGroup,
+    romanEmpireRow,
+    romanEmpireGroupToggle,
+    isEmpireParentActive,
+    isEmpireChildDisplayed,
+    scheduleExpandableLayoutSync,
+    syncColorControlUi,
   });
 }
 
@@ -1717,6 +1418,59 @@ function formatBorderWidthLabel(width) {
 
 function clampOpacityPercent(value) {
   return clamp(Number.parseInt(String(value ?? "0"), 10) || 0, 0, 100);
+}
+
+function getRenderPassesForColorControl(controlId) {
+  switch (controlId) {
+    case "land":
+    case "water":
+      return ["overlay", "poster"];
+    case "romanEmpireFill":
+      return ["empire", "poster"];
+    case "border":
+    case "graticule":
+      return ["overlay", "poster"];
+    default:
+      return ["all"];
+  }
+}
+
+function drawForColorControl(controlId) {
+  drawAtlas(getRenderPassesForColorControl(controlId));
+}
+
+function drawForBorderStyle() {
+  drawAtlas(["overlay", "poster"]);
+}
+
+function drawForGraticuleStyle() {
+  drawAtlas(["overlay", "poster"]);
+}
+
+function drawForLayerToggle(layerId) {
+  switch (layerId) {
+    case "earth":
+      drawAtlas(["earth", "overlay", "poster"]);
+      return;
+    case "empires":
+      drawAtlas(["empire", "poster"]);
+      return;
+    case "borders":
+    case "graticule":
+    case "tissot":
+      drawAtlas(["overlay", "poster"]);
+      return;
+    default:
+      drawAtlas(["all"]);
+  }
+}
+
+function drawForEmpireSublayerToggle() {
+  drawAtlas(["empire", "poster"]);
+}
+
+function drawForEmpireQuality() {
+  drawAtlas(["empire", "poster"]);
 }
 
 function normalizeHexColor(value) {
@@ -1753,119 +1507,41 @@ function loadStoredCustomColors(storageKey) {
 }
 
 function saveStyleSettings() {
-  try {
-    window.localStorage?.setItem(
-      STYLE_SETTINGS_STORAGE_KEY,
-      JSON.stringify({
-        border: {
-          color: borderStyleState.color,
-          opacity: borderStyleState.opacity,
-          width: borderStyleState.width,
-        },
-        graticule: {
-          color: graticuleStyleState.color,
-          opacity: graticuleStyleState.opacity,
-          width: graticuleStyleState.width,
-        },
-        earth: {
-          land: {
-            color: earthStyleState.land.color,
-          },
-          water: {
-            color: earthStyleState.water.color,
-          },
-        },
-      }),
-    );
-  } catch (error) {
-    // Ignore persistence failures and keep runtime state.
-  }
+  window.AtlasStatePersistence.saveStyleSettings({
+    storage: window.localStorage,
+    storageKey: STYLE_SETTINGS_STORAGE_KEY,
+    borderStyleState,
+    graticuleStyleState,
+    earthStyleState,
+    empireStyleState,
+  });
 }
 
 function loadStyleSettings() {
-  try {
-    const stored = window.localStorage?.getItem(STYLE_SETTINGS_STORAGE_KEY);
-    if (!stored) {
-      return;
-    }
-
-    const parsed = JSON.parse(stored);
-
-    const borderColor = normalizeHexColor(parsed?.border?.color);
-    if (borderColor) {
-      setColorControlValue("border", borderColor);
-    }
-
-    const borderOpacity = Number(parsed?.border?.opacity);
-    if (Number.isFinite(borderOpacity)) {
-      borderStyleState.opacity = clamp(borderOpacity, 0, 1);
-    }
-
-    const borderWidth = Number(parsed?.border?.width);
-    if (Number.isFinite(borderWidth)) {
-      borderStyleState.width = clamp(borderWidth, 0.4, 3);
-    }
-
-    const graticuleColor = normalizeHexColor(parsed?.graticule?.color);
-    if (graticuleColor) {
-      setColorControlValue("graticule", graticuleColor);
-    }
-
-    const graticuleWidth = Number(parsed?.graticule?.width);
-    if (Number.isFinite(graticuleWidth)) {
-      graticuleStyleState.width = clamp(graticuleWidth, 0.4, 3);
-    }
-
-    const graticuleOpacity = Number(parsed?.graticule?.opacity);
-    if (Number.isFinite(graticuleOpacity)) {
-      graticuleStyleState.opacity = clamp(graticuleOpacity, 0, 1);
-    }
-
-    const landColor = normalizeHexColor(parsed?.earth?.land?.color);
-    if (landColor) {
-      setColorControlValue("land", landColor);
-    }
-
-    const waterColor = normalizeHexColor(parsed?.earth?.water?.color);
-    if (waterColor) {
-      setColorControlValue("water", waterColor);
-    }
-  } catch (error) {
-    // Ignore invalid persisted data.
-  }
+  window.AtlasStatePersistence.loadStyleSettings({
+    storage: window.localStorage,
+    storageKey: STYLE_SETTINGS_STORAGE_KEY,
+    normalizeHexColor,
+    clamp,
+    setColorControlValue,
+    borderStyleState,
+    graticuleStyleState,
+  });
 }
 
 function saveViewState() {
-  try {
-    window.localStorage?.setItem(
-      VIEW_STATE_STORAGE_KEY,
-      JSON.stringify({
-        projection: projectionState.selectedProjection,
-        zoom: zoomState.scale,
-        rotationOffset: {
-          lambda: rotationOffset.lambda,
-          phi: rotationOffset.phi,
-        },
-        flatProjectionPanOffsets,
-        layers: {
-          earth: layerState.earth,
-          empires: layerState.empires,
-          borders: layerState.borders,
-          graticule: layerState.graticule,
-          tissot: layerState.tissot,
-        },
-        empireSublayers: {
-          ...empireLayerState,
-        },
-        empireQuality: {
-          ...empireQualityState,
-        },
-        month: temporalState.selectedMonth,
-      }),
-    );
-  } catch (error) {
-    // Ignore persistence failures and keep runtime state.
-  }
+  window.AtlasStatePersistence.saveViewState({
+    storage: window.localStorage,
+    storageKey: VIEW_STATE_STORAGE_KEY,
+    projectionState,
+    zoomState,
+    rotationOffset,
+    flatProjectionPanOffsets,
+    layerState,
+    empireLayerState,
+    empireQualityState,
+    temporalState,
+  });
 }
 
 function scheduleViewStateSave() {
@@ -1880,71 +1556,23 @@ function scheduleViewStateSave() {
 }
 
 function loadViewState() {
-  try {
-    const stored = window.localStorage?.getItem(VIEW_STATE_STORAGE_KEY);
-    if (!stored) {
-      return;
-    }
-
-    const parsed = JSON.parse(stored);
-    projectionState.selectedProjection = normalizeProjectionSelection(parsed?.projection);
-
-    const zoom = Number(parsed?.zoom);
-    if (Number.isFinite(zoom)) {
-      zoomState.scale = clampZoomScale(zoom);
-    }
-
-    const lambda = Number(parsed?.rotationOffset?.lambda);
-    const phi = Number(parsed?.rotationOffset?.phi);
-    if (Number.isFinite(lambda)) {
-      rotationOffset.lambda = lambda;
-    }
-    if (Number.isFinite(phi)) {
-      rotationOffset.phi = clamp(phi, -getProjectionPhiClampRange(), getProjectionPhiClampRange());
-    }
-
-    if (parsed?.flatProjectionPanOffsets && typeof parsed.flatProjectionPanOffsets === "object") {
-      Object.keys(flatProjectionPanOffsets).forEach((projectionKey) => {
-        const offset = parsed.flatProjectionPanOffsets?.[projectionKey];
-        const x = Number(offset?.x);
-        const y = Number(offset?.y);
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-          flatProjectionPanOffsets[projectionKey] = { x, y };
-        }
-      });
-    }
-
-    if (parsed?.layers && typeof parsed.layers === "object") {
-      Object.keys(layerState).forEach((key) => {
-        if (typeof parsed.layers[key] === "boolean") {
-          layerState[key] = parsed.layers[key];
-        }
-      });
-    }
-
-    if (parsed?.empireSublayers && typeof parsed.empireSublayers === "object") {
-      Object.keys(empireLayerState).forEach((key) => {
-        if (typeof parsed.empireSublayers[key] === "boolean") {
-          empireLayerState[key] = parsed.empireSublayers[key];
-        }
-      });
-    }
-
-    if (parsed?.empireQuality && typeof parsed.empireQuality === "object") {
-      Object.keys(empireQualityState).forEach((key) => {
-        if (EMPIRE_QUALITY_LEVELS.includes(parsed.empireQuality[key])) {
-          empireQualityState[key] = parsed.empireQuality[key];
-        }
-      });
-    }
-
-    const month = String(parsed?.month ?? "");
-    if (/^\d{2}$/.test(month)) {
-      temporalState.selectedMonth = month;
-    }
-  } catch (error) {
-    // Ignore invalid persisted data.
-  }
+  window.AtlasStatePersistence.loadViewState({
+    storage: window.localStorage,
+    storageKey: VIEW_STATE_STORAGE_KEY,
+    normalizeProjectionSelection,
+    clampZoomScale,
+    clampPhi: (value) => clamp(value, -getProjectionPhiClampRange(), getProjectionPhiClampRange()),
+    flatProjectionPanOffsets,
+    layerState,
+    empireLayerState,
+    empireQualityState,
+    temporalState,
+    projectionState,
+    zoomState,
+    rotationOffset,
+    hasAnyEmpireChildEnabled,
+    empireQualityLevels: EMPIRE_QUALITY_LEVELS,
+  });
 }
 
 function hsvToHex(hue, saturation, value) {
@@ -2088,6 +1716,23 @@ function getColorControlConfig(controlId) {
       hueHandle: waterColorHueHandle,
       addButton: waterColorAddButton,
     },
+    romanEmpireFill: {
+      storageKey: ROMAN_EMPIRE_FILL_COLOR_STORAGE_KEY,
+      datasetKey: "romanEmpireFillColor",
+      paletteOpenKey: "isRomanEmpireFillColorPaletteOpen",
+      input: romanEmpireFillColorInput,
+      value: romanEmpireFillColorValue,
+      inlineDot: romanEmpireFillColorInlineDot,
+      swatchButton: romanEmpireFillColorSwatchButton,
+      customs: romanEmpireFillColorCustoms,
+      presetButtons: romanEmpireFillColorPresetButtons,
+      panel: romanEmpireFillColorPanel,
+      field: romanEmpireFillColorField,
+      fieldHandle: romanEmpireFillColorFieldHandle,
+      hueSlider: romanEmpireFillColorHueSlider,
+      hueHandle: romanEmpireFillColorHueHandle,
+      addButton: romanEmpireFillColorAddButton,
+    },
   };
   return configs[controlId];
 }
@@ -2105,6 +1750,34 @@ function getColorStyleState(controlId) {
   if (controlId === "water") {
     return earthStyleState.water;
   }
+  if (controlId === "romanEmpireFill") {
+    return {
+      get color() {
+        return empireStyleState.romanComparison.fillColor;
+      },
+      set color(nextColor) {
+        empireStyleState.romanComparison.fillColor = nextColor;
+      },
+      get hue() {
+        return empireStyleState.romanComparison.fillHue;
+      },
+      set hue(nextHue) {
+        empireStyleState.romanComparison.fillHue = nextHue;
+      },
+      get saturation() {
+        return empireStyleState.romanComparison.fillSaturation;
+      },
+      set saturation(nextSaturation) {
+        empireStyleState.romanComparison.fillSaturation = nextSaturation;
+      },
+      get value() {
+        return empireStyleState.romanComparison.fillValue;
+      },
+      set value(nextValue) {
+        empireStyleState.romanComparison.fillValue = nextValue;
+      },
+    };
+  }
   return null;
 }
 
@@ -2113,6 +1786,7 @@ function getCustomColorList(controlId) {
   if (controlId === "graticule") return customGraticuleColors;
   if (controlId === "land") return customLandColors;
   if (controlId === "water") return customWaterColors;
+  if (controlId === "romanEmpireFill") return customRomanEmpireFillColors;
   return [];
 }
 
@@ -2121,33 +1795,31 @@ function setCustomColorList(controlId, colors) {
   if (controlId === "graticule") customGraticuleColors = colors;
   if (controlId === "land") customLandColors = colors;
   if (controlId === "water") customWaterColors = colors;
+  if (controlId === "romanEmpireFill") customRomanEmpireFillColors = colors;
 }
 
 function saveCustomColors(controlId) {
-  const config = getColorControlConfig(controlId);
-  try {
-    window.localStorage?.setItem(config.storageKey, JSON.stringify(getCustomColorList(controlId)));
-  } catch (error) {
-    // Ignore persistence failures and keep the runtime state.
-  }
+  colorModel.saveCustomColors(controlId, {
+    getConfig: getColorControlConfig,
+    storage: window.localStorage,
+    getCustomColorList,
+  });
 }
 
 function clearColorRemovePressTimer(controlId) {
-  const runtime = colorControlRuntimeState[controlId];
-  if (runtime.removePressTimer !== null) {
-    window.clearTimeout(runtime.removePressTimer);
-    runtime.removePressTimer = null;
-  }
+  colorModel.clearColorRemovePressTimer(controlId, {
+    getRuntime: (id) => colorControlRuntimeState[id],
+  });
 }
 
 function hideCustomColorRemoveButton(controlId) {
-  const runtime = colorControlRuntimeState[controlId];
-  runtime.removeTarget?.classList.remove("is-remove-visible");
-  runtime.removeTarget = null;
+  colorModel.hideCustomColorRemoveButton(controlId, {
+    getRuntime: (id) => colorControlRuntimeState[id],
+  });
 }
 
 function getColorDatasetSelector(config) {
-  return config.datasetKey.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+  return colorModel.getColorDatasetSelector(config);
 }
 
 function setColorControlValue(controlId, colorHex) {
@@ -2169,274 +1841,128 @@ function setColorControlValue(controlId, colorHex) {
 }
 
 function setColorControlFromField(controlId, clientX, clientY) {
-  const config = getColorControlConfig(controlId);
-  const style = getColorStyleState(controlId);
-  if (!config?.field || !style) {
-    return;
-  }
-  const rect = config.field.getBoundingClientRect();
-  style.saturation = clamp((clientX - rect.left) / rect.width, 0, 1);
-  style.value = 1 - clamp((clientY - rect.top) / rect.height, 0, 1);
-  style.color = hsvToHex(style.hue, style.saturation, style.value);
+  colorModel.setColorControlFromField(controlId, clientX, clientY, {
+    getConfig: getColorControlConfig,
+    getStyle: getColorStyleState,
+    clamp,
+    hsvToHex,
+  });
 }
 
 function setColorControlFromHueSlider(controlId, clientX) {
-  const config = getColorControlConfig(controlId);
-  const style = getColorStyleState(controlId);
-  if (!config?.hueSlider || !style) {
-    return;
-  }
-  const rect = config.hueSlider.getBoundingClientRect();
-  style.hue = clamp((clientX - rect.left) / rect.width, 0, 1) * 360;
-  style.color = hsvToHex(style.hue, style.saturation, style.value);
+  colorModel.setColorControlFromHueSlider(controlId, clientX, {
+    getConfig: getColorControlConfig,
+    getStyle: getColorStyleState,
+    clamp,
+    hsvToHex,
+  });
 }
 
 function createCustomColorButton(controlId, color) {
-  const config = getColorControlConfig(controlId);
-  const runtime = colorControlRuntimeState[controlId];
-  const wrapper = document.createElement("div");
-  wrapper.className = "layer-inline-color-custom";
-
-  const button = document.createElement("button");
-  button.className = "layer-inline-color-button layer-inline-color-choice";
-  button.type = "button";
-  button.dataset[config.datasetKey] = color;
-  button.setAttribute("aria-label", `Custom color ${color}`);
-  wrapper.appendChild(button);
-
-  const dot = document.createElement("span");
-  dot.className = "layer-inline-color-dot";
-  dot.style.setProperty("--layer-active-color", color);
-  dot.setAttribute("aria-hidden", "true");
-  button.appendChild(dot);
-
-  const removeButton = document.createElement("button");
-  removeButton.className = "layer-inline-color-remove";
-  removeButton.type = "button";
-  removeButton.textContent = "−";
-  removeButton.setAttribute("aria-label", `Remove custom color ${color}`);
-  wrapper.appendChild(removeButton);
-
-  button.addEventListener("click", () => {
-    if (runtime.longPressTriggered) {
-      runtime.longPressTriggered = false;
-      return;
-    }
-    if (!setColorControlValue(controlId, color)) {
-      return;
-    }
-    syncColorControlUi(controlId);
-    drawAtlas();
+  return colorModel.createCustomColorButton(controlId, color, {
+    getConfig: getColorControlConfig,
+    getRuntime: (id) => colorControlRuntimeState[id],
+    setColorControlValue,
+    syncColorControlUi,
+    drawForColorControl,
+    setCustomColorList,
+    getCustomColorList,
+    renderCustomColors,
+    saveCustomColors,
+    hideCustomColorRemoveButton,
   });
-
-  const startLongPress = () => {
-    clearColorRemovePressTimer(controlId);
-    runtime.longPressTriggered = false;
-    runtime.removePressTimer = window.setTimeout(() => {
-      if (runtime.removeTarget && runtime.removeTarget !== wrapper) {
-        runtime.removeTarget.classList.remove("is-remove-visible");
-      }
-      runtime.removeTarget = wrapper;
-      runtime.removeTarget.classList.add("is-remove-visible");
-      runtime.longPressTriggered = true;
-      runtime.removePressTimer = null;
-    }, 300);
-  };
-
-  const cancelLongPress = () => {
-    clearColorRemovePressTimer(controlId);
-  };
-
-  button.addEventListener("pointerdown", (event) => {
-    if (event.pointerType === "mouse" && event.button !== 0) {
-      return;
-    }
-    startLongPress();
-  });
-  button.addEventListener("pointerup", cancelLongPress);
-  button.addEventListener("pointerleave", cancelLongPress);
-  button.addEventListener("pointercancel", cancelLongPress);
-  button.addEventListener("touchstart", startLongPress, { passive: true });
-  button.addEventListener("touchend", cancelLongPress, { passive: true });
-  button.addEventListener("touchcancel", cancelLongPress, { passive: true });
-  button.addEventListener("contextmenu", (event) => event.preventDefault());
-
-  removeButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    setCustomColorList(controlId, getCustomColorList(controlId).filter((entry) => entry !== color));
-    saveCustomColors(controlId);
-    hideCustomColorRemoveButton(controlId);
-    renderCustomColors(controlId);
-    syncColorControlUi(controlId);
-  });
-
-  return wrapper;
 }
 
 function renderCustomColors(controlId) {
-  const config = getColorControlConfig(controlId);
-  if (!config?.customs) {
-    return;
-  }
-  config.customs.replaceChildren(
-    ...getCustomColorList(controlId).map((color) => createCustomColorButton(controlId, color)),
-  );
+  colorModel.renderCustomColors(controlId, {
+    getConfig: getColorControlConfig,
+    getCustomColorList,
+    createCustomColorButton,
+  });
 }
 
 function revealCustomColor(controlId, color) {
-  const config = getColorControlConfig(controlId);
-  const matchingButton = config?.customs?.querySelector(
-    `.layer-inline-color-choice[data-${getColorDatasetSelector(config)}="${color}"]`,
-  );
-  if (!(matchingButton instanceof HTMLElement)) {
-    return null;
-  }
-  matchingButton.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-  return matchingButton;
+  return colorModel.revealCustomColor(controlId, color, {
+    getConfig: getColorControlConfig,
+  });
 }
 
 function revealPresetColor(controlId, color) {
-  const config = getColorControlConfig(controlId);
-  const matchingButton = config?.presetButtons?.find(
-    (button) => button.dataset[config.datasetKey]?.toUpperCase() === color.toUpperCase(),
-  );
-  if (!(matchingButton instanceof HTMLElement)) {
-    return null;
-  }
-  matchingButton.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-  return matchingButton;
+  return colorModel.revealPresetColor(controlId, color, {
+    getConfig: getColorControlConfig,
+  });
 }
 
 function flashColorFeedback(controlId, button) {
-  if (!button) {
-    return;
-  }
-  const runtime = colorControlRuntimeState[controlId];
-  if (runtime.duplicateFlashTimer !== null) {
-    window.clearTimeout(runtime.duplicateFlashTimer);
-  }
-  runtime.duplicateFlashButton?.classList.remove("is-duplicate-flash");
-  runtime.duplicateFlashButton = button;
-  runtime.duplicateFlashButton.classList.add("is-duplicate-flash");
-  runtime.duplicateFlashTimer = window.setTimeout(() => {
-    runtime.duplicateFlashButton?.classList.remove("is-duplicate-flash");
-    runtime.duplicateFlashButton = null;
-    runtime.duplicateFlashTimer = null;
-  }, 820);
+  colorModel.flashColorFeedback(controlId, button, {
+    getRuntime: (id) => colorControlRuntimeState[id],
+  });
 }
 
 function syncBorderGroupUi() {
-  const bordersButton = document.querySelector('[data-layer-id="borders"]');
-  const borderControls = document.getElementById("borderLayerControls");
-
-  borderLayerGroup?.classList.toggle("is-active", layerState.borders);
-  borderLayerGroup?.classList.toggle("is-open", uiState.isBorderGroupOpen);
-  borderGroupToggle?.setAttribute("aria-expanded", String(uiState.isBorderGroupOpen));
-  bordersButton?.classList.toggle("is-active", layerState.borders);
-
-  if (borderControls) {
-    borderControls.style.maxHeight = uiState.isBorderGroupOpen ? `${borderControls.scrollHeight}px` : "0px";
-  }
-
-  if (borderWidthInput) {
-    borderWidthInput.value = String(borderStyleState.width);
-  }
-  if (borderWidthValue) {
-    borderWidthValue.textContent = formatBorderWidthLabel(borderStyleState.width);
-  }
-  const borderOpacityPercent = Math.round(clamp(borderStyleState.opacity, 0, 1) * 100);
-  if (borderOpacityInput) {
-    borderOpacityInput.value = String(borderOpacityPercent);
-  }
-  if (borderColorInput) {
-    borderColorInput.value = borderStyleState.color.toUpperCase();
-  }
-  if (borderColorValue) {
-    borderColorValue.textContent = borderStyleState.color.toUpperCase();
-  }
-  borderColorInlineDot?.style.setProperty("--layer-active-color", borderStyleState.color);
-  borderColorFieldHandle?.style.setProperty("--layer-active-color", borderStyleState.color);
-  borderColorField?.style.setProperty("--layer-color-field-hue", hsvToHex(borderStyleState.hue, 1, 1));
-  borderColorField?.style.setProperty("--layer-color-field-x", `${clamp(borderStyleState.saturation, 0, 1) * 100}%`);
-  borderColorField?.style.setProperty("--layer-color-field-y", `${(1 - clamp(borderStyleState.value, 0, 1)) * 100}%`);
-  borderColorHueHandle?.style.setProperty("--layer-color-field-hue", hsvToHex(borderStyleState.hue, 1, 1));
-  borderColorHueSlider?.style.setProperty("--layer-color-hue-x", `${(borderStyleState.hue / 360) * 100}%`);
-  borderColorSwatchButton?.setAttribute("aria-expanded", String(uiState.isBorderColorPaletteOpen));
-  borderColorPanel?.closest(".layer-control-color")?.classList.toggle("is-panel-open", uiState.isBorderColorPaletteOpen);
-  borderColorPanel?.setAttribute("aria-hidden", String(!uiState.isBorderColorPaletteOpen));
-  borderColorPresetButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.borderColor?.toUpperCase() === borderStyleState.color.toUpperCase());
-  });
-  borderColorCustoms?.querySelectorAll(".layer-inline-color-choice").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.borderColor?.toUpperCase() === borderStyleState.color.toUpperCase());
+  layerPanelUi.syncBorderGroupUi({
+    layerState,
+    uiState,
+    borderStyleState,
+    borderLayerGroup,
+    borderGroupToggle,
+    bordersButton: document.querySelector('[data-layer-id="borders"]'),
+    borderWidthInput,
+    borderWidthValue,
+    borderOpacityInput,
+    borderColorInput,
+    borderColorValue,
+    borderColorInlineDot,
+    borderColorFieldHandle,
+    borderColorField,
+    borderColorHueHandle,
+    borderColorHueSlider,
+    formatBorderWidthLabel,
+    clamp,
+    hsvToHex,
+    scheduleExpandableLayoutSync,
+    syncColorControlUi,
   });
 }
 
 function syncGraticuleGroupUi() {
-  const graticuleButton = document.querySelector('#graticuleLayerGroup [data-layer-id="graticule"]');
-  const graticuleControls = document.getElementById("graticuleLayerControls");
-
-  graticuleLayerGroup?.classList.toggle("is-active", layerState.graticule);
-  graticuleLayerGroup?.classList.toggle("is-open", uiState.isGraticuleGroupOpen);
-  graticuleGroupToggle?.setAttribute("aria-expanded", String(uiState.isGraticuleGroupOpen));
-  graticuleButton?.classList.toggle("is-active", layerState.graticule);
-
-  if (graticuleControls) {
-    graticuleControls.style.maxHeight = uiState.isGraticuleGroupOpen ? `${graticuleControls.scrollHeight}px` : "0px";
-  }
-
-  if (graticuleWidthInput) {
-    graticuleWidthInput.value = String(graticuleStyleState.width);
-  }
-  if (graticuleWidthValue) {
-    graticuleWidthValue.textContent = formatBorderWidthLabel(graticuleStyleState.width);
-  }
-  if (graticuleOpacityInput) {
-    graticuleOpacityInput.value = String(Math.round(clamp(graticuleStyleState.opacity, 0, 1) * 100));
-  }
-
-  syncColorControlUi("graticule");
+  layerPanelUi.syncGraticuleGroupUi({
+    layerState,
+    uiState,
+    graticuleStyleState,
+    graticuleLayerGroup,
+    graticuleGroupToggle,
+    graticuleButton: document.querySelector('#graticuleLayerGroup [data-layer-id="graticule"]'),
+    graticuleWidthInput,
+    graticuleWidthValue,
+    graticuleOpacityInput,
+    formatBorderWidthLabel,
+    clamp,
+    scheduleExpandableLayoutSync,
+    syncColorControlUi,
+  });
 }
 
 function syncColorControlUi(controlId) {
-  const config = getColorControlConfig(controlId);
-  const style = getColorStyleState(controlId);
-  if (!config || !style) {
-    return;
-  }
-
-  config.input && (config.input.value = style.color.toUpperCase());
-  config.value && (config.value.textContent = style.color.toUpperCase());
-  config.inlineDot?.style.setProperty("--layer-active-color", style.color);
-  config.fieldHandle?.style.setProperty("--layer-active-color", style.color);
-  config.field?.style.setProperty("--layer-color-field-hue", hsvToHex(style.hue, 1, 1));
-  config.field?.style.setProperty("--layer-color-field-x", `${clamp(style.saturation, 0, 1) * 100}%`);
-  config.field?.style.setProperty("--layer-color-field-y", `${(1 - clamp(style.value, 0, 1)) * 100}%`);
-  config.hueHandle?.style.setProperty("--layer-color-field-hue", hsvToHex(style.hue, 1, 1));
-  config.hueSlider?.style.setProperty("--layer-color-hue-x", `${(style.hue / 360) * 100}%`);
-  config.swatchButton?.setAttribute("aria-expanded", String(uiState[config.paletteOpenKey]));
-  config.panel?.closest(".layer-control-color")?.classList.toggle("is-panel-open", uiState[config.paletteOpenKey]);
-  config.panel?.setAttribute("aria-hidden", String(!uiState[config.paletteOpenKey]));
-  config.presetButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset[config.datasetKey]?.toUpperCase() === style.color.toUpperCase());
-  });
-  config.customs?.querySelectorAll(".layer-inline-color-choice").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset[config.datasetKey]?.toUpperCase() === style.color.toUpperCase());
+  layerPanelUi.syncColorControlUi({
+    config: getColorControlConfig(controlId),
+    style: getColorStyleState(controlId),
+    isPaletteOpen: uiState[getColorControlConfig(controlId)?.paletteOpenKey],
+    hsvToHex,
+    clamp,
+    afterSync: () => syncColorControlParentSections(controlId),
   });
 }
 
 function syncEarthGroupUi() {
-  const earthControls = document.getElementById("earthLayerControls");
-
-  earthLayerGroup?.classList.add("is-active");
-  earthLayerGroup?.classList.toggle("is-open", uiState.isEarthGroupOpen);
-  earthGroupButton?.classList.add("is-active");
-  earthGroupToggle?.setAttribute("aria-expanded", String(uiState.isEarthGroupOpen));
-  if (earthControls) {
-    earthControls.style.maxHeight = uiState.isEarthGroupOpen ? `${earthControls.scrollHeight}px` : "0px";
-  }
-  syncColorControlUi("land");
-  syncColorControlUi("water");
+  layerPanelUi.syncEarthGroupUi({
+    uiState,
+    earthLayerGroup,
+    earthGroupButton,
+    earthGroupToggle,
+    scheduleExpandableLayoutSync,
+    syncColorControlUi,
+  });
 }
 
 function setColorControlPreviewState(controlId, previewTarget) {
@@ -2474,168 +2000,33 @@ function setGraticuleOpacityPreviewState(isPreviewing) {
 }
 
 function enableSharedColorControl(controlId) {
-  const config = getColorControlConfig(controlId);
-  const runtime = colorControlRuntimeState[controlId];
-  renderCustomColors(controlId);
-
-  config.input?.addEventListener("input", () => {
-    const draftValue = normalizeHexDraftValue(config.input.value);
-    config.input.value = draftValue;
-    const normalizedColor = normalizeHexColor(draftValue);
-    if (!normalizedColor || !setColorControlValue(controlId, normalizedColor)) {
-      return;
-    }
-    syncColorControlUi(controlId);
-    drawAtlas();
-  });
-
-  config.input?.addEventListener("blur", () => {
-    config.input.value = getColorStyleState(controlId).color.toUpperCase();
-  });
-
-  config.swatchButton?.addEventListener("click", () => {
-    uiState[config.paletteOpenKey] = !uiState[config.paletteOpenKey];
-    syncColorControlUi(controlId);
-    syncLayerPanelScrollbar();
-    showLayerPanelScrollbarTemporarily();
-  });
-
-  config.presetButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      if (!setColorControlValue(controlId, button.dataset[config.datasetKey])) {
-        return;
-      }
-      syncColorControlUi(controlId);
-      drawAtlas();
-    });
-  });
-
-  config.field?.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    runtime.fieldDragState = { pointerId: event.pointerId };
-    config.field.setPointerCapture?.(event.pointerId);
-    setColorControlPreviewState(controlId, "field");
-    if (layerPanelScroll) {
-      layerPanelScroll.style.overflowY = "hidden";
-    }
-    setColorControlFromField(controlId, event.clientX, event.clientY);
-    syncColorControlUi(controlId);
-    drawAtlas();
-  });
-
-  config.field?.addEventListener("pointermove", (event) => {
-    if (!runtime.fieldDragState || event.pointerId !== runtime.fieldDragState.pointerId) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    setColorControlFromField(controlId, event.clientX, event.clientY);
-    syncColorControlUi(controlId);
-    drawAtlas();
-  });
-
-  const endFieldDrag = (event) => {
-    if (!runtime.fieldDragState || event.pointerId !== runtime.fieldDragState.pointerId) {
-      return;
-    }
-    config.field.releasePointerCapture?.(event.pointerId);
-    runtime.fieldDragState = null;
-    setColorControlPreviewState(controlId, null);
-    if (layerPanelScroll) {
-      layerPanelScroll.style.overflowY = "";
-    }
-  };
-  config.field?.addEventListener("pointerup", endFieldDrag);
-  config.field?.addEventListener("pointercancel", endFieldDrag);
-
-  config.hueSlider?.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    runtime.hueDragState = { pointerId: event.pointerId };
-    config.hueSlider.setPointerCapture?.(event.pointerId);
-    setColorControlPreviewState(controlId, "hue");
-    setColorControlFromHueSlider(controlId, event.clientX);
-    syncColorControlUi(controlId);
-    drawAtlas();
-  });
-
-  config.hueSlider?.addEventListener("pointermove", (event) => {
-    if (!runtime.hueDragState || event.pointerId !== runtime.hueDragState.pointerId) {
-      return;
-    }
-    event.preventDefault();
-    setColorControlFromHueSlider(controlId, event.clientX);
-    syncColorControlUi(controlId);
-    drawAtlas();
-  });
-
-  const endHueDrag = (event) => {
-    if (!runtime.hueDragState || event.pointerId !== runtime.hueDragState.pointerId) {
-      return;
-    }
-    config.hueSlider.releasePointerCapture?.(event.pointerId);
-    runtime.hueDragState = null;
-    setColorControlPreviewState(controlId, null);
-  };
-  config.hueSlider?.addEventListener("pointerup", endHueDrag);
-  config.hueSlider?.addEventListener("pointercancel", endHueDrag);
-
-  config.addButton?.addEventListener("click", () => {
-    const normalizedColor = normalizeHexColor(getColorStyleState(controlId).color);
-    if (!normalizedColor) {
-      return;
-    }
-    const presetButton = revealPresetColor(controlId, normalizedColor);
-    if (presetButton) {
-      flashColorFeedback(controlId, presetButton);
-      return;
-    }
-    setCustomColorList(
-      controlId,
-      [normalizedColor, ...getCustomColorList(controlId).filter((color) => color !== normalizedColor)]
-        .slice(0, MAX_CUSTOM_BORDER_COLORS),
-    );
-    saveCustomColors(controlId);
-    renderCustomColors(controlId);
-    syncColorControlUi(controlId);
-    const customButton = revealCustomColor(controlId, normalizedColor);
-    if (customButton) {
-      flashColorFeedback(controlId, customButton);
-    }
-  });
-
-  document.addEventListener("click", (event) => {
-    if (!uiState[config.paletteOpenKey]) {
-      return;
-    }
-    const target = event.target;
-    if (!(target instanceof Node)) {
-      return;
-    }
-    const colorControl = config.panel?.closest(".layer-control-color");
-    if (colorControl?.contains(target)) {
-      return;
-    }
-    uiState[config.paletteOpenKey] = false;
-    syncColorControlUi(controlId);
-  });
-
-  document.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof Node)) {
-      return;
-    }
-    if (colorControlRuntimeState[controlId].removeTarget?.contains(target)) {
-      return;
-    }
-    hideCustomColorRemoveButton(controlId);
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && uiState[config.paletteOpenKey]) {
-      uiState[config.paletteOpenKey] = false;
-      syncColorControlUi(controlId);
-    }
+  bindSharedColorControl(controlId, {
+    getConfig: getColorControlConfig,
+    getRuntime: (id) => colorControlRuntimeState[id],
+    renderCustomColors,
+    normalizeHexDraftValue,
+    normalizeHexColor,
+    setColorControlValue,
+    syncColorControlUi,
+    drawForColorControl,
+    getColorStyleState,
+    setColorControlPreviewState,
+    layerPanelScroll,
+    setColorControlFromField,
+    setColorControlFromHueSlider,
+    revealPresetColor,
+    flashColorFeedback,
+    setCustomColorList,
+    getCustomColorList,
+    saveCustomColors,
+    revealCustomColor,
+    maxCustomColors: MAX_CUSTOM_BORDER_COLORS,
+    hideCustomColorRemoveButton,
+    documentTarget: document,
+    uiState,
+    syncLayerPanelScrollbar,
+    showLayerPanelScrollbarTemporarily,
+    colorControlRuntimeState,
   });
 }
 
@@ -2651,7 +2042,7 @@ function enableBorderStyleControls() {
     borderStyleState.width = nextWidth;
     saveStyleSettings();
     syncBorderGroupUi();
-    drawAtlas();
+    drawForBorderStyle();
   });
 
   borderWidthInput?.addEventListener("pointerdown", () => {
@@ -2672,7 +2063,7 @@ function enableBorderStyleControls() {
     borderStyleState.opacity = nextPercent / 100;
     saveStyleSettings();
     syncBorderGroupUi();
-    drawAtlas();
+    drawForBorderStyle();
   };
 
   borderOpacityInput?.addEventListener("input", () => {
@@ -2705,7 +2096,7 @@ function enableGraticuleStyleControls() {
     graticuleStyleState.width = nextWidth;
     saveStyleSettings();
     syncGraticuleGroupUi();
-    drawAtlas();
+    drawForGraticuleStyle();
   });
 
   graticuleWidthInput?.addEventListener("pointerdown", () => {
@@ -2726,7 +2117,7 @@ function enableGraticuleStyleControls() {
     graticuleStyleState.opacity = nextPercent / 100;
     saveStyleSettings();
     syncGraticuleGroupUi();
-    drawAtlas();
+    drawForGraticuleStyle();
   };
 
   graticuleOpacityInput?.addEventListener("input", () => {
@@ -2967,197 +2358,12 @@ function setProjectionFromPickerValue(projectionKind) {
 }
 
 function enableProjectionSwitcher() {
-  if (!projectionSwitcher || !projectionSwitcherTrack) {
-    return;
-  }
-
-  const useTouchProjectionSwipe = !window.PointerEvent || /firefox/i.test(navigator.userAgent);
-
-  const startProjectionSwipe = (clientX, pointerId = null) => {
-    if (projectionSwipeAnimating) {
-      return false;
-    }
-
-    projectionSwipePointerId = pointerId;
-    projectionSwipeStartX = clientX;
-    projectionSwipeStartTime = performance.now();
-    projectionSwipeDeltaX = 0;
-    projectionSwitcher.classList.add("is-dragging");
-    renderProjectionSwitcher(0);
-    return true;
-  };
-
-  const moveProjectionSwipe = (clientX, pointerId = null) => {
-    if (projectionSwipeStartX === null) {
-      return false;
-    }
-
-    if (projectionSwipePointerId !== null && projectionSwipePointerId !== pointerId) {
-      return false;
-    }
-
-    projectionSwipeDeltaX = clientX - projectionSwipeStartX;
-    renderProjectionSwitcher(projectionSwipeDeltaX);
-    return true;
-  };
-
-  const endProjectionSwipe = () => {
-    if (projectionSwipeStartX === null) {
-      return false;
-    }
-
-    projectionSwipeStartX = null;
-    projectionSwipePointerId = null;
-    projectionSwitcher.classList.remove("is-dragging");
-    const slotWidth = getProjectionSlotWidth();
-    const elapsedMs = Math.max(1, performance.now() - projectionSwipeStartTime);
-    const velocityX = projectionSwipeDeltaX / elapsedMs;
-    const flickDirection = Math.abs(velocityX) > 0.3
-      ? (velocityX > 0 ? 1 : -1)
-      : 0;
-    const steps = flickDirection !== 0
-      ? flickDirection
-      : Math.round(projectionSwipeDeltaX / slotWidth);
-
-    if (Math.abs(projectionSwipeDeltaX) < 32 || steps === 0) {
-      renderProjectionSwitcher(0);
-      projectionSwipeDeltaX = 0;
-      projectionSwipeStartTime = 0;
-      return true;
-    }
-
-    projectionSwipeAnimating = true;
-    projectionSwitcher.classList.add("is-settling");
-    renderProjectionSwitcher(steps * slotWidth);
-    if (projectionSwipeSettleTimer !== null) {
-      window.clearTimeout(projectionSwipeSettleTimer);
-    }
-    projectionSwipeSettleTimer = window.setTimeout(() => {
-      projectionSwipeSettleTimer = null;
-      projectionSwitcher.classList.remove("is-settling");
-      cycleProjection(steps);
-      projectionSwipeAnimating = false;
-    }, 140);
-    projectionSwipeDeltaX = 0;
-    projectionSwipeStartTime = 0;
-    return true;
-  };
-
-  const cancelProjectionSwipe = () => {
-    if (projectionSwipeSettleTimer !== null) {
-      window.clearTimeout(projectionSwipeSettleTimer);
-      projectionSwipeSettleTimer = null;
-    }
-
-    projectionSwipeAnimating = false;
-    projectionSwipeStartX = null;
-    projectionSwipeStartTime = 0;
-    projectionSwipePointerId = null;
-    projectionSwipeDeltaX = 0;
-    projectionSwitcher.classList.remove("is-dragging");
-    projectionSwitcher.classList.remove("is-settling");
-    renderProjectionSwitcher(0);
-  };
-
-  projectionSwitcher.addEventListener("pointerdown", (event) => {
-    if (useTouchProjectionSwipe) {
-      return;
-    }
-
-    if (!startProjectionSwipe(event.clientX, event.pointerId)) {
-      return;
-    }
-
-    projectionSwitcher.setPointerCapture(event.pointerId);
-  });
-
-  projectionSwitcher.addEventListener("pointermove", (event) => {
-    if (useTouchProjectionSwipe) {
-      return;
-    }
-
-    moveProjectionSwipe(event.clientX, event.pointerId);
-  });
-
-  projectionSwitcher.addEventListener("pointerup", (event) => {
-    if (useTouchProjectionSwipe) {
-      return;
-    }
-
-    if (projectionSwipePointerId !== event.pointerId) {
-      return;
-    }
-
-    endProjectionSwipe();
-
-    if (projectionSwitcher.hasPointerCapture?.(event.pointerId)) {
-      projectionSwitcher.releasePointerCapture(event.pointerId);
-    }
-  });
-
-  projectionSwitcher.addEventListener("pointercancel", cancelProjectionSwipe);
-
-  projectionSwitcher.addEventListener("lostpointercapture", () => {
-    if (projectionSwipeStartX !== null && !projectionSwipeAnimating) {
-      cancelProjectionSwipe();
-    }
-  });
-
-  projectionSwitcher.addEventListener("touchstart", (event) => {
-    if (!useTouchProjectionSwipe) {
-      return;
-    }
-
-    if (event.touches.length !== 1) {
-      return;
-    }
-
-    if (!startProjectionSwipe(event.touches[0].clientX)) {
-      return;
-    }
-
-    event.preventDefault();
-  }, { passive: false });
-
-  projectionSwitcher.addEventListener("touchmove", (event) => {
-    if (!useTouchProjectionSwipe) {
-      return;
-    }
-
-    if (event.touches.length !== 1) {
-      return;
-    }
-
-    if (!moveProjectionSwipe(event.touches[0].clientX)) {
-      return;
-    }
-
-    event.preventDefault();
-  }, { passive: false });
-
-  projectionSwitcher.addEventListener("touchend", () => {
-    if (!useTouchProjectionSwipe) {
-      return;
-    }
-
-    endProjectionSwipe();
-  }, { passive: true });
-
-  projectionSwitcher.addEventListener("touchcancel", () => {
-    if (!useTouchProjectionSwipe) {
-      return;
-    }
-
-    if (!projectionSwipeAnimating) {
-      cancelProjectionSwipe();
-    }
-  }, { passive: true });
-
-  projectionSwitcher.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      cycleProjection();
-    }
+  projectionSwitcherController.bind({
+    projectionSwitcher,
+    projectionSwitcherTrack,
+    renderProjectionSwitcher,
+    getProjectionSlotWidth,
+    cycleProjection,
   });
 }
 
@@ -3190,15 +2396,12 @@ function syncMonthButtons() {
   });
 }
 
-function requestRender() {
-  if (renderScheduled) {
-    return;
-  }
-
-  renderScheduled = true;
-  requestAnimationFrame(() => {
-    renderScheduled = false;
-    drawAtlas();
+function requestRender(passes = ["all"]) {
+  renderer.request({
+    passes: ["all"],
+    render: () => {
+      drawAtlas([]);
+    },
   });
 }
 

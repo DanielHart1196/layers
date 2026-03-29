@@ -179,3 +179,295 @@
   - drag alignment
   - projection switch speed
   - mobile control hit areas
+
+## Target App Architecture
+- Current app-level complexity is concentrated too heavily in `app.js`.
+- The long-term target should be:
+  - thin bootstrap in `app.js`
+  - state and persistence separated from DOM wiring
+  - layer definitions centralized in a registry
+  - reusable UI control controllers instead of repeated hand-plumbing
+  - render scheduling and invalidation separated from input handling
+  - export treated as a first-class pipeline, not an afterthought on the interactive renderer
+- Treat the app as five cooperating areas:
+  - state
+  - layer definitions
+  - UI/controllers
+  - gestures
+  - rendering
+- Export should now be treated as a sixth area:
+  - export
+- Prefer module boundaries that follow single responsibility:
+  - state modules should not query the DOM
+  - UI modules should not own persistence rules
+  - gesture modules should emit view updates, not directly manipulate layer markup
+  - render modules should consume resolved state, not browser event details
+  - export modules should consume resolved state and export settings, not viewport DOM state
+- Keep parent layer visibility, child preferences, open/closed panel state, and transient preview/drag state as separate concerns.
+- Avoid encoding business rules in click handlers when the rule belongs in a shared selector or state helper.
+
+## Recommended Module Split
+- `app.js`
+  - boot only
+  - create store/controllers
+  - bind modules together
+- `state/store.js`
+  - canonical runtime state
+  - getters, patch/update helpers, subscriptions
+- `state/persistence.js`
+  - load/save view state
+  - load/save style settings
+  - storage schema translation
+- `layers/registry.js`
+  - canonical definitions for layers, sublayers, controls, defaults, and persistence keys
+- `layers/selectors.js`
+  - derived rules such as parent/child visibility, effective styles, and UI display state
+- `ui/layer-panel.js`
+  - layer panel wiring
+  - expand/collapse behavior
+  - activation/deactivation events
+- `ui/color-controls.js`
+  - shared color picker setup and syncing
+  - custom swatch persistence hooks
+- `ui/projection-controls.js`
+  - picker and switcher wiring
+- `ui/month-controls.js`
+  - month strip and hourglass behavior
+- `gestures/map-gestures.js`
+  - drag, pinch, double-tap, browser zoom suppression
+- `gestures/projection-switcher.js`
+  - projection swipe/flick logic
+- `render/renderer.js`
+  - render scheduling
+  - pass orchestration
+  - invalidation
+- `render/layer-renderers.js`
+  - layer-to-renderer mapping
+- `export/export-controller.js`
+  - export entry point
+  - export settings validation
+  - export job orchestration
+- `export/export-scene.js`
+  - scene resolution for print size, DPI, and aspect ratio
+- `export/export-renderers.js`
+  - export-target render pass mapping
+- `export/pdf-renderer.js` and/or `export/svg-renderer.js`
+  - vector-first printable output
+- `export/export-manifest.js`
+  - layer export capabilities
+  - vector vs raster fallback rules
+
+## Layer Registry Direction
+- New layer and sublayer work should move toward a registry-driven model instead of manual wiring scattered across HTML, JS state objects, persistence code, and sync functions.
+- The core domain model should now move toward:
+  - every renderable/configurable thing is a `Layer`
+  - layers can contain child layers recursively
+  - parent layers are still layers, not a different ontology
+  - UI sections are views over the layer tree, not the definition of it
+- Each layer definition should eventually declare:
+  - `id`
+  - `nodeType`
+  - `layerRole`
+  - `ownerType`
+  - `parentId` when applicable
+  - child layer ids
+  - default enabled state
+  - default style state
+  - persistence keys
+  - control definitions
+  - render binding / render source
+  - UI section metadata
+- The model should distinguish between:
+  - layer definition
+  - layer instance
+- Reason:
+  - the same layer definition may be used in multiple places with different local settings
+  - example: top-level `Empires` can have one default configuration, while `MyFavLayers > Empires` can use the same definition with different instance-level state
+- A layer instance should eventually carry:
+  - `instanceId`
+  - `definitionId`
+  - parent instance id when nested
+  - local enabled/open state
+  - local overrides for settings and child composition
+- This should support:
+  - built-in system layers
+  - user-created layers
+  - reusable multi-layers
+  - nested layer trees
+- The registry should become the source of truth for:
+  - default state creation
+  - persistence hydration
+  - consistent UI formatting and behavior
+  - canonical layer shell rendering
+  - future layer additions
+- Goal:
+  - adding a new layer should mostly be definition work, not repeated edits across many switch-style blocks
+  - embedding an existing layer inside another layer should be instance work, not a special-case implementation
+
+## Layer Definition Model
+- Treat `Earth`, `Empires`, `Graticule`, `Roman`, `Borders`, and future user-created items as the same fundamental type:
+  - `Layer`
+- Some layers are leaf layers.
+- Some layers are composite layers with children.
+- Some layers are utility/reference layers.
+- Some layers are basemap-oriented layers.
+- Those differences should be expressed as metadata on the same core type, not as unrelated UI species.
+- This should let the app support a tree-capable schema even if the current UI only exposes one nested level at first.
+- The settings UI should eventually use one canonical layer row / expandable shell:
+  - same structure for top-level layers
+  - same structure for nested layers
+  - controls and children populated from config
+  - no bespoke Roman-vs-Graticule markup behavior
+
+## Export Architecture Direction
+- Printing and downloadable PDF output are major product requirements, not optional extras.
+- Do not treat export as “the interactive renderer at a larger size”.
+- The architecture should distinguish clearly between:
+  - interactive rendering
+  - export rendering
+- Interactive rendering may use:
+  - screen pixel ratio assumptions
+  - runtime LODs
+  - GPU paths
+  - interaction-time shortcuts
+  - caches tuned for responsiveness
+- Export rendering should prefer:
+  - deterministic output
+  - explicit physical size or pixel dimensions
+  - explicit DPI where relevant
+  - canonical or validated export-grade vector assets
+  - stable styling independent of viewport DOM state
+- Export should be vector-first wherever the layer semantics allow it.
+- Raster fallback in export should be explicit and controlled, not accidental.
+- Export scene resolution should not depend on `window.innerWidth` or current viewport layout.
+- Export should consume application state plus export settings and produce a render plan for a target:
+  - PDF
+  - SVG
+  - high-resolution raster if needed
+- The long-term target is:
+  - UI acts as one client
+  - interactive renderer acts as one client
+  - export pipeline acts as another client over the same registry/state/selector layer
+
+## Export Quality Rules
+- Canonical vector assets should remain the source of truth for print/export quality output.
+- Runtime interaction LODs are acceptable for screen rendering but should not silently become export assets.
+- Export paths should avoid browser-interaction compromises such as reduced precision during drag or temporary render shortcuts.
+- If a layer cannot export cleanly as vector, the fallback should be documented explicitly per layer.
+- Export styling should be derived from canonical state and style selectors, not scraped from live DOM presentation.
+- If export and interactive rendering diverge, preserve export correctness first and optimize the interactive path separately.
+
+## Refactor Roadmap
+- Phase 1: extract pure state and selectors without changing behavior
+  - move layer defaults, style defaults, and derived visibility rules out of `app.js`
+  - keep existing HTML and CSS contracts intact
+- Phase 2: introduce the layer registry
+  - describe existing Earth, Borders, Graticule, Empires, and empire sublayers in one place
+  - keep current markup but drive more logic from definitions
+- Phase 3: unify repeated control wiring
+  - finish converging color controls on shared descriptors
+  - apply the same pattern to sliders, grouped rows, and expandable sections
+- Phase 4: split gesture handling from UI wiring
+  - isolate map drag/pinch/double-tap logic from layer panel code
+  - isolate projection switcher swipe logic from projection state and DOM sync
+- Phase 5: formalize render invalidation
+  - render only the passes affected by a state change
+  - avoid using UI sync code as an indirect render trigger
+- Phase 6: revisit markup generation
+  - only after the state/registry model is stable
+  - consider generating repeated layer rows from definitions if that improves clarity without breaking the existing UI contract
+- Phase 7: formalize export
+  - define export scene resolution separately from viewport scene resolution
+  - define export-capable layer contracts
+  - separate export render targets from interactive render targets
+  - preserve vector-first output where possible
+
+## Refactor Status
+- Completed or meaningfully underway:
+  - registry-backed defaults and hierarchy extraction
+  - selector extraction for empire parent/child display rules
+  - persistence extraction for style/view state
+  - runtime state assembly extraction
+  - action extraction for layer and sublayer state changes
+  - layer panel UI sync extraction
+  - layer panel controller extraction
+  - gesture controller extraction
+  - render invalidation pass model introduction
+  - render scheduler extraction
+  - shared color-control interaction binding extraction
+- Current architectural split is now roughly:
+  - `app.js`
+    - composition/orchestration
+    - remaining render-pass definitions
+    - remaining color-control model helpers
+  - registry/defaults
+    - `layers-registry.js`
+  - selectors
+    - `layers-selectors.js`
+  - state assembly
+    - `app-state.js`
+  - actions
+    - `app-actions.js`
+  - persistence
+    - `state-persistence.js`
+  - gestures
+    - `app-gestures.js`
+  - render state / scheduler
+    - `app-render-state.js`
+    - `app-renderer.js`
+  - layer panel UI / controller
+    - `app-layer-panel.js`
+    - `app-layer-panel-controller.js`
+  - color-control interaction binding
+    - `app-color-controls.js`
+- Remaining high-value work:
+  - make registry more canonical for controls/render/export capabilities
+  - move remaining color-control model helpers out of `app.js`
+  - keep shrinking `app.js` from implementation file toward composition root
+  - define export-side render targets when export work starts
+
+## Shared Color Strategy
+- Saved custom colors should move toward a shared palette model rather than siloed per-control lists.
+- Reason:
+  - improves consistency across user-created maps
+  - reduces duplicate color saving across borders, graticule, land, water, and empire fills
+  - makes recurring cartographic palettes easier to reuse
+- Recommended direction:
+  - one shared saved color collection for user-defined colors
+  - controls may still keep their own fixed default palettes if needed
+  - shared custom colors should appear consistently across all compatible color controls
+- Important distinction:
+  - shared custom colors
+  - control-specific currently selected color
+- If a color is removed from the shared saved palette, it should not silently overwrite a control that is currently using that color.
+- Shared saved colors should remain local/browser-persisted unless account sync is introduced later.
+- If this change is implemented:
+  - migrate existing per-control saved colors into a deduplicated shared collection
+  - preserve current selected values in each control
+  - avoid a UX regression where users lose previously saved favorites
+
+## Readability Standards
+- Do not add new features by extending `app.js` with another large inline state/sync block if the logic belongs in a focused module.
+- Prefer named state helpers and selectors over duplicated inline conditions.
+- Prefer declarative config for repeated UI patterns.
+- Keep storage shape translation in one place so runtime state can stay clean.
+- Keep renderer inputs explicit; do not make render code infer too much from DOM state.
+- When a module becomes responsible for both DOM event handling and domain rules, split it.
+
+## Performance Guidance
+- Responsiveness matters more than raw throughput for this app; avoid changes that increase input latency during drag, pinch, or projection switching.
+- Avoid repeated forced layout work in UI sync paths:
+  - batch reads and writes
+  - avoid measuring multiple expandable sections more often than necessary
+- Prefer explicit render invalidation over redrawing from broad UI sync chains.
+- Reuse cached DOM references and control instances rather than repeated document queries in hot paths.
+- Be careful with global document listeners added per control pattern; shared delegation is preferable when behavior is structurally identical.
+- Preserve the existing flat-projection camera rule:
+  - raster and vector layers must stay on the same shared screen-space transform
+- For browser performance guidance, keep paying attention to layout stability and input responsiveness; changes that add visual jank or delay user interaction are regressions even if total code size goes down.
+
+## Export Performance Guidance
+- Export performance matters, but correctness matters more than matching interactive renderer speed.
+- Do not compromise print/PDF output correctness in order to reuse interactive shortcuts.
+- Keep export rendering deterministic even if it is slower than interactive rendering.
+- If export requires different asset selection, precision, or render passes, make that branch explicit in code.

@@ -234,6 +234,9 @@
         scene.center[1],
         scene.width ?? scene.radius ?? 0,
         scene.height ?? scene.radius ?? 0,
+        scene.zoomScale ?? 1,
+        scene.panOffset?.x ?? 0,
+        scene.panOffset?.y ?? 0,
         internalScale,
       ].join("|");
     }
