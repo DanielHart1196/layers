@@ -3,7 +3,6 @@
 
   function createContinuousAdapter(scene, context, renderState = {}) {
     const baseProjection = window.AtlasCore.createProjection(scene, {
-      disableClipExtent: scene.projectionKind === "mercator",
       precision:
         scene.projectionKind === "azimuthal-equidistant"
         ? (renderState.isInteracting ? 2.4 : 0.35)

@@ -49,3 +49,4 @@
 - Do not hide UI/layout bugs with container-level clipping, overflow suppression, or similar band-aids unless the user explicitly asks for that kind of temporary fix.
 - When something becomes sideways-scrollable, clipped, misaligned, or visually overflows, first identify which child element is exceeding its intended bounds and fix that element or its layout contract.
 - If the quickest available fix is a containment hack rather than a structural fix, say so explicitly before applying it.
+- Temporary on-screen debug UI in `layers` should default to a floating top-left position and should avoid covering primary controls like refresh, layer menu, projection pill, or month controls unless the user asks otherwise.

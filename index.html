@@ -11,17 +11,33 @@
           document.documentElement.style.setProperty("--boot-stage-poster-image", `url("${bootPosterImage}")`);
         }
 
+        const projectionBootLabels = {
+          orthographic: "Globe",
+          mercator: "Mercator",
+          "natural-earth-ii": "Natural Earth II",
+          "goode-homolosine": "Goode Homolosine",
+          waterman: "Waterman",
+          dymaxion: "Dymaxion",
+          "azimuthal-equidistant": "Atlas",
+        };
+
         const storedViewState = window.localStorage?.getItem("atlas.view.state");
         if (storedViewState) {
           const parsedViewState = JSON.parse(storedViewState);
           const zoom = Number(parsedViewState?.zoom);
+          const storedProjection = String(parsedViewState?.projection || "").trim();
           if (Number.isFinite(zoom) && zoom > 1.01) {
             document.documentElement.classList.add("is-mobile-boot-zoomed");
           }
 
+          document.documentElement.dataset.bootProjectionLabel =
+            projectionBootLabels[storedProjection] || "Globe";
+        } else {
+          document.documentElement.dataset.bootProjectionLabel = "Globe";
         }
       } catch (error) {
         // Ignore storage access failures during boot.
+        document.documentElement.dataset.bootProjectionLabel = "Globe";
       }
 
       if (window.matchMedia && window.matchMedia("(max-width: 800px)").matches) {
@@ -44,25 +60,25 @@
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4/dist/d3-geo-projection.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
-    <script src="./atlas-dymaxion.js"></script>
-    <script src="./atlas-core.js"></script>
-    <script src="./atlas-path-cache.js"></script>
-    <script src="./atlas-adapters.js"></script>
-    <script src="./atlas-earth.js"></script>
-    <script src="./atlas-layers.js"></script>
-    <script src="./layers-registry.js"></script>
-    <script src="./layers-selectors.js"></script>
-    <script src="./app-state.js"></script>
-    <script src="./app-actions.js"></script>
-    <script src="./app-gestures.js"></script>
-    <script src="./app-render-state.js"></script>
-    <script src="./app-renderer.js"></script>
-    <script src="./app-color-model.js"></script>
-    <script src="./app-color-controls.js"></script>
-    <script src="./app-layer-body-composer.js"></script>
-    <script src="./app-layer-panel.js"></script>
-    <script src="./app-layer-panel-controller.js"></script>
-    <script src="./state-persistence.js"></script>
+    <script src="./atlas-dymaxion.js?v=20260329-mercator-debug"></script>
+    <script src="./atlas-core.js?v=20260329-mercator-debug"></script>
+    <script src="./atlas-path-cache.js?v=20260329-mercator-debug"></script>
+    <script src="./atlas-adapters.js?v=20260329-mercator-debug"></script>
+    <script src="./atlas-earth.js?v=20260329-mercator-debug"></script>
+    <script src="./atlas-layers.js?v=20260329-mercator-debug"></script>
+    <script src="./layers-registry.js?v=20260329-mercator-debug"></script>
+    <script src="./layers-selectors.js?v=20260329-mercator-debug"></script>
+    <script src="./app-state.js?v=20260329-mercator-debug"></script>
+    <script src="./app-actions.js?v=20260329-mercator-debug"></script>
+    <script src="./app-gestures.js?v=20260329-mercator-debug"></script>
+    <script src="./app-render-state.js?v=20260329-mercator-debug"></script>
+    <script src="./app-renderer.js?v=20260329-mercator-debug"></script>
+    <script src="./app-color-model.js?v=20260329-mercator-debug"></script>
+    <script src="./app-color-controls.js?v=20260329-mercator-debug"></script>
+    <script src="./app-layer-body-composer.js?v=20260329-mercator-debug"></script>
+    <script src="./app-layer-panel.js?v=20260329-mercator-debug"></script>
+    <script src="./app-layer-panel-controller.js?v=20260329-mercator-debug"></script>
+    <script src="./state-persistence.js?v=20260329-mercator-debug"></script>
   </head>
   <body>
     <main class="app-shell">
@@ -218,6 +234,13 @@
           <span class="projection-switcher-track" id="projectionSwitcherTrack">
             <span class="projection-switcher-label projection-switcher-boot-label" aria-hidden="true">Globe</span>
           </span>
+          <script>
+            const bootProjectionLabel = document.documentElement.dataset.bootProjectionLabel || "Globe";
+            const bootProjectionLabelElement = document.currentScript.previousElementSibling?.querySelector?.(".projection-switcher-boot-label");
+            if (bootProjectionLabelElement) {
+              bootProjectionLabelElement.textContent = bootProjectionLabel;
+            }
+          </script>
         </div>
         <aside class="layer-panel" id="layerPanel" aria-label="Map layers">
           <div class="layer-panel-header">

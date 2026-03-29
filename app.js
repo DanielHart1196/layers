@@ -996,6 +996,7 @@ function drawOverlayPass(scenes) {
       overlayLayerRenderers.forEach((renderer) => renderer(scene));
     });
   });
+
 }
 
 function withSceneClip(scene, renderFn) {
@@ -1087,7 +1088,10 @@ function getProjectionPhiClampRange() {
     case "azimuthal-equidistant":
       return 89.999;
     case "mercator":
-      return Math.min(80, 28 * Math.max(zoomState.scale, 1));
+      return window.AtlasCore.getMercatorCenterLatitudeClamp(
+        window.AtlasCore.getViewDimensions("mercator"),
+        zoomState.scale,
+      );
     default:
       return 28;
   }
@@ -2055,25 +2059,13 @@ function setColorControlPreviewState(controlId, previewTarget) {
   layerPanel?.classList.toggle("is-color-previewing", isPreviewing);
 }
 
-let sliderPreviewDebugElement = null;
 const sliderPreviewDebugHistory = [];
 
 function logSliderPreviewDebug(message) {
-  if (!document.body) {
-    return;
-  }
-
-  if (!sliderPreviewDebugElement) {
-    sliderPreviewDebugElement = document.createElement("div");
-    sliderPreviewDebugElement.className = "slider-preview-debug";
-    document.body.appendChild(sliderPreviewDebugElement);
-  }
-
   sliderPreviewDebugHistory.push(message);
   if (sliderPreviewDebugHistory.length > 10) {
     sliderPreviewDebugHistory.shift();
   }
-  sliderPreviewDebugElement.textContent = sliderPreviewDebugHistory.join("\n");
 }
 
 function clearSliderPreviewState() {

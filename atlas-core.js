@@ -7,8 +7,10 @@
   const MONTHS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
   const AVAILABLE_TOPOBATHY_MONTHS = new Set(MONTHS);
   const AZIMUTHAL_EQD_SCALE_FACTOR = 2 / Math.PI;
+  const MERCATOR_MAX_LATITUDE = 85.05113;
+  const MERCATOR_MAX_Y = Math.log(Math.tan((Math.PI / 4) + ((MERCATOR_MAX_LATITUDE * Math.PI) / 180 / 2)));
   const MERCATOR_DEFAULT_ZOOM = 1.08;
-  const MERCATOR_SCREEN_FIT_SCALE = VIEW_HEIGHT / (2 * Math.PI);
+  const MERCATOR_SCREEN_FIT_SCALE = VIEW_HEIGHT / (2 * MERCATOR_MAX_Y);
   const NATURAL_EARTH_FIT_PADDING = 8;
   const GOODE_FIT_PADDING = 8;
   const ORTHOGRAPHIC_VIEWPORT_PADDING = 44;
@@ -99,9 +101,24 @@
       center: [width / 2, height / 2],
       width,
       height,
-      projectionScale: (height / (2 * Math.PI)) * MERCATOR_DEFAULT_ZOOM,
+      projectionScale: (height / (2 * MERCATOR_MAX_Y)) * MERCATOR_DEFAULT_ZOOM,
       baseRotate: [0, 0, 0],
     };
+  }
+
+  function getMercatorCenterLatitudeClamp(viewDimensions = getViewDimensions("mercator"), zoomScale = 1) {
+    const { height } = viewDimensions;
+    if (!(zoomScale > 1.001)) {
+      return 0;
+    }
+
+    const baseScale = (height / (2 * MERCATOR_MAX_Y)) * MERCATOR_DEFAULT_ZOOM;
+    const currentScale = baseScale * zoomScale;
+    const baseVisibleHalfY = height / (2 * baseScale);
+    const currentVisibleHalfY = height / (2 * currentScale);
+    const extraCenterY = Math.max(0, baseVisibleHalfY - currentVisibleHalfY);
+    const latitudeRadians = (2 * Math.atan(Math.exp(extraCenterY))) - (Math.PI / 2);
+    return (latitudeRadians * 180) / Math.PI;
   }
 
   function createOrthographicSceneDefinition(viewDimensions) {
@@ -364,10 +381,17 @@
       scene.height &&
       !options.disableClipExtent
     ) {
-      projection.clipExtent([
-        [scene.center[0] - scene.width / 2, scene.center[1] - scene.height / 2],
-        [scene.center[0] + scene.width / 2, scene.center[1] + scene.height / 2],
-      ]);
+      if (scene.projectionKind === "mercator") {
+        projection.clipExtent([
+          [-1_000_000, scene.center[1] - scene.height / 2],
+          [1_000_000, scene.center[1] + scene.height / 2],
+        ]);
+      } else {
+        projection.clipExtent([
+          [scene.center[0] - scene.width / 2, scene.center[1] - scene.height / 2],
+          [scene.center[0] + scene.width / 2, scene.center[1] + scene.height / 2],
+        ]);
+      }
     }
 
     if (typeof options.precision === "number" && typeof projection.precision === "function") {
@@ -478,6 +502,7 @@
     dragSensitivity,
     equator,
     getDefaultMonth,
+    getMercatorCenterLatitudeClamp,
     getViewDimensions,
     getResolvedScenes,
     getSceneBounds,
