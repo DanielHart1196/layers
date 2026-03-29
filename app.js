@@ -100,7 +100,6 @@ const projectionSwitcher = document.getElementById("projectionSwitcher");
 const projectionSwitcherTrack = document.getElementById("projectionSwitcherTrack");
 const projectionWheel = document.getElementById("projectionWheel");
 const projectionWheelWindow = document.getElementById("projectionWheelWindow");
-const projectionDebug = document.getElementById("projectionDebug");
 const layerButtons = Array.from(document.querySelectorAll(".layer-item"));
 const empireLayerButtons = Array.from(document.querySelectorAll("[data-empire-layer-id]"));
 const projectionPicker = document.getElementById("projectionPicker");
@@ -239,11 +238,11 @@ const SUPPORTED_PROJECTIONS = new Set([
   "dymaxion",
 ]);
 const PROJECTION_SEQUENCE = [
-  "waterman",
-  "goode-homolosine",
-  "natural-earth-ii",
-  "mercator",
   "orthographic",
+  "mercator",
+  "natural-earth-ii",
+  "goode-homolosine",
+  "waterman",
   "azimuthal-equidistant",
 ];
 const PROJECTION_OPTIONS = [
@@ -254,15 +253,11 @@ const PROJECTION_OPTIONS = [
   { value: "goode-homolosine", label: "Goode Homolosine" },
   { value: "waterman", label: "Waterman Butterfly" },
 ];
-const PROJECTION_WHEEL_DEBUG_VERSION = "projection-wheel-v1";
 const PROJECTION_WHEEL_VISIBLE_RADIUS = 2;
 const PROJECTION_WHEEL_ROW_HEIGHT = 46;
 const PROJECTION_WHEEL_VIEWPORT_HEIGHT = 220;
-const PROJECTION_WHEEL_REPEAT_CYCLES = 5;
 let overlayLayerRenderers = [];
 let empireLayerRenderer = null;
-let projectionDebugMode = "unknown";
-let projectionSwitcherBound = false;
 
 const projectionSwitcherItems = PROJECTION_SEQUENCE.map((projectionKind) => {
   const item = document.createElement("span");
@@ -271,8 +266,7 @@ const projectionSwitcherItems = PROJECTION_SEQUENCE.map((projectionKind) => {
   projectionSwitcherTrack?.appendChild(item);
   return item;
 });
-const projectionWheelItems = Array.from({ length: PROJECTION_SEQUENCE.length * PROJECTION_WHEEL_REPEAT_CYCLES }, (_, index) => {
-  const projectionKind = PROJECTION_SEQUENCE[index % PROJECTION_SEQUENCE.length];
+const projectionWheelItems = PROJECTION_SEQUENCE.map((projectionKind, index) => {
   const item = document.createElement("button");
   item.type = "button";
   item.className = "projection-wheel-item";
@@ -324,15 +318,6 @@ function getProjectionDistanceFromCurrent(projectionKind) {
   return distance;
 }
 
-function wrapProjectionSequenceIndex(index) {
-  const total = PROJECTION_SEQUENCE.length;
-  return ((index % total) + total) % total;
-}
-
-function getWrappedProjectionFromIndex(index) {
-  return PROJECTION_SEQUENCE[wrapProjectionSequenceIndex(index)];
-}
-
 function getProjectionSlotWidth() {
   return Math.max(164, (projectionSwitcher?.clientWidth ?? 208) + 16);
 }
@@ -344,7 +329,7 @@ function renderProjectionSwitcher(offset = 0) {
     const projectionKind = item.dataset.projection;
     const distance = getProjectionDistanceFromCurrent(projectionKind);
     item.textContent = getProjectionLabel(projectionKind);
-    item.style.setProperty("--projection-item-offset", `${offset - (distance * slotWidth)}px`);
+    item.style.setProperty("--projection-item-offset", `${offset + (distance * slotWidth)}px`);
     item.style.opacity = Math.abs(distance - (offset / slotWidth)) < 0.9 ? "1" : "0.5";
   });
 }
@@ -373,10 +358,6 @@ function syncProjectionWheelPosition() {
 
 function getProjectionWheelCenterPadding() {
   return (PROJECTION_WHEEL_VIEWPORT_HEIGHT - PROJECTION_WHEEL_ROW_HEIGHT) / 2;
-}
-
-function getProjectionWheelMiddleCycleOffset() {
-  return Math.floor(PROJECTION_WHEEL_REPEAT_CYCLES / 2) * PROJECTION_SEQUENCE.length;
 }
 
 function getProjectionWheelScrollTopForIndex(index) {
@@ -426,83 +407,23 @@ function centerProjectionWheelOnProjection(projectionKind, behavior = "auto") {
     return;
   }
 
-  const centeredIndex = getProjectionWheelMiddleCycleOffset() + projectionIndex;
   projectionWheelWindow.scrollTo({
-    top: getProjectionWheelScrollTopForIndex(centeredIndex),
+    top: getProjectionWheelScrollTopForIndex(projectionIndex),
     behavior,
   });
   syncProjectionWheelHighlight();
 }
 
-function setProjectionDebug(message) {
-  if (!projectionDebug) {
+function centerProjectionWheelOnSequenceIndex(sequenceIndex, behavior = "auto") {
+  if (!projectionWheelWindow || !Number.isFinite(sequenceIndex)) {
     return;
   }
 
-  const switcherRect = projectionSwitcher?.getBoundingClientRect?.();
-  const wheelRect = projectionWheel?.getBoundingClientRect?.();
-  const switcherSummary = switcherRect
-    ? `${Math.round(switcherRect.left)},${Math.round(switcherRect.top)} ${Math.round(switcherRect.width)}x${Math.round(switcherRect.height)}`
-    : "none";
-  const wheelSummary = wheelRect
-    ? `${Math.round(wheelRect.left)},${Math.round(wheelRect.top)} ${Math.round(wheelRect.width)}x${Math.round(wheelRect.height)}`
-    : "none";
-  const lines = [
-    `${PROJECTION_WHEEL_DEBUG_VERSION} ${projectionState.selectedProjection}`,
-    `bound=${projectionSwitcherBound} mode=${projectionDebugMode} open=${uiState.isProjectionWheelOpen}`,
-    `sw ${switcherSummary}`,
-    `wh ${wheelSummary} ${projectionWheel ? `${getComputedStyle(projectionWheel).opacity}/${getComputedStyle(projectionWheel).pointerEvents}` : "none"}`,
-    `msg ${message}`,
-  ];
-  projectionDebug.dataset.header = lines.join("\n");
-  const historyLines = projectionDebug.dataset.history
-    ? projectionDebug.dataset.history.split("\n").filter(Boolean)
-    : [];
-  projectionDebug.textContent = [...lines, ...historyLines.slice(0, 4)].join("\n");
-}
-
-function appendProjectionDebug(message) {
-  if (!projectionDebug) {
-    return;
-  }
-
-  const historyLines = projectionDebug.dataset.history
-    ? projectionDebug.dataset.history.split("\n").filter(Boolean)
-    : [];
-  historyLines.unshift(message);
-  projectionDebug.dataset.history = historyLines.slice(0, 4).join("\n");
-  const headerLines = projectionDebug.dataset.header
-    ? projectionDebug.dataset.header.split("\n")
-    : [
-      `${PROJECTION_WHEEL_DEBUG_VERSION} ${projectionState.selectedProjection}`,
-      `bound=${projectionSwitcherBound} mode=${projectionDebugMode} open=${uiState.isProjectionWheelOpen}`,
-      "sw unknown",
-      "wh unknown",
-      "msg init",
-    ];
-  projectionDebug.textContent = [...headerLines, ...historyLines.slice(0, 4)].join("\n");
-}
-
-function setProjectionDebugMode(mode) {
-  projectionDebugMode = mode;
-  setProjectionDebug(`mode=${mode}`);
-}
-
-function getProjectionDebugTargetLabel(target) {
-  if (!(target instanceof Element)) {
-    return String(target);
-  }
-
-  const id = target.id ? `#${target.id}` : "";
-  const classes = target.classList.length ? `.${Array.from(target.classList).join(".")}` : "";
-  return `${target.tagName.toLowerCase()}${id}${classes}`;
-}
-
-function logProjectionHitPoint(clientX, clientY, label = "hit") {
-  const hit = document.elementFromPoint(clientX, clientY);
-  appendProjectionDebug(
-    `${label} ${Math.round(clientX)},${Math.round(clientY)} -> ${getProjectionDebugTargetLabel(hit)}`,
-  );
+  projectionWheelWindow.scrollTo({
+    top: getProjectionWheelScrollTopForIndex(sequenceIndex),
+    behavior,
+  });
+  syncProjectionWheelHighlight();
 }
 
 function setProjectionWheelOpen(isOpen) {
@@ -519,50 +440,6 @@ function setProjectionWheelOpen(isOpen) {
     syncProjectionWheelPosition();
     centerProjectionWheelOnProjection(projectionState.selectedProjection, "auto");
   }
-
-  setProjectionDebug(`setWheelOpen(${uiState.isProjectionWheelOpen})`);
-}
-
-function enableProjectionDebugProbe() {
-  if (!projectionSwitcher) {
-    return;
-  }
-
-  setProjectionDebug("probe ready");
-
-  const logRawEvent = (label, event) => {
-    const touch = "changedTouches" in event && event.changedTouches?.[0]
-      ? event.changedTouches[0]
-      : null;
-    const clientX = touch?.clientX ?? event.clientX ?? 0;
-    const clientY = touch?.clientY ?? event.clientY ?? 0;
-    appendProjectionDebug(
-      `${label} target=${getProjectionDebugTargetLabel(event.target)} ${Math.round(clientX)},${Math.round(clientY)}`,
-    );
-    if (clientX || clientY) {
-      logProjectionHitPoint(clientX, clientY, `${label}-hit`);
-    }
-  };
-
-  projectionSwitcher.addEventListener("touchstart", (event) => {
-    logRawEvent("raw touchstart", event);
-  }, { passive: true });
-
-  projectionSwitcher.addEventListener("touchend", (event) => {
-    logRawEvent("raw touchend", event);
-  }, { passive: true });
-
-  projectionSwitcher.addEventListener("pointerdown", (event) => {
-    logRawEvent("raw pointerdown", event);
-  }, { passive: true });
-
-  projectionSwitcher.addEventListener("pointerup", (event) => {
-    logRawEvent("raw pointerup", event);
-  }, { passive: true });
-
-  projectionSwitcher.addEventListener("click", (event) => {
-    logRawEvent("raw click", event);
-  }, { passive: true });
 }
 
 function syncProjectionSwitcher() {
@@ -787,7 +664,6 @@ function enableMonthMenuToggle() {
 }
 
 async function init() {
-  enableProjectionDebugProbe();
   layerBodyComposer.composeLayerBodies({
     getBodyElement: getLayerBodyElement,
     getRowElement: getLayerRowElement,
@@ -2731,25 +2607,7 @@ function enableProjectionWheel() {
   let switcherTapStartY = 0;
   let wheelSettleTimer = null;
   let wheelSelectionLock = false;
-
   const normalizeProjectionWheelScrollPosition = () => {
-    if (!projectionWheelWindow) {
-      return;
-    }
-
-    const centeredItem = getCenteredProjectionWheelItem();
-    const centeredProjection = centeredItem?.dataset.projectionWheelValue;
-    if (!centeredProjection) {
-      return;
-    }
-
-    const centeredIndex = Number.parseInt(centeredItem.dataset.sequenceIndex || "", 10);
-    const targetIndex = getProjectionWheelMiddleCycleOffset() + getProjectionIndex(centeredProjection);
-    if (!Number.isFinite(centeredIndex) || Math.abs(centeredIndex - targetIndex) < PROJECTION_SEQUENCE.length) {
-      return;
-    }
-
-    projectionWheelWindow.scrollTop = getProjectionWheelScrollTopForIndex(targetIndex);
     syncProjectionWheelHighlight();
   };
 
@@ -2793,7 +2651,6 @@ function enableProjectionWheel() {
       return;
     }
 
-    setProjectionDebug("direct switcher tap");
     setProjectionWheelOpen(!uiState.isProjectionWheelOpen);
   };
 
@@ -2814,13 +2671,7 @@ function enableProjectionWheel() {
     }
 
     event.preventDefault();
-    setProjectionDebug(`direct key ${event.key}`);
     setProjectionWheelOpen(!uiState.isProjectionWheelOpen);
-  });
-
-  projectionWheelWindow.addEventListener("pointerdown", (event) => {
-    setProjectionDebug(`wheel pointerdown y=${Math.round(event.clientY)}`);
-    logProjectionHitPoint(event.clientX, event.clientY, "wheel-hit");
   });
 
   projectionWheelWindow.addEventListener("scroll", () => {
@@ -2830,20 +2681,21 @@ function enableProjectionWheel() {
 
     syncProjectionWheelHighlight();
     normalizeProjectionWheelScrollPosition();
-    setProjectionDebug(`wheel scroll top=${Math.round(projectionWheelWindow.scrollTop)}`);
     queueProjectionWheelSettle();
   });
 
   projectionWheelItems.forEach((item) => {
     item.addEventListener("click", () => {
       const projectionKind = item.dataset.projectionWheelValue;
+      const sequenceIndex = Number.parseInt(item.dataset.sequenceIndex || "", 10);
       if (!projectionKind) {
         return;
       }
 
-      setProjectionDebug(`wheel tap select=${projectionKind}`);
-      centerProjectionWheelOnProjection(projectionKind, "smooth");
       applyProjectionSelection(projectionKind, { closeWheel: false });
+      requestAnimationFrame(() => {
+        centerProjectionWheelOnSequenceIndex(sequenceIndex, "smooth");
+      });
     });
   });
 
@@ -2861,13 +2713,11 @@ function enableProjectionWheel() {
       return;
     }
 
-    setProjectionDebug("outside close");
     setProjectionWheelOpen(false);
   });
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && uiState.isProjectionWheelOpen) {
-      setProjectionDebug("escape close");
       setProjectionWheelOpen(false);
       projectionSwitcher.focus();
     }
@@ -2879,22 +2729,12 @@ function setProjectionFromPickerValue(projectionKind) {
 }
 
 function enableProjectionSwitcher() {
-  projectionSwitcherBound = true;
-  setProjectionDebug("switcher bound");
   projectionSwitcherController.bind({
     projectionSwitcher,
     projectionSwitcherTrack,
     renderProjectionSwitcher,
     getProjectionSlotWidth,
     cycleProjection,
-    debugLog: appendProjectionDebug,
-    setDebugMode: setProjectionDebugMode,
-    getDebugTargetLabel: getProjectionDebugTargetLabel,
-  });
-
-  projectionSwitcher?.addEventListener("click", (event) => {
-    appendProjectionDebug(`click target=${getProjectionDebugTargetLabel(event.target)}`);
-    logProjectionHitPoint(event.clientX, event.clientY, "click-hit");
   });
 }
 

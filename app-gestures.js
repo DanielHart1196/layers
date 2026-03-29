@@ -362,7 +362,7 @@
         projectionSwipeSettleTimer = window.setTimeout(() => {
           projectionSwipeSettleTimer = null;
           projectionSwitcher.classList.remove("is-settling");
-          cycleProjection(steps);
+          cycleProjection(-steps);
           projectionSwipeAnimating = false;
         }, 140);
         projectionSwipeDeltaX = 0;
