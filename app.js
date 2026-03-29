@@ -145,6 +145,7 @@ const { createRenderInvalidationManager } = window.AtlasRenderState;
 const { createRenderer } = window.AtlasRenderer;
 const colorModel = window.AtlasColorModel;
 const { bindSharedColorControl } = window.AtlasColorControls;
+const layerBodyComposer = window.AtlasLayerBodyComposer;
 const layerPanelUi = window.AtlasLayerPanel;
 const layerPanelController = window.AtlasLayerPanelController;
 const {
@@ -176,6 +177,7 @@ let viewStateSaveTimer = null;
 let layerScrollbarDragState = null;
 let layerScrollbarFadeTimer = null;
 let expandableLayoutFrame = null;
+let expandableLayoutSettleTimer = null;
 const BORDER_COLOR_STORAGE_KEY = "atlas.border.customColors";
 const GRATICULE_COLOR_STORAGE_KEY = "atlas.graticule.customColors";
 const LAND_COLOR_STORAGE_KEY = "atlas.earth.land.customColors";
@@ -524,6 +526,10 @@ function enableMonthMenuToggle() {
 }
 
 async function init() {
+  layerBodyComposer.composeLayerBodies({
+    getBodyElement: getLayerBodyElement,
+    getRowElement: getLayerRowElement,
+  });
   customBorderColors = loadStoredCustomColors(BORDER_COLOR_STORAGE_KEY);
   customGraticuleColors = loadStoredCustomColors(GRATICULE_COLOR_STORAGE_KEY);
   customLandColors = loadStoredCustomColors(LAND_COLOR_STORAGE_KEY);
@@ -571,6 +577,7 @@ async function init() {
   enableZoomControls();
   enableLayerPanelToggle();
   enableLayerPanelScrollbar();
+  enableExpandableLayoutAutoSync();
   enableRefreshControls();
   enableMonthControlIsolation();
   enableMonthMenuToggle();
@@ -619,6 +626,18 @@ function syncStageChrome() {
     singleGlobeFrameElement.setAttribute("cy", String(globeScene.center[1]));
     singleGlobeFrameElement.setAttribute("r", String(globeScene.radius));
   }
+}
+
+function getLayerBodyElement(layerId, bodySectionId) {
+  if (!bodySectionId) {
+    return null;
+  }
+
+  return document.getElementById(bodySectionId);
+}
+
+function getLayerRowElement(layerId, row) {
+  return row?.rowElementId ? document.getElementById(row.rowElementId) : null;
 }
 
 function encodeMaskSvg(scenes, viewWidth, viewHeight) {
@@ -1171,10 +1190,13 @@ function enableLayerControls() {
     layerButtons,
     empireLayerButtons,
     earthGroupButton,
-    empireGroupToggle,
-    borderGroupToggle,
-    graticuleGroupToggle,
-    romanEmpireGroupToggle,
+    toggleElementsByLayerId: {
+      earth: earthGroupToggle,
+      empires: empireGroupToggle,
+      borders: borderGroupToggle,
+      graticule: graticuleGroupToggle,
+      romanComparison: romanEmpireGroupToggle,
+    },
     empireQualityInput,
     layerState,
     empireLayerState,
@@ -1377,6 +1399,35 @@ function scheduleExpandableLayoutSync() {
 
     syncLayerPanelScrollbar();
     showLayerPanelScrollbarTemporarily();
+  });
+}
+
+function scheduleExpandableLayoutSettleSync() {
+  if (expandableLayoutSettleTimer !== null) {
+    window.clearTimeout(expandableLayoutSettleTimer);
+  }
+
+  expandableLayoutSettleTimer = window.setTimeout(() => {
+    expandableLayoutSettleTimer = null;
+    scheduleExpandableLayoutSync();
+  }, 0);
+}
+
+function enableExpandableLayoutAutoSync() {
+  layerPanel?.addEventListener("transitionend", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (
+      target.classList.contains("layer-sublist")
+      || target.classList.contains("layer-color-panel")
+      || target.classList.contains("layer-control")
+      || target.classList.contains("layer-control-color")
+    ) {
+      scheduleExpandableLayoutSettleSync();
+    }
   });
 }
 

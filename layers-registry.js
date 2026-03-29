@@ -11,6 +11,14 @@
       parentId: null,
       children: ["graticule", "tissot"],
       controls: ["landColor", "waterColor", "projection"],
+      rows: [
+        { type: "color", controlId: "land", rowElementId: "landColorRow" },
+        { type: "color", controlId: "water", rowElementId: "waterColorRow" },
+        { type: "dropdown", controlId: "projection", rowElementId: "projectionRow" },
+        { type: "layer", layerId: "graticule", rowElementId: "graticuleLayerGroup" },
+        { type: "layer", layerId: "tissot", rowElementId: "tissotLayerRow" },
+      ],
+      bodySectionId: "earthLayerControls",
       renderSource: null,
     },
     empires: {
@@ -25,6 +33,13 @@
       children: ["romanComparison", "mongol", "british"],
       defaultChildOnEnable: "romanComparison",
       controls: ["empireQuality"],
+      rows: [
+        { type: "slider", controlId: "empireQuality", rowElementId: "empireQualityRow" },
+        { type: "layer", layerId: "romanComparison", rowElementId: "romanEmpireLayerGroup" },
+        { type: "layer", layerId: "mongol", rowElementId: "mongolLayerRow" },
+        { type: "layer", layerId: "british", rowElementId: "britishLayerRow" },
+      ],
+      bodySectionId: "empireSubLayers",
       renderSource: "empires",
     },
     borders: {
@@ -38,6 +53,12 @@
       parentId: null,
       children: [],
       controls: ["borderWidth", "borderColor", "borderOpacity"],
+      rows: [
+        { type: "slider", controlId: "borderWidth", rowElementId: "borderWidthRow" },
+        { type: "color", controlId: "border", rowElementId: "borderColorRow" },
+        { type: "slider", controlId: "borderOpacity", rowElementId: "borderOpacityRow" },
+      ],
+      bodySectionId: "borderLayerControls",
       renderSource: "borders",
     },
     graticule: {
@@ -51,6 +72,11 @@
       parentId: "earth",
       children: [],
       controls: ["graticuleWidth", "graticuleColor", "graticuleOpacity"],
+      rows: [
+        { type: "slider", controlId: "graticuleWidth", rowElementId: "graticuleWidthRow" },
+        { type: "color", controlId: "graticule", rowElementId: "graticuleColorRow" },
+      ],
+      bodySectionId: "graticuleLayerControls",
       renderSource: "graticule",
     },
     tissot: {
@@ -62,6 +88,7 @@
       uiSection: "projection-settings",
       parentId: "earth",
       children: [],
+      rows: [],
       controls: [],
       renderSource: "tissot",
     },
@@ -77,6 +104,10 @@
       uiSection: "layers",
       children: [],
       controls: ["romanEmpireFill"],
+      rows: [
+        { type: "color", controlId: "romanEmpireFill", rowElementId: "romanEmpireFillRow" },
+      ],
+      bodySectionId: "romanEmpireLayerControls",
       renderSource: "romanComparison",
     },
     mongol: {
@@ -89,6 +120,7 @@
       defaultQuality: "medium",
       uiSection: "layers",
       children: [],
+      rows: [],
       controls: [],
       renderSource: "mongol",
     },
@@ -102,19 +134,13 @@
       defaultQuality: "medium",
       uiSection: "layers",
       children: [],
+      rows: [],
       controls: [],
       renderSource: "british",
     },
   };
 
   const empireQualityLevels = ["low", "medium", "high"];
-
-  const expandableSectionDefinitions = [
-    { sectionId: "romanEmpireLayerControls", uiOpenKey: "isRomanEmpireGroupOpen" },
-    { sectionId: "earthLayerControls", uiOpenKey: "isEarthGroupOpen" },
-    { sectionId: "graticuleLayerControls", uiOpenKey: "isGraticuleGroupOpen" },
-    { sectionId: "borderLayerControls", uiOpenKey: "isBorderGroupOpen" },
-  ];
 
   const defaultEarthStyleState = {
     land: {
@@ -198,6 +224,22 @@
     return getLayerDefinition(layerId)?.uiOpenKey ?? null;
   }
 
+  function getLayerRows(layerId) {
+    return cloneValue(getLayerDefinition(layerId)?.rows ?? []);
+  }
+
+  function isExpandableLayer(layerId) {
+    return getLayerRows(layerId).length > 0;
+  }
+
+  function getExpandableLayerDefinitions() {
+    return Object.values(layerDefinitions).filter((definition) => (
+      definition.uiOpenKey
+      && definition.bodySectionId
+      && isExpandableLayer(definition.id)
+    ));
+  }
+
   function getEmpireSublayerDefinitions() {
     return getLayerChildrenDefinitions("empires");
   }
@@ -211,7 +253,11 @@
   }
 
   function getExpandableSectionDefinitions() {
-    return expandableSectionDefinitions.map((definition) => ({ ...definition }));
+    return getExpandableLayerDefinitions().map((definition) => ({
+      layerId: definition.id,
+      sectionId: definition.bodySectionId,
+      uiOpenKey: definition.uiOpenKey,
+    }));
   }
 
   function createLayerInstance(definitionId, overrides = {}) {
@@ -294,6 +340,7 @@
     empireQualityLevels,
     getDefaultEmpireChildOnEnable,
     getDefinitionsBySection,
+    getExpandableLayerDefinitions,
     getGenericLayerDefinitions,
     getEmpireSublayerDefinitions,
     getEmpireSublayerIds,
@@ -303,7 +350,9 @@
     getLayerChildrenDefinitions,
     getLayerDefinition,
     getLayerGroupUiKey,
+    getLayerRows,
     getRootLayerDefinitions,
+    isExpandableLayer,
     layerDefinitions,
   };
 })();

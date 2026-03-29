@@ -59,6 +59,7 @@
     <script src="./app-renderer.js"></script>
     <script src="./app-color-model.js"></script>
     <script src="./app-color-controls.js"></script>
+    <script src="./app-layer-body-composer.js"></script>
     <script src="./app-layer-panel.js"></script>
     <script src="./app-layer-panel-controller.js"></script>
     <script src="./state-persistence.js"></script>
@@ -228,7 +229,7 @@
           </div>
           <div class="layer-panel-scroll">
             <div class="layer-list">
-              <section class="layer-group layer-group-borders layer-group-earth is-active" id="earthLayerGroup">
+              <section class="layer-group layer-group-shell layer-group-earth is-active" id="earthLayerGroup">
                 <div class="layer-group-head">
                   <button class="layer-item layer-item-group is-active" id="earthGroupButton" type="button">
                     <span class="layer-checkbox" aria-hidden="true">
@@ -249,7 +250,7 @@
                   </button>
                 </div>
                 <div class="layer-sublist layer-sublist-controls" id="earthLayerControls">
-                  <div class="layer-control layer-control-color">
+                  <div class="layer-control layer-control-color" id="landColorRow">
                     <div class="layer-control-copy">
                       <strong>Land Color</strong>
                       <small id="landColorValue">#98B977</small>
@@ -302,7 +303,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="layer-control layer-control-color">
+                  <div class="layer-control layer-control-color" id="waterColorRow">
                     <div class="layer-control-copy">
                       <strong>Water Color</strong>
                       <small id="waterColorValue">#2F7398</small>
@@ -355,7 +356,7 @@
                       </div>
                     </div>
                   </div>
-                  <section class="projection-panel" aria-label="Projection">
+                  <section class="projection-panel" id="projectionRow" aria-label="Projection">
                     <p class="projection-label">Projection</p>
                     <div class="projection-picker" id="projectionPicker">
                       <button
@@ -379,7 +380,7 @@
                       </div>
                     </div>
                   </section>
-                  <section class="layer-group layer-group-borders" id="graticuleLayerGroup">
+                  <section class="layer-group layer-group-shell" id="graticuleLayerGroup">
                     <div class="layer-group-head">
                       <button class="layer-item layer-item-group is-active" data-layer-id="graticule" type="button">
                         <span class="layer-checkbox" aria-hidden="true">
@@ -401,7 +402,7 @@
                       </button>
                     </div>
                     <div class="layer-sublist layer-sublist-controls" id="graticuleLayerControls">
-                      <label class="layer-control" for="graticuleWidthInput">
+                      <label class="layer-control" id="graticuleWidthRow" for="graticuleWidthInput">
                         <span class="layer-control-copy">
                           <strong>Stroke Width</strong>
                           <small id="graticuleWidthValue">0.7 px</small>
@@ -416,7 +417,7 @@
                           value="0.7"
                         />
                       </label>
-                      <div class="layer-control layer-control-color">
+                      <div class="layer-control layer-control-color" id="graticuleColorRow">
                         <div class="layer-control-copy">
                           <strong>Line Color</strong>
                           <small id="graticuleColorValue">#FFFFFF</small>
@@ -483,7 +484,7 @@
                       </div>
                     </div>
                   </section>
-                  <button class="layer-item layer-item-sub" data-layer-id="tissot" type="button">
+                  <button class="layer-item layer-item-sub" id="tissotLayerRow" data-layer-id="tissot" type="button">
                     <span class="layer-checkbox" aria-hidden="true">
                       <span class="layer-checkmark"></span>
                     </span>
@@ -507,7 +508,7 @@
                 </button>
               </section>
 
-              <section class="layer-group layer-group-borders" id="borderLayerGroup">
+              <section class="layer-group layer-group-shell" id="borderLayerGroup">
                 <div class="layer-group-head">
                   <button class="layer-item layer-item-group is-active" data-layer-id="borders" type="button">
                     <span class="layer-checkbox" aria-hidden="true">
@@ -529,7 +530,7 @@
                   </button>
                 </div>
                 <div class="layer-sublist layer-sublist-controls" id="borderLayerControls">
-                  <label class="layer-control" for="borderWidthInput">
+                  <label class="layer-control" id="borderWidthRow" for="borderWidthInput">
                     <span class="layer-control-copy">
                       <strong>Stroke Width</strong>
                       <small id="borderWidthValue">0.8 px</small>
@@ -544,7 +545,7 @@
                       value="0.8"
                     />
                   </label>
-                  <div class="layer-control layer-control-color">
+                  <div class="layer-control layer-control-color" id="borderColorRow">
                     <div class="layer-control-copy">
                       <strong>Line Color</strong>
                       <small id="borderColorValue">#FFFFFF</small>
@@ -608,7 +609,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="layer-opacity-control">
+                  <div class="layer-opacity-control" id="borderOpacityRow">
                     <label class="layer-opacity-label" for="borderOpacityInput">Opacity</label>
                     <input
                       class="layer-opacity-range"
@@ -622,7 +623,7 @@
                   </div>
                 </div>
               </section>
-              <section class="layer-group layer-group-empires" id="empireLayerGroup">
+              <section class="layer-group layer-group-shell" id="empireLayerGroup">
                 <div class="layer-group-head">
                   <button class="layer-item layer-item-group" data-layer-id="empires" type="button">
                     <span class="layer-checkbox" aria-hidden="true">
@@ -643,8 +644,8 @@
                     </span>
                   </button>
                 </div>
-                <div class="layer-sublist" id="empireSubLayers">
-                  <label class="layer-control" for="empireQualityInput">
+                <div class="layer-sublist layer-sublist-controls" id="empireSubLayers">
+                  <label class="layer-control" id="empireQualityRow" for="empireQualityInput">
                     <span class="layer-control-copy">
                       <strong>Detail</strong>
                       <small id="empireQualityValue">Medium</small>
@@ -659,7 +660,7 @@
                       value="1"
                     />
                   </label>
-                  <section class="layer-group layer-group-empires" id="romanEmpireLayerGroup">
+                  <section class="layer-group layer-group-shell" id="romanEmpireLayerGroup">
                     <div class="layer-group-head">
                       <button class="layer-item layer-item-sub layer-item-group" id="romanEmpireRow" data-empire-layer-id="romanComparison" type="button">
                         <span class="layer-checkbox" aria-hidden="true">
@@ -680,7 +681,7 @@
                       </button>
                     </div>
                     <div class="layer-sublist layer-sublist-controls" id="romanEmpireLayerControls">
-                    <div class="layer-control layer-control-color">
+                    <div class="layer-control layer-control-color" id="romanEmpireFillRow">
                       <div class="layer-control-copy">
                         <strong>Fill Color</strong>
                         <small id="romanEmpireFillColorValue">#C48B35</small>
@@ -723,7 +724,7 @@
                     </div>
                     </div>
                   </section>
-                  <button class="layer-item layer-item-sub" data-empire-layer-id="mongol" type="button">
+                  <button class="layer-item layer-item-sub" id="mongolLayerRow" data-empire-layer-id="mongol" type="button">
                     <span class="layer-checkbox" aria-hidden="true">
                       <span class="layer-checkmark"></span>
                     </span>
@@ -731,7 +732,7 @@
                       <strong>Mongol (1279)</strong>
                     </span>
                   </button>
-                  <button class="layer-item layer-item-sub" data-empire-layer-id="british" type="button">
+                  <button class="layer-item layer-item-sub" id="britishLayerRow" data-empire-layer-id="british" type="button">
                     <span class="layer-checkbox" aria-hidden="true">
                       <span class="layer-checkmark"></span>
                     </span>

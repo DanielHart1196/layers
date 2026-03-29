@@ -1,4 +1,27 @@
 (() => {
+  const { getExpandableLayerDefinitions } = window.AtlasLayersRegistry;
+
+  function getOwnedLayerGroup(button) {
+    if (!button) {
+      return null;
+    }
+
+    const parentElement = button.parentElement;
+    if (!parentElement) {
+      return null;
+    }
+
+    if (parentElement.classList.contains("layer-group-head")) {
+      return parentElement.parentElement;
+    }
+
+    if (parentElement.classList.contains("layer-group")) {
+      return parentElement;
+    }
+
+    return null;
+  }
+
   function handleExpandableToggleClick({
     event,
     toggleElement,
@@ -27,10 +50,7 @@
     layerButtons,
     empireLayerButtons,
     earthGroupButton,
-    empireGroupToggle,
-    borderGroupToggle,
-    graticuleGroupToggle,
-    romanEmpireGroupToggle,
+    toggleElementsByLayerId,
     empireQualityInput,
     layerState,
     empireLayerState,
@@ -63,6 +83,10 @@
     enableGraticuleStyleControls,
     enableBorderStyleControls,
   }) {
+    const expandableLayersById = Object.fromEntries(
+      getExpandableLayerDefinitions().map((definition) => [definition.id, definition]),
+    );
+
     layerButtons.forEach((button) => {
       const layerId = button.dataset.layerId;
       if (button.dataset.empireLayerId) {
@@ -73,47 +97,25 @@
         return;
       }
 
+      const ownedLayerGroup = getOwnedLayerGroup(button);
       button.classList.toggle("is-active", Boolean(layerState[layerId]));
-      button.closest(".layer-group")?.classList.toggle("is-active", Boolean(layerState[layerId]));
+      ownedLayerGroup?.classList.toggle("is-active", Boolean(layerState[layerId]));
 
       button.addEventListener("click", async (event) => {
-        if (layerId === "empires" && handleExpandableToggleClick({
-          event,
-          toggleElement: empireGroupToggle,
-          uiState,
-          layerId: "empires",
-          toggleLayerGroupOpen,
-          syncUi: syncEmpireGroupUi,
-          syncLayerPanelScrollbar,
-          showLayerPanelScrollbarTemporarily,
-          releaseLayerPanelFocusAfterPointerInteraction,
-          focusTarget: button,
-        })) {
-          return;
-        }
+        const expandableLayer = expandableLayersById[layerId];
+        const syncHandlersByLayerId = {
+          borders: syncBorderGroupUi,
+          empires: syncEmpireGroupUi,
+          graticule: syncGraticuleGroupUi,
+        };
 
-        if (layerId === "borders" && handleExpandableToggleClick({
+        if (expandableLayer && handleExpandableToggleClick({
           event,
-          toggleElement: borderGroupToggle,
+          toggleElement: toggleElementsByLayerId?.[layerId],
           uiState,
-          layerId: "borders",
+          layerId,
           toggleLayerGroupOpen,
-          syncUi: syncBorderGroupUi,
-          syncLayerPanelScrollbar,
-          showLayerPanelScrollbarTemporarily,
-          releaseLayerPanelFocusAfterPointerInteraction,
-          focusTarget: button,
-        })) {
-          return;
-        }
-
-        if (layerId === "graticule" && handleExpandableToggleClick({
-          event,
-          toggleElement: graticuleGroupToggle,
-          uiState,
-          layerId: "graticule",
-          toggleLayerGroupOpen,
-          syncUi: syncGraticuleGroupUi,
+          syncUi: syncHandlersByLayerId[layerId],
           syncLayerPanelScrollbar,
           showLayerPanelScrollbarTemporarily,
           releaseLayerPanelFocusAfterPointerInteraction,
@@ -125,7 +127,7 @@
         toggleLayerEnabled(layerState, empireLayerState, layerId, hasAnyEmpireChildEnabled);
         if (layerId !== "empires") {
           button.classList.toggle("is-active", layerState[layerId]);
-          button.closest(".layer-group")?.classList.toggle("is-active", layerState[layerId]);
+          ownedLayerGroup?.classList.toggle("is-active", layerState[layerId]);
         }
         if (layerId === "earth") {
           syncMobileMonthChrome();
@@ -164,11 +166,11 @@
 
       button.classList.toggle("is-active", Boolean(empireLayerState[empireLayerId]));
       button.addEventListener("click", (event) => {
-        if (empireLayerId === "romanComparison" && handleExpandableToggleClick({
+        if (expandableLayersById[empireLayerId] && handleExpandableToggleClick({
           event,
-          toggleElement: romanEmpireGroupToggle,
+          toggleElement: toggleElementsByLayerId?.[empireLayerId],
           uiState,
-          layerId: "romanComparison",
+          layerId: empireLayerId,
           toggleLayerGroupOpen,
           syncUi: syncEmpireGroupUi,
           syncLayerPanelScrollbar,

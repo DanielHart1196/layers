@@ -227,12 +227,40 @@
     section.style.maxHeight = `${section.scrollHeight}px`;
   }
 
-  function syncExpandableSections({ uiState, empireSubLayers }) {
-    getExpandableSectionDefinitions().forEach(({ sectionId, uiOpenKey }) => {
-      syncExpandableSectionHeight(document.getElementById(sectionId), Boolean(uiState?.[uiOpenKey]));
-    });
+  function getExpandableSectionDepth(section) {
+    let depth = 0;
+    let current = section?.parentElement ?? null;
 
-    syncExpandableSectionHeight(empireSubLayers, Boolean(uiState?.isEmpireGroupOpen));
+    while (current) {
+      if (current.classList.contains("layer-sublist")) {
+        depth += 1;
+      }
+      current = current.parentElement;
+    }
+
+    return depth;
+  }
+
+  function syncExpandableSections({ uiState, empireSubLayers }) {
+    const sections = getExpandableSectionDefinitions()
+      .map(({ sectionId, uiOpenKey }) => ({
+        section: document.getElementById(sectionId),
+        isOpen: Boolean(uiState?.[uiOpenKey]),
+      }))
+      .filter(({ section }) => Boolean(section));
+
+    if (empireSubLayers) {
+      sections.push({
+        section: empireSubLayers,
+        isOpen: Boolean(uiState?.isEmpireGroupOpen),
+      });
+    }
+
+    sections
+      .sort((left, right) => getExpandableSectionDepth(right.section) - getExpandableSectionDepth(left.section))
+      .forEach(({ section, isOpen }) => {
+        syncExpandableSectionHeight(section, isOpen);
+      });
   }
 
   window.AtlasLayerPanel = {
