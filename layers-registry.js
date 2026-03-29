@@ -186,6 +186,10 @@
     return Object.values(layerDefinitions).filter((definition) => !definition.parentId);
   }
 
+  function getGenericLayerDefinitions() {
+    return Object.values(layerDefinitions).filter((definition) => definition.parentId !== "empires");
+  }
+
   function getDefinitionsBySection(sectionId) {
     return getRootLayerDefinitions().filter((definition) => definition.uiSection === sectionId);
   }
@@ -244,7 +248,7 @@
 
   function createDefaultLayerState() {
     return Object.fromEntries(
-      getRootLayerDefinitions()
+      getGenericLayerDefinitions()
         .map((definition) => [definition.id, definition.defaultEnabled]),
     );
   }
@@ -290,6 +294,7 @@
     empireQualityLevels,
     getDefaultEmpireChildOnEnable,
     getDefinitionsBySection,
+    getGenericLayerDefinitions,
     getEmpireSublayerDefinitions,
     getEmpireSublayerIds,
     getExpandableSectionDefinitions,

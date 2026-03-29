@@ -4,6 +4,24 @@
 - Path: `/data/data/com.termux/files/home/layers`
 - App is a static browser-based atlas prototype with projection switching, mobile-first gesture work, and layered raster/vector rendering.
 
+## Working Agreement
+- Keep `PROJECT_NOTES.md` active, not archival.
+- If a new architectural rule, repeated bug pattern, or workflow lesson becomes clear during implementation, capture it here.
+- If a request appears to conflict with the current architecture direction, call out the conflict explicitly and decide whether:
+  - the architecture should change
+  - the request should be implemented narrowly without changing direction
+- If a prompt is too vague for structural work, tighten the task first by writing down assumptions or asking a short clarifying question.
+- Prefer small, self-contained changes when refactoring:
+  - one coherent goal per change
+  - behavior-preserving extraction separated from behavior-changing work
+  - risky subsystems validated immediately after change
+
+## Collaboration Expectations
+- If the user forgets a previously agreed architecture goal, surface it and ask whether to stay aligned or intentionally diverge.
+- If the user prompt is likely to cause avoidable rework, say so plainly and propose a tighter framing.
+- When suggesting a solution, also suggest whether the rule belongs in `PROJECT_NOTES.md` or `AGENTS.md`.
+- Treat the notes, registry, and existing working UI patterns as shared sources of truth, not optional context.
+
 ## Git / Remote Notes
 - Current primary branch: `main`
 - HTTPS push is working for this repo.
@@ -294,6 +312,10 @@
   - user-created layers
   - reusable multi-layers
   - nested layer trees
+- Current agreed interpretation:
+  - `Earth` is a layer with child layers
+  - `Empires` is a layer with child layers
+  - `Graticule`, `Tissot`, `Roman`, `Mongol`, `British`, and `Borders` are also layers
 - The registry should become the source of truth for:
   - default state creation
   - persistence hydration
@@ -305,10 +327,9 @@
   - embedding an existing layer inside another layer should be instance work, not a special-case implementation
 
 ## Layer Definition Model
-- Treat `Earth`, `Empires`, `Graticule`, `Roman`, `Borders`, and future user-created items as the same fundamental type:
+- Treat `Earth`, `Empires`, `Graticule`, `Tissot`, `Roman`, `Borders`, and future user-created items as the same fundamental type:
   - `Layer`
-- Some layers are leaf layers.
-- Some layers are composite layers with children.
+- Some layers have children and some do not.
 - Some layers are utility/reference layers.
 - Some layers are basemap-oriented layers.
 - Those differences should be expressed as metadata on the same core type, not as unrelated UI species.
@@ -318,6 +339,28 @@
   - same structure for nested layers
   - controls and children populated from config
   - no bespoke Roman-vs-Graticule markup behavior
+
+## Refactor Guardrails
+- Do not treat file splitting alone as architectural progress.
+- Strengthen the layer model and shared behavior contracts before introducing more abstractions.
+- For rendering and gestures, prefer explicit contracts over clever indirection.
+- Do not reintroduce pass-based redraw narrowing in behavior-sensitive paths until the invalidation contract is specific enough to prove correctness.
+- When a refactor touches:
+  - render timing
+  - gesture semantics
+  - projection math
+  - layer visibility/state contracts
+  validate those paths immediately before continuing broader cleanup.
+
+## Validation Discipline
+- For architecture-heavy changes, validate the exact behavior-sensitive paths touched instead of relying on generic smoke testing.
+- Useful targeted checks include:
+  - Earth raster and overlay zoom together
+  - flat raster and vector alignment during pan/zoom
+  - projection switcher responsiveness
+  - expandable settings rows opening to full child content
+  - parent/child layer state persistence
+- Prefer a short explicit regression checklist over vague “test the UI” wording.
 
 ## Export Architecture Direction
 - Printing and downloadable PDF output are major product requirements, not optional extras.
