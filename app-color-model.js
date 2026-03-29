@@ -125,7 +125,7 @@
       hooks.setCustomColorList(controlId, hooks.getCustomColorList(controlId).filter((entry) => entry !== color));
       saveCustomColors(controlId, hooks);
       hideCustomColorRemoveButton(controlId, hooks);
-      renderCustomColors(controlId, hooks);
+      hooks.renderCustomColors(controlId);
       hooks.syncColorControlUi(controlId);
     });
 

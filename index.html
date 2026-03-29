@@ -423,8 +423,8 @@
                           <small id="graticuleColorValue">#FFFFFF</small>
                           <span class="layer-inline-color-dot" id="graticuleColorInlineDot" aria-hidden="true"></span>
                         </div>
-                        <div class="layer-color-swatch-scroll">
-                          <div class="layer-color-swatch-row" id="graticuleColorSwatchRow" aria-label="Graticule color presets">
+                      <div class="layer-color-swatch-scroll">
+                        <div class="layer-color-swatch-row" id="graticuleColorSwatchRow" aria-label="Graticule color presets">
                             <button
                               class="layer-inline-color-button layer-inline-color-button-plus"
                               id="graticuleColorSwatchButton"
@@ -445,18 +445,6 @@
                             <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#1F3B57" aria-label="Choose blue graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#1F3B57"></span></button>
                             <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-graticule-color="#7A58A6" aria-label="Choose purple graticule color"><span class="layer-inline-color-dot" style="--layer-active-color:#7A58A6"></span></button>
                           </div>
-                        </div>
-                        <div class="layer-opacity-control">
-                          <label class="layer-opacity-label" for="graticuleOpacityInput">Opacity</label>
-                          <input
-                            class="layer-opacity-range"
-                            id="graticuleOpacityInput"
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            value="12"
-                          />
                         </div>
                         <div class="layer-color-panel" id="graticuleColorPanel" aria-hidden="true">
                           <div class="layer-color-field" id="graticuleColorField" role="application" aria-label="Graticule color gradient field">
@@ -482,6 +470,20 @@
                           </div>
                         </div>
                       </div>
+                      <label class="layer-control" id="graticuleOpacityRow" for="graticuleOpacityInput">
+                        <span class="layer-control-copy">
+                          <strong>Opacity</strong>
+                        </span>
+                        <input
+                          class="layer-range-input"
+                          id="graticuleOpacityInput"
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value="12"
+                        />
+                      </label>
                     </div>
                   </section>
                   <button class="layer-item layer-item-sub" id="tissotLayerRow" data-layer-id="tissot" type="button">
@@ -609,10 +611,12 @@
                       </div>
                     </div>
                   </div>
-                  <div class="layer-opacity-control" id="borderOpacityRow">
-                    <label class="layer-opacity-label" for="borderOpacityInput">Opacity</label>
+                  <label class="layer-control" id="borderOpacityRow" for="borderOpacityInput">
+                    <span class="layer-control-copy">
+                      <strong>Opacity</strong>
+                    </span>
                     <input
-                      class="layer-opacity-range"
+                      class="layer-range-input"
                       id="borderOpacityInput"
                       type="range"
                       min="0"
@@ -620,7 +624,7 @@
                       step="1"
                       value="36"
                     />
-                  </div>
+                  </label>
                 </div>
               </section>
               <section class="layer-group layer-group-shell" id="empireLayerGroup">

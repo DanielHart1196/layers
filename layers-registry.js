@@ -1,4 +1,27 @@
 (() => {
+  function createSliderRow({
+    controlId,
+    rowElementId,
+    label,
+    inputId,
+    valueElementId = null,
+    min,
+    max,
+    step,
+  }) {
+    return {
+      type: "slider",
+      controlId,
+      rowElementId,
+      label,
+      inputId,
+      valueElementId,
+      min,
+      max,
+      step,
+    };
+  }
+
   const layerDefinitions = {
     earth: {
       id: "earth",
@@ -34,7 +57,16 @@
       defaultChildOnEnable: "romanComparison",
       controls: ["empireQuality"],
       rows: [
-        { type: "slider", controlId: "empireQuality", rowElementId: "empireQualityRow" },
+        createSliderRow({
+          controlId: "empireQuality",
+          rowElementId: "empireQualityRow",
+          label: "Detail",
+          inputId: "empireQualityInput",
+          valueElementId: "empireQualityValue",
+          min: 0,
+          max: 2,
+          step: 1,
+        }),
         { type: "layer", layerId: "romanComparison", rowElementId: "romanEmpireLayerGroup" },
         { type: "layer", layerId: "mongol", rowElementId: "mongolLayerRow" },
         { type: "layer", layerId: "british", rowElementId: "britishLayerRow" },
@@ -54,9 +86,26 @@
       children: [],
       controls: ["borderWidth", "borderColor", "borderOpacity"],
       rows: [
-        { type: "slider", controlId: "borderWidth", rowElementId: "borderWidthRow" },
+        createSliderRow({
+          controlId: "borderWidth",
+          rowElementId: "borderWidthRow",
+          label: "Stroke Width",
+          inputId: "borderWidthInput",
+          valueElementId: "borderWidthValue",
+          min: 0.4,
+          max: 3,
+          step: 0.1,
+        }),
         { type: "color", controlId: "border", rowElementId: "borderColorRow" },
-        { type: "slider", controlId: "borderOpacity", rowElementId: "borderOpacityRow" },
+        createSliderRow({
+          controlId: "borderOpacity",
+          rowElementId: "borderOpacityRow",
+          label: "Opacity",
+          inputId: "borderOpacityInput",
+          min: 0,
+          max: 100,
+          step: 1,
+        }),
       ],
       bodySectionId: "borderLayerControls",
       renderSource: "borders",
@@ -73,8 +122,26 @@
       children: [],
       controls: ["graticuleWidth", "graticuleColor", "graticuleOpacity"],
       rows: [
-        { type: "slider", controlId: "graticuleWidth", rowElementId: "graticuleWidthRow" },
+        createSliderRow({
+          controlId: "graticuleWidth",
+          rowElementId: "graticuleWidthRow",
+          label: "Stroke Width",
+          inputId: "graticuleWidthInput",
+          valueElementId: "graticuleWidthValue",
+          min: 0.4,
+          max: 3,
+          step: 0.1,
+        }),
         { type: "color", controlId: "graticule", rowElementId: "graticuleColorRow" },
+        createSliderRow({
+          controlId: "graticuleOpacity",
+          rowElementId: "graticuleOpacityRow",
+          label: "Opacity",
+          inputId: "graticuleOpacityInput",
+          min: 0,
+          max: 100,
+          step: 1,
+        }),
       ],
       bodySectionId: "graticuleLayerControls",
       renderSource: "graticule",

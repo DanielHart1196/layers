@@ -178,6 +178,7 @@ let layerScrollbarDragState = null;
 let layerScrollbarFadeTimer = null;
 let expandableLayoutFrame = null;
 let expandableLayoutSettleTimer = null;
+let layerPanelSavedScrollTop = 0;
 const SHARED_CUSTOM_COLORS_STORAGE_KEY = "atlas.colors.customColors";
 const LEGACY_CUSTOM_COLOR_STORAGE_KEYS = [
   "atlas.border.customColors",
@@ -1219,6 +1220,9 @@ function enableLayerControls() {
     syncLayerPanelScrollbar,
     showLayerPanelScrollbarTemporarily,
     syncEmpireQualityUi,
+    setEmpireQualityPreviewState: (isPreviewing) => {
+      setSliderPreviewState(empireQualityInput, isPreviewing);
+    },
     invalidateEmpireRenderCache: () => {
       lastEmpireRenderKey = null;
     },
@@ -1229,10 +1233,26 @@ function enableLayerControls() {
 }
 
 function setLayerPanelOpen(isOpen) {
+  if (!isOpen && layerPanelScroll) {
+    layerPanelSavedScrollTop = layerPanelScroll.scrollTop;
+  }
+
   uiState.isLayerPanelOpen = isOpen;
   layerPanel?.classList.toggle("is-open", isOpen);
   layerMenuToggle?.classList.toggle("is-hidden", isOpen);
   layerMenuToggle?.setAttribute("aria-expanded", String(isOpen));
+
+  if (isOpen && layerPanelScroll) {
+    window.requestAnimationFrame(() => {
+      layerPanelScroll.scrollTop = Math.max(0, Math.min(
+        layerPanelSavedScrollTop,
+        layerPanelScroll.scrollHeight - layerPanelScroll.clientHeight,
+      ));
+      syncLayerPanelScrollbar();
+      showLayerPanelScrollbarTemporarily();
+    });
+  }
+
   syncLayerPanelScrollbar();
   if (isOpen) {
     showLayerPanelScrollbarTemporarily();
@@ -2035,28 +2055,59 @@ function setColorControlPreviewState(controlId, previewTarget) {
   layerPanel?.classList.toggle("is-color-previewing", isPreviewing);
 }
 
-function setOpacityPreviewState(isPreviewing) {
-  const opacityControl = borderOpacityInput?.closest(".layer-opacity-control");
-  opacityControl?.classList.toggle("is-previewing-opacity", Boolean(isPreviewing));
-  layerPanel?.classList.toggle("is-color-previewing", Boolean(isPreviewing));
+let sliderPreviewDebugElement = null;
+const sliderPreviewDebugHistory = [];
+
+function logSliderPreviewDebug(message) {
+  if (!document.body) {
+    return;
+  }
+
+  if (!sliderPreviewDebugElement) {
+    sliderPreviewDebugElement = document.createElement("div");
+    sliderPreviewDebugElement.className = "slider-preview-debug";
+    document.body.appendChild(sliderPreviewDebugElement);
+  }
+
+  sliderPreviewDebugHistory.push(message);
+  if (sliderPreviewDebugHistory.length > 10) {
+    sliderPreviewDebugHistory.shift();
+  }
+  sliderPreviewDebugElement.textContent = sliderPreviewDebugHistory.join("\n");
 }
 
-function setBorderWidthPreviewState(isPreviewing) {
-  const widthControl = borderWidthInput?.closest(".layer-control");
-  widthControl?.classList.toggle("is-previewing-width", Boolean(isPreviewing));
-  layerPanel?.classList.toggle("is-color-previewing", Boolean(isPreviewing));
+function clearSliderPreviewState() {
+  layerPanel?.querySelectorAll(".is-previewing-slider").forEach((element) => {
+    element.classList.remove("is-previewing-slider");
+  });
+  layerPanel?.querySelectorAll(".is-previewing-slider-row").forEach((element) => {
+    element.classList.remove("is-previewing-slider-row");
+  });
+  layerPanel?.querySelectorAll(".is-previewing-slider-body").forEach((element) => {
+    element.classList.remove("is-previewing-slider-body");
+  });
+  layerPanel?.querySelectorAll(".is-previewing-slider-group").forEach((element) => {
+    element.classList.remove("is-previewing-slider-group");
+  });
+  layerPanel?.classList.remove("is-slider-previewing");
 }
 
-function setGraticuleWidthPreviewState(isPreviewing) {
-  const widthControl = graticuleWidthInput?.closest(".layer-control");
-  widthControl?.classList.toggle("is-previewing-width", Boolean(isPreviewing));
-  layerPanel?.classList.toggle("is-color-previewing", Boolean(isPreviewing));
-}
-
-function setGraticuleOpacityPreviewState(isPreviewing) {
-  const opacityControl = graticuleOpacityInput?.closest(".layer-opacity-control");
-  opacityControl?.classList.toggle("is-previewing-opacity", Boolean(isPreviewing));
-  layerPanel?.classList.toggle("is-color-previewing", Boolean(isPreviewing));
+function setSliderPreviewState(inputElement, isPreviewing) {
+  const sliderControl = inputElement?.closest(".layer-control");
+  const sliderRow = sliderControl?.closest(".layer-body-row");
+  const sliderBody = sliderControl?.closest(".layer-body");
+  const sliderGroup = sliderBody?.closest(".layer-group");
+  clearSliderPreviewState();
+  if (isPreviewing) {
+    sliderControl?.classList.add("is-previewing-slider");
+    sliderRow?.classList.add("is-previewing-slider-row");
+    sliderBody?.classList.add("is-previewing-slider-body");
+    sliderGroup?.classList.add("is-previewing-slider-group");
+    layerPanel?.classList.add("is-slider-previewing");
+  }
+  logSliderPreviewDebug(
+    `${isPreviewing ? "start" : "end"} ${inputElement?.id || "unknown"} | row=${sliderRow?.dataset.layerRowKey || "none"} | body=${sliderBody?.dataset.layerBodyFor || "none"} | panel=${layerPanel?.classList.contains("is-slider-previewing") ? "preview" : "normal"}`,
+  );
 }
 
 function enableSharedColorControl(controlId) {
@@ -2106,11 +2157,11 @@ function enableBorderStyleControls() {
   });
 
   borderWidthInput?.addEventListener("pointerdown", () => {
-    setBorderWidthPreviewState(true);
+    setSliderPreviewState(borderWidthInput, true);
   });
 
   const endBorderWidthPreview = () => {
-    setBorderWidthPreviewState(false);
+    setSliderPreviewState(borderWidthInput, false);
   };
 
   borderWidthInput?.addEventListener("pointerup", endBorderWidthPreview);
@@ -2131,11 +2182,11 @@ function enableBorderStyleControls() {
   });
 
   borderOpacityInput?.addEventListener("pointerdown", () => {
-    setOpacityPreviewState(true);
+    setSliderPreviewState(borderOpacityInput, true);
   });
 
   const endOpacityPreview = () => {
-    setOpacityPreviewState(false);
+    setSliderPreviewState(borderOpacityInput, false);
   };
 
   borderOpacityInput?.addEventListener("pointerup", endOpacityPreview);
@@ -2160,11 +2211,11 @@ function enableGraticuleStyleControls() {
   });
 
   graticuleWidthInput?.addEventListener("pointerdown", () => {
-    setGraticuleWidthPreviewState(true);
+    setSliderPreviewState(graticuleWidthInput, true);
   });
 
   const endGraticuleWidthPreview = () => {
-    setGraticuleWidthPreviewState(false);
+    setSliderPreviewState(graticuleWidthInput, false);
   };
 
   graticuleWidthInput?.addEventListener("pointerup", endGraticuleWidthPreview);
@@ -2185,11 +2236,11 @@ function enableGraticuleStyleControls() {
   });
 
   graticuleOpacityInput?.addEventListener("pointerdown", () => {
-    setGraticuleOpacityPreviewState(true);
+    setSliderPreviewState(graticuleOpacityInput, true);
   });
 
   const endGraticuleOpacityPreview = () => {
-    setGraticuleOpacityPreviewState(false);
+    setSliderPreviewState(graticuleOpacityInput, false);
   };
 
   graticuleOpacityInput?.addEventListener("pointerup", endGraticuleOpacityPreview);

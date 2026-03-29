@@ -684,13 +684,7 @@ body:not(.is-earth-enabled) .month-overlay {
 
 .layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color),
 .layer-panel.is-color-previewing .layer-sublist:has(.layer-control-color.is-previewing-color),
-.layer-panel.is-color-previewing .layer-control-color.is-previewing-color,
-.layer-panel.is-color-previewing .layer-group:has(.layer-opacity-control.is-previewing-opacity),
-.layer-panel.is-color-previewing .layer-sublist:has(.layer-opacity-control.is-previewing-opacity),
-.layer-panel.is-color-previewing .layer-opacity-control.is-previewing-opacity,
-.layer-panel.is-color-previewing .layer-group:has(.layer-control.is-previewing-width),
-.layer-panel.is-color-previewing .layer-sublist:has(.layer-control.is-previewing-width),
-.layer-panel.is-color-previewing .layer-control.is-previewing-width {
+.layer-panel.is-color-previewing .layer-control-color.is-previewing-color {
   visibility: visible;
   background: transparent;
   border-color: transparent;
@@ -701,13 +695,7 @@ body:not(.is-earth-enabled) .month-overlay {
 .layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color) .layer-control:not(.is-previewing-color),
 .layer-panel.is-color-previewing .layer-control-color.is-previewing-color > :not(.layer-color-panel),
 .layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color) .layer-control-color.is-previewing-color.is-previewing-field .layer-color-panel > :not(.layer-color-field),
-.layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color) .layer-control-color.is-previewing-color.is-previewing-hue .layer-color-panel > :not(.layer-color-hue-slider),
-.layer-panel.is-color-previewing .layer-group:has(.layer-opacity-control.is-previewing-opacity) > .layer-group-head,
-.layer-panel.is-color-previewing .layer-group:has(.layer-opacity-control.is-previewing-opacity) .layer-control:not(.is-previewing-opacity),
-.layer-panel.is-color-previewing .layer-group:has(.layer-control.is-previewing-width) > .layer-group-head,
-.layer-panel.is-color-previewing .layer-group:has(.layer-control.is-previewing-width) .layer-control:not(.is-previewing-width),
-.layer-panel.is-color-previewing .layer-opacity-control.is-previewing-opacity > :not(.layer-opacity-range),
-.layer-panel.is-color-previewing .layer-control.is-previewing-width > :not(.layer-range-input) {
+.layer-panel.is-color-previewing .layer-group:has(.layer-control-color.is-previewing-color) .layer-control-color.is-previewing-color.is-previewing-hue .layer-color-panel > :not(.layer-color-hue-slider) {
   visibility: hidden;
 }
 
@@ -715,17 +703,61 @@ body:not(.is-earth-enabled) .month-overlay {
 .layer-panel.is-color-previewing .layer-control-color.is-previewing-color .layer-color-panel,
 .layer-panel.is-color-previewing .layer-control-color.is-previewing-color .layer-color-field,
 .layer-panel.is-color-previewing .layer-control-color.is-previewing-color .layer-color-hue-slider,
-.layer-panel.is-color-previewing .layer-opacity-control.is-previewing-opacity,
-.layer-panel.is-color-previewing .layer-opacity-control.is-previewing-opacity .layer-opacity-range,
 .layer-panel.is-color-previewing .layer-control-color.is-previewing-color .layer-color-field * {
   visibility: visible;
   opacity: 1;
 }
 
-.layer-panel.is-color-previewing .layer-control.is-previewing-width,
-.layer-panel.is-color-previewing .layer-control.is-previewing-width .layer-range-input {
+.layer-panel.is-slider-previewing {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.layer-panel.is-slider-previewing > :not(.layer-panel-scroll) {
+  opacity: 0;
+}
+
+.layer-panel.is-slider-previewing .layer-panel-scroll > * {
+  visibility: hidden;
+}
+
+.layer-panel.is-slider-previewing .layer-group.is-previewing-slider-group,
+.layer-panel.is-slider-previewing .layer-body.is-previewing-slider-body,
+.layer-panel.is-slider-previewing .layer-body-row.is-previewing-slider-row,
+.layer-panel.is-slider-previewing .layer-body-row.is-previewing-slider-row * {
   visibility: visible;
   opacity: 1;
+}
+
+.layer-panel.is-slider-previewing .layer-group.is-previewing-slider-group,
+.layer-panel.is-slider-previewing .layer-body.is-previewing-slider-body {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.layer-panel.is-slider-previewing .layer-group.is-previewing-slider-group > .layer-group-head,
+.layer-panel.is-slider-previewing .layer-body.is-previewing-slider-body > .layer-body-row:not(.is-previewing-slider-row),
+.layer-panel.is-slider-previewing .layer-body.is-previewing-slider-body > .layer-body-spacer {
+  visibility: hidden;
+}
+
+.slider-preview-debug {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 2000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(15, 36, 48, 0.92);
+  color: #f5f8fa;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  font: 12px/1.35 "Manrope", sans-serif;
+  pointer-events: none;
+  white-space: pre-wrap;
 }
 
 .layer-trigger:hover + .layer-menu-toggle + .layer-panel,
@@ -1147,8 +1179,8 @@ body:not(.is-earth-enabled) .month-overlay {
 }
 
 .layer-body-row-color .layer-color-swatch-scroll {
-  padding-top: 18px;
-  margin-top: -18px;
+  padding-top: 22px;
+  margin-top: -22px;
   padding-bottom: 0;
 }
 
@@ -1410,24 +1442,6 @@ body:not(.is-earth-enabled) .month-overlay {
   width: max-content;
   gap: 2px;
   overflow: visible;
-}
-
-.layer-opacity-control {
-  display: grid;
-  gap: 8px;
-}
-
-.layer-opacity-label {
-  color: rgba(15, 36, 48, 0.72);
-  font-family: "Manrope", sans-serif;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.layer-opacity-range {
-  width: 100%;
-  margin: 0;
-  accent-color: #0f6d8d;
 }
 
 .layer-inline-color-customs {
