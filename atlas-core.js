@@ -1,5 +1,6 @@
-(() => {
-  const VIEW_WIDTH = 1200;
+import { createProjection as createDymaxionProjection } from "./atlas-dymaxion.js";
+
+const VIEW_WIDTH = 1200;
   const VIEW_HEIGHT = 860;
   const EARTH_TEXTURE_FALLBACKS = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Blue_Marble_2002.png/2048px-Blue_Marble_2002.png",
@@ -271,7 +272,7 @@
 
   function createProjection(scene, options = {}) {
     if (scene.projectionKind === "dymaxion") {
-      return window.AtlasDymaxion.createProjection(scene);
+      return createDymaxionProjection(scene);
     }
 
     const projection = scene.projectionKind === "azimuthal-equidistant"
@@ -489,29 +490,58 @@
     return (degrees * Math.PI) / 180;
   }
 
-  window.AtlasCore = {
-    AVAILABLE_TOPOBATHY_MONTHS,
-    EARTH_TEXTURE_FALLBACKS,
-    MONTHS,
-    VIEW_HEIGHT,
-    VIEW_WIDTH,
-    atlasSceneDefinitions,
-    clamp,
-    createProjection,
-    createOrthographicSceneDefinition,
-    dragSensitivity,
-    equator,
-    getDefaultMonth,
-    getMercatorCenterLatitudeClamp,
-    getViewDimensions,
-    getResolvedScenes,
-    getSceneBounds,
-    graticule,
-    lightDirection,
-    mercatorSceneDefinition,
-    orthographicSceneDefinition,
-    dymaxionSceneDefinition,
-    traceSceneShape,
-    toRadians,
-  };
-})();
+const AtlasCore = {
+  AVAILABLE_TOPOBATHY_MONTHS,
+  EARTH_TEXTURE_FALLBACKS,
+  MONTHS,
+  VIEW_HEIGHT,
+  VIEW_WIDTH,
+  atlasSceneDefinitions,
+  clamp,
+  createProjection,
+  createOrthographicSceneDefinition,
+  dragSensitivity,
+  equator,
+  getDefaultMonth,
+  getMercatorCenterLatitudeClamp,
+  getViewDimensions,
+  getResolvedScenes,
+  getSceneBounds,
+  graticule,
+  lightDirection,
+  mercatorSceneDefinition,
+  orthographicSceneDefinition,
+  dymaxionSceneDefinition,
+  traceSceneShape,
+  toRadians,
+};
+
+export {
+  AVAILABLE_TOPOBATHY_MONTHS,
+  EARTH_TEXTURE_FALLBACKS,
+  MONTHS,
+  VIEW_HEIGHT,
+  VIEW_WIDTH,
+  atlasSceneDefinitions,
+  clamp,
+  createProjection,
+  createOrthographicSceneDefinition,
+  dragSensitivity,
+  equator,
+  getDefaultMonth,
+  getMercatorCenterLatitudeClamp,
+  getResolvedScenes,
+  getSceneBounds,
+  getViewDimensions,
+  graticule,
+  lightDirection,
+  mercatorSceneDefinition,
+  orthographicSceneDefinition,
+  dymaxionSceneDefinition,
+  traceSceneShape,
+  toRadians,
+};
+
+export default AtlasCore;
+
+window.AtlasCore = AtlasCore;

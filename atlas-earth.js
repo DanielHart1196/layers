@@ -1,5 +1,11 @@
-(() => {
-  function createGlobeRenderer(canvasElement) {
+import {
+  VIEW_HEIGHT,
+  VIEW_WIDTH,
+  createProjection,
+  toRadians,
+} from "./atlas-core.js";
+
+function createGlobeRenderer(canvasElement) {
     const gl = canvasElement.getContext("webgl", {
       alpha: true,
       antialias: true,
@@ -219,9 +225,9 @@
         gl.scissor(left, bottom, width, height);
         gl.uniform3f(
           rotationLocation,
-          window.AtlasCore.toRadians(-scene.rotate[0]),
-          window.AtlasCore.toRadians(-scene.rotate[1]),
-          window.AtlasCore.toRadians(-scene.rotate[2] ?? 0),
+          toRadians(-scene.rotate[0]),
+          toRadians(-scene.rotate[1]),
+          toRadians(-scene.rotate[2] ?? 0),
         );
         gl.uniform1f(
           cropRatioLocation,
@@ -517,7 +523,7 @@
         }
 
         const baseScene = { ...scene, zoomScale: 1 };
-        const projection = window.AtlasCore.createProjection(baseScene);
+        const projection = createProjection(baseScene);
         const { lonStep, latStep, edgeLimit, seamTolerance } = getMeshProfile(
           scene.projectionKind,
           pixelRatio,
@@ -586,8 +592,8 @@
         }
 
         resize(
-          Math.round((scene.width ?? window.AtlasCore.VIEW_WIDTH) * pixelRatio),
-          Math.round((scene.height ?? window.AtlasCore.VIEW_HEIGHT) * pixelRatio),
+          Math.round((scene.width ?? VIEW_WIDTH) * pixelRatio),
+          Math.round((scene.height ?? VIEW_HEIGHT) * pixelRatio),
         );
         setTexture(image);
         const mesh = buildProjectedMesh(scene, pixelRatio);
@@ -685,8 +691,16 @@
     return shader;
   }
 
-  window.AtlasEarth = {
-    createFlatMapRenderer,
-    createGlobeRenderer,
-  };
-})();
+const AtlasEarth = {
+  createFlatMapRenderer,
+  createGlobeRenderer,
+};
+
+export {
+  createFlatMapRenderer,
+  createGlobeRenderer,
+};
+
+export default AtlasEarth;
+
+window.AtlasEarth = AtlasEarth;

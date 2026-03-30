@@ -1,5 +1,16 @@
-(() => {
-  function createEarthTextureStore() {
+import {
+  AVAILABLE_TOPOBATHY_MONTHS,
+  EARTH_TEXTURE_FALLBACKS,
+  VIEW_HEIGHT,
+  VIEW_WIDTH,
+  equator,
+  getSceneBounds,
+  graticule,
+} from "./atlas-core.js";
+import { createFlatMapRenderer } from "./atlas-earth.js";
+import { createAdapter } from "./atlas-adapters.js";
+
+function createEarthTextureStore() {
     const textureCache = new Map();
     let textureLoadToken = 0;
 
@@ -38,11 +49,11 @@
     function getCandidatesForMonth(month) {
       const candidates = [];
 
-      if (window.AtlasCore.AVAILABLE_TOPOBATHY_MONTHS.has(month)) {
+      if (AVAILABLE_TOPOBATHY_MONTHS.has(month)) {
         candidates.push(`./assets/earth/derived/world.topo.bathy.2004${month}.3x5400x2700.jpg`);
       }
 
-      return [...candidates, ...window.AtlasCore.EARTH_TEXTURE_FALLBACKS];
+      return [...candidates, ...EARTH_TEXTURE_FALLBACKS];
     }
 
     async function loadForMonth(month) {
@@ -88,7 +99,7 @@
     const rasterCache = new Map();
     const rasterBuildState = new Set();
     const flatRasterPrewarmState = new Set();
-    const flatMapRenderer = window.AtlasEarth?.createFlatMapRenderer?.() ?? null;
+    const flatMapRenderer = createFlatMapRenderer?.() ?? null;
     const tissotGeometry = {
       type: "FeatureCollection",
       features: (() => {
@@ -186,7 +197,7 @@
     }
 
     function createSceneAdapter(scene, contextOverride = overlayContext) {
-      return window.AtlasAdapters.createAdapter(scene, contextOverride, worldDataRef(), {
+      return createAdapter(scene, contextOverride, worldDataRef(), {
         isInteracting: Boolean(layerStateRef?.().isInteracting),
       });
     }
@@ -261,7 +272,7 @@
         return rasterCache.get(cacheKey);
       }
 
-      const bounds = window.AtlasCore.getSceneBounds(scene);
+      const bounds = getSceneBounds(scene);
       const width = Math.max(1, Math.round(bounds.width * internalScale));
       const height = Math.max(1, Math.round(bounds.height * internalScale));
       const canvas = document.createElement("canvas");
@@ -384,14 +395,14 @@
           flatRasterCanvas,
           0,
           0,
-          scene.width ?? window.AtlasCore.VIEW_WIDTH,
-          scene.height ?? window.AtlasCore.VIEW_HEIGHT,
+          scene.width ?? VIEW_WIDTH,
+          scene.height ?? VIEW_HEIGHT,
         );
         overlayContext.restore();
         return true;
       }
 
-      const bounds = window.AtlasCore.getSceneBounds(scene);
+      const bounds = getSceneBounds(scene);
       const profile = getRasterProjectionProfile(scene);
       const finalKey = buildRasterCacheKey(scene, image, profile.finalScale);
       let rasterCanvas;
@@ -411,7 +422,7 @@
     }
 
     function renderProjectionUnavailable(scene) {
-      const bounds = window.AtlasCore.getSceneBounds(scene);
+      const bounds = getSceneBounds(scene);
 
       overlayContext.save();
       overlayContext.fillStyle = "rgba(10, 28, 40, 0.34)";
@@ -439,7 +450,7 @@
         return;
       }
 
-      const bounds = window.AtlasCore.getSceneBounds(scene);
+      const bounds = getSceneBounds(scene);
       overlayContext.fillStyle = waterColor;
       overlayContext.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
 
@@ -474,11 +485,11 @@
       const graticuleStroke = withOpacity(graticuleColor, graticuleOpacity);
       const equatorStroke = withOpacity(graticuleColor, Math.min(graticuleOpacity * 2, 1));
 
-      adapter.strokeGeometry(window.AtlasCore.graticule, graticuleStroke, graticuleWidth, {
+      adapter.strokeGeometry(graticule, graticuleStroke, graticuleWidth, {
         maxStepDegrees: 1,
       });
 
-      adapter.strokeGeometry(window.AtlasCore.equator, equatorStroke, Math.max(graticuleWidth * 1.65, graticuleWidth + 0.3), {
+      adapter.strokeGeometry(equator, equatorStroke, Math.max(graticuleWidth * 1.65, graticuleWidth + 0.3), {
         maxStepDegrees: 1,
       });
     }
@@ -616,8 +627,16 @@
     };
   }
 
-  window.AtlasLayers = {
-    createEarthTextureStore,
-    createOverlayLayerRenderers,
-  };
-})();
+const AtlasLayers = {
+  createEarthTextureStore,
+  createOverlayLayerRenderers,
+};
+
+export {
+  createEarthTextureStore,
+  createOverlayLayerRenderers,
+};
+
+export default AtlasLayers;
+
+window.AtlasLayers = AtlasLayers;

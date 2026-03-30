@@ -1,3 +1,88 @@
+import {
+  createDefaultBorderStyleState,
+  createDefaultEarthStyleState,
+  createDefaultEmpireLayerState,
+  createDefaultEmpireQualityState,
+  createDefaultEmpireStyleState,
+  createDefaultGraticuleStyleState,
+  createDefaultLayerState,
+  empireQualityLevels,
+  getColorControlDefinition,
+  getColorControlDefinitions,
+  getLayerRows,
+  getSliderControlDefinition,
+  getSliderControlDefinitions,
+  resolveStyleScope,
+} from "./layers-registry.js";
+import {
+  VIEW_HEIGHT,
+  VIEW_WIDTH,
+  atlasSceneDefinitions,
+  clamp,
+  createOrthographicSceneDefinition,
+  dragSensitivity,
+  getDefaultMonth,
+  getMercatorCenterLatitudeClamp,
+  getResolvedScenes as getResolvedScenesModel,
+  getViewDimensions,
+  lightDirection,
+  traceSceneShape,
+} from "./atlas-core.js";
+import {
+  createEarthTextureStore,
+  createOverlayLayerRenderers,
+} from "./atlas-layers.js";
+import { createGlobeRenderer } from "./atlas-earth.js";
+import { projectionSupportsRaster as projectionSupportsRasterForKind } from "./atlas-adapters.js";
+import { createAppState } from "./app-state.js";
+import {
+  setAllEmpireQuality,
+  toggleEmpireSublayer,
+  toggleLayerEnabled,
+  toggleLayerGroupOpen,
+} from "./app-actions.js";
+import {
+  createMapGestureController,
+  createProjectionSwitcherController,
+} from "./app-gestures.js";
+import { createRenderInvalidationManager } from "./app-render-state.js";
+import { createRenderer } from "./app-renderer.js";
+import {
+  clearColorRemovePressTimer as clearColorRemovePressTimerModel,
+  createCustomColorButton as createCustomColorButtonModel,
+  flashColorFeedback as flashColorFeedbackModel,
+  getColorDatasetSelector as getColorDatasetSelectorModel,
+  hideCustomColorRemoveButton as hideCustomColorRemoveButtonModel,
+  renderCustomColors as renderCustomColorsModel,
+  revealCustomColor as revealCustomColorModel,
+  revealPresetColor as revealPresetColorModel,
+  saveCustomColors as saveCustomColorsModel,
+  setColorControlFromField as setColorControlFromFieldModel,
+  setColorControlFromHueSlider as setColorControlFromHueSliderModel,
+} from "./app-color-model.js";
+import { bindSharedColorControl } from "./app-color-controls.js";
+import { composeLayerBodies } from "./app-layer-body-composer.js";
+import {
+  syncBorderGroupUi as syncBorderGroupUiView,
+  syncColorControlUi as syncColorControlUiView,
+  syncEarthGroupUi as syncEarthGroupUiView,
+  syncEmpireGroupUi as syncEmpireGroupUiView,
+  syncExpandableSections,
+  syncGraticuleGroupUi as syncGraticuleGroupUiView,
+} from "./app-layer-panel.js";
+import { bindLayerControls } from "./app-layer-panel-controller.js";
+import {
+  hasAnyEmpireChildEnabled,
+  isEmpireChildDisplayed,
+  isEmpireParentActive,
+} from "./layers-selectors.js";
+import {
+  loadStyleSettings as loadPersistedStyleSettings,
+  loadViewState as loadPersistedViewState,
+  saveStyleSettings as savePersistedStyleSettings,
+  saveViewState as savePersistedViewState,
+} from "./state-persistence.js";
+
 const stage = document.getElementById("atlasStage");
 const earthCanvas = document.getElementById("atlasEarthCanvas");
 const empireCanvas = document.getElementById("atlasEmpireCanvas");
@@ -51,55 +136,6 @@ const monthSlider = document.getElementById("monthSlider");
 const monthButtons = Array.from(document.querySelectorAll(".month-chip"));
 const atlasFrameElements = Array.from(document.querySelectorAll("[data-frame^='atlas-']"));
 const singleGlobeFrameElement = document.querySelector("[data-frame='single-globe']");
-const {
-  VIEW_HEIGHT,
-  VIEW_WIDTH,
-  atlasSceneDefinitions,
-  clamp,
-  dragSensitivity,
-  getDefaultMonth,
-  lightDirection,
-} = window.AtlasCore;
-const {
-  createDefaultBorderStyleState,
-  createDefaultEarthStyleState,
-  createDefaultEmpireLayerState,
-  createDefaultEmpireQualityState,
-  createDefaultEmpireStyleState,
-  createDefaultGraticuleStyleState,
-  createDefaultLayerState,
-  empireQualityLevels,
-  getColorControlDefinition,
-  getColorControlDefinitions,
-  getLayerRows,
-  getSliderControlDefinition,
-  getSliderControlDefinitions,
-  resolveStyleScope,
-} = window.AtlasLayersRegistry;
-const { createAppState } = window.AtlasAppState;
-const {
-  setAllEmpireQuality,
-  toggleEmpireSublayer,
-  toggleLayerEnabled,
-  toggleLayerGroupOpen,
-} = window.AtlasAppActions;
-const {
-  createMapGestureController,
-  createProjectionSwitcherController,
-} = window.AtlasGestures;
-const { createRenderInvalidationManager } = window.AtlasRenderState;
-const { createRenderer } = window.AtlasRenderer;
-const colorModel = window.AtlasColorModel;
-const { bindSharedColorControl } = window.AtlasColorControls;
-const layerBodyComposer = window.AtlasLayerBodyComposer;
-const layerPanelUi = window.AtlasLayerPanel;
-const layerPanelController = window.AtlasLayerPanelController;
-const {
-  hasAnyEmpireChildEnabled,
-  isEmpireChildDisplayed,
-  isEmpireParentActive,
-} = window.AtlasLayerSelectors;
-
 let worldData;
 let assetManifest;
 let earthTextureImage = null;
@@ -108,7 +144,7 @@ let rotationOffset = { lambda: 0, phi: 0 };
 let pixelRatio = 1;
 let lastEmpireRenderKey = null;
 let currentEmpirePixelRatio = 1;
-const earthTextureStore = window.AtlasLayers.createEarthTextureStore();
+const earthTextureStore = createEarthTextureStore();
 const renderInvalidation = createRenderInvalidationManager();
 const renderer = createRenderer({ renderInvalidation });
 const mobileLayerMenuMediaQuery = window.matchMedia("(max-width: 800px)");
@@ -221,7 +257,7 @@ const projectionWheelItems = PROJECTION_SEQUENCE.map((projectionKind, index) => 
 });
 
 function projectionSupportsRaster() {
-  return window.AtlasAdapters.projectionSupportsRaster(projectionState.selectedProjection);
+  return projectionSupportsRasterForKind(projectionState.selectedProjection);
 }
 
 function normalizeProjectionSelection(projectionKind) {
@@ -607,7 +643,7 @@ function enableMonthMenuToggle() {
 }
 
 async function init() {
-  layerBodyComposer.composeLayerBodies({
+  composeLayerBodies({
     getBodyElement: getLayerBodyElement,
     getRowElement: getLayerRowElement,
   });
@@ -619,12 +655,12 @@ async function init() {
   syncMobileMonthChrome();
   syncStageChrome();
   configureCanvases();
-  glRenderer = window.AtlasEarth.createGlobeRenderer(earthCanvas);
+  glRenderer = createGlobeRenderer(earthCanvas);
   [assetManifest, worldData] = await Promise.all([
     d3.json("./data/manifest.json"),
     loadWorld(),
   ]);
-  const overlayLayerManager = window.AtlasLayers.createOverlayLayerRenderers({
+  const overlayLayerManager = createOverlayLayerRenderers({
     overlayContext,
     worldDataRef: () => worldData,
     manifestRef: () => assetManifest,
@@ -671,11 +707,11 @@ async function init() {
 
 function syncStageChrome() {
   const currentProjection = projectionState.selectedProjection;
-  const currentView = window.AtlasCore.getViewDimensions(currentProjection);
+  const currentView = getViewDimensions(currentProjection);
   const atlasScenes = atlasSceneDefinitions;
   const atlasMaskSvg = encodeMaskSvg(atlasScenes, VIEW_WIDTH, VIEW_HEIGHT);
-  const singleGlobeScene = window.AtlasCore.createOrthographicSceneDefinition(
-    window.AtlasCore.getViewDimensions("orthographic"),
+  const singleGlobeScene = createOrthographicSceneDefinition(
+    getViewDimensions("orthographic"),
   );
   if (currentProjection === "orthographic") {
     singleGlobeScene.radius *= zoomState.scale;
@@ -960,7 +996,7 @@ function drawEmpirePass(scenes) {
   }
 
   lastEmpireRenderKey = nextKey;
-  const viewDimensions = window.AtlasCore.getViewDimensions(projectionState.selectedProjection);
+  const viewDimensions = getViewDimensions(projectionState.selectedProjection);
   configureEmpireCanvas(
     viewDimensions,
     uiState.isInteracting ? pixelRatio * EMPIRE_INTERACTION_PIXEL_RATIO : pixelRatio,
@@ -1039,7 +1075,7 @@ function snapshotBootStagePoster() {
 }
 
 function getResolvedScenes() {
-  return window.AtlasCore.getResolvedScenes(
+  return getResolvedScenesModel(
     atlasSceneDefinitions,
     projectionState,
     rotationOffset,
@@ -1066,7 +1102,7 @@ function drawEarthPass(scenes) {
 }
 
 function drawOverlayPass(scenes) {
-  const viewDimensions = window.AtlasCore.getViewDimensions(projectionState.selectedProjection);
+  const viewDimensions = getViewDimensions(projectionState.selectedProjection);
   overlayContext.clearRect(0, 0, viewDimensions.width, viewDimensions.height);
 
   scenes.forEach((scene) => {
@@ -1092,7 +1128,7 @@ function withSceneClip(scene, renderFn) {
     );
     overlayContext.scale(scene.zoomScale ?? 1, scene.zoomScale ?? 1);
     overlayContext.translate(-scene.center[0], -scene.center[1]);
-    window.AtlasCore.traceSceneShape(overlayContext, scene);
+    traceSceneShape(overlayContext, scene);
     overlayContext.clip();
     overlayContext.translate(scene.center[0], scene.center[1]);
     overlayContext.scale(1 / (scene.zoomScale ?? 1), 1 / (scene.zoomScale ?? 1));
@@ -1101,7 +1137,7 @@ function withSceneClip(scene, renderFn) {
       -(scene.center[1] + (scene.panOffset?.y ?? 0)),
     );
   } else {
-    window.AtlasCore.traceSceneShape(overlayContext, scene);
+    traceSceneShape(overlayContext, scene);
     overlayContext.clip();
   }
 
@@ -1130,7 +1166,7 @@ function clampFlatProjectionPanOffset(offset) {
     return { x: 0, y: 0 };
   }
 
-  const viewDimensions = window.AtlasCore.getViewDimensions(projectionState.selectedProjection);
+  const viewDimensions = getViewDimensions(projectionState.selectedProjection);
   const maxX = Math.max(0, (viewDimensions.width * (zoomState.scale - 1)) / 2);
   const maxY = Math.max(0, (viewDimensions.height * (zoomState.scale - 1)) / 2);
   return {
@@ -1166,8 +1202,8 @@ function getProjectionPhiClampRange() {
     case "azimuthal-equidistant":
       return 89.999;
     case "mercator":
-      return window.AtlasCore.getMercatorCenterLatitudeClamp(
-        window.AtlasCore.getViewDimensions("mercator"),
+      return getMercatorCenterLatitudeClamp(
+        getViewDimensions("mercator"),
         zoomState.scale,
       );
     default:
@@ -1272,7 +1308,7 @@ function enableZoomControls() {
 }
 
 function enableLayerControls() {
-  layerPanelController.bindLayerControls({
+  bindLayerControls({
     layerButtons,
     empireLayerButtons,
     earthGroupButton,
@@ -1481,7 +1517,7 @@ function scheduleExpandableLayoutSync() {
   expandableLayoutFrame = requestAnimationFrame(() => {
     expandableLayoutFrame = null;
 
-    layerPanelUi.syncExpandableSections({
+    syncExpandableSections({
       uiState,
       empireSubLayers: document.getElementById("empireSubLayers"),
     });
@@ -1527,7 +1563,7 @@ function syncColorControlParentSections(controlId) {
 }
 
 function syncEmpireGroupUi() {
-  layerPanelUi.syncEmpireGroupUi({
+  syncEmpireGroupUiView({
     layerState,
     empireLayerState,
     uiState,
@@ -1738,7 +1774,7 @@ function loadSharedCustomColors() {
 }
 
 function saveStyleSettings() {
-  window.AtlasStatePersistence.saveStyleSettings({
+  savePersistedStyleSettings({
     storage: window.localStorage,
     storageKey: STYLE_SETTINGS_STORAGE_KEY,
     borderStyleState,
@@ -1749,7 +1785,7 @@ function saveStyleSettings() {
 }
 
 function loadStyleSettings() {
-  window.AtlasStatePersistence.loadStyleSettings({
+  loadPersistedStyleSettings({
     storage: window.localStorage,
     storageKey: STYLE_SETTINGS_STORAGE_KEY,
     normalizeHexColor,
@@ -1763,7 +1799,7 @@ function loadStyleSettings() {
 }
 
 function saveViewState() {
-  window.AtlasStatePersistence.saveViewState({
+  savePersistedViewState({
     storage: window.localStorage,
     storageKey: VIEW_STATE_STORAGE_KEY,
     projectionState,
@@ -1789,7 +1825,7 @@ function scheduleViewStateSave() {
 }
 
 function loadViewState() {
-  window.AtlasStatePersistence.loadViewState({
+  loadPersistedViewState({
     storage: window.localStorage,
     storageKey: VIEW_STATE_STORAGE_KEY,
     normalizeProjectionSelection,
@@ -1956,7 +1992,7 @@ function setCustomColorList(controlId, colors) {
 }
 
 function saveCustomColors(controlId) {
-  colorModel.saveCustomColors(controlId, {
+  saveCustomColorsModel(controlId, {
     getConfig: getColorControlConfig,
     storage: window.localStorage,
     getCustomColorList,
@@ -1970,19 +2006,19 @@ function renderAllCustomColors() {
 }
 
 function clearColorRemovePressTimer(controlId) {
-  colorModel.clearColorRemovePressTimer(controlId, {
+  clearColorRemovePressTimerModel(controlId, {
     getRuntime: (id) => colorControlRuntimeState[id],
   });
 }
 
 function hideCustomColorRemoveButton(controlId) {
-  colorModel.hideCustomColorRemoveButton(controlId, {
+  hideCustomColorRemoveButtonModel(controlId, {
     getRuntime: (id) => colorControlRuntimeState[id],
   });
 }
 
 function getColorDatasetSelector(config) {
-  return colorModel.getColorDatasetSelector(config);
+  return getColorDatasetSelectorModel(config);
 }
 
 function setColorControlValue(controlId, colorHex) {
@@ -2004,7 +2040,7 @@ function setColorControlValue(controlId, colorHex) {
 }
 
 function setColorControlFromField(controlId, clientX, clientY) {
-  colorModel.setColorControlFromField(controlId, clientX, clientY, {
+  setColorControlFromFieldModel(controlId, clientX, clientY, {
     getConfig: getColorControlConfig,
     getStyle: getColorStyleState,
     clamp,
@@ -2013,7 +2049,7 @@ function setColorControlFromField(controlId, clientX, clientY) {
 }
 
 function setColorControlFromHueSlider(controlId, clientX) {
-  colorModel.setColorControlFromHueSlider(controlId, clientX, {
+  setColorControlFromHueSliderModel(controlId, clientX, {
     getConfig: getColorControlConfig,
     getStyle: getColorStyleState,
     clamp,
@@ -2022,7 +2058,7 @@ function setColorControlFromHueSlider(controlId, clientX) {
 }
 
 function createCustomColorButton(controlId, color) {
-  return colorModel.createCustomColorButton(controlId, color, {
+  return createCustomColorButtonModel(controlId, color, {
     getConfig: getColorControlConfig,
     getRuntime: (id) => colorControlRuntimeState[id],
     setColorControlValue,
@@ -2037,7 +2073,7 @@ function createCustomColorButton(controlId, color) {
 }
 
 function renderCustomColors(controlId) {
-  colorModel.renderCustomColors(controlId, {
+  renderCustomColorsModel(controlId, {
     getConfig: getColorControlConfig,
     getCustomColorList,
     createCustomColorButton,
@@ -2045,25 +2081,25 @@ function renderCustomColors(controlId) {
 }
 
 function revealCustomColor(controlId, color) {
-  return colorModel.revealCustomColor(controlId, color, {
+  return revealCustomColorModel(controlId, color, {
     getConfig: getColorControlConfig,
   });
 }
 
 function revealPresetColor(controlId, color) {
-  return colorModel.revealPresetColor(controlId, color, {
+  return revealPresetColorModel(controlId, color, {
     getConfig: getColorControlConfig,
   });
 }
 
 function flashColorFeedback(controlId, button) {
-  colorModel.flashColorFeedback(controlId, button, {
+  flashColorFeedbackModel(controlId, button, {
     getRuntime: (id) => colorControlRuntimeState[id],
   });
 }
 
 function syncBorderGroupUi() {
-  layerPanelUi.syncBorderGroupUi({
+  syncBorderGroupUiView({
     layerState,
     uiState,
     borderLayerGroup,
@@ -2076,7 +2112,7 @@ function syncBorderGroupUi() {
 }
 
 function syncGraticuleGroupUi() {
-  layerPanelUi.syncGraticuleGroupUi({
+  syncGraticuleGroupUiView({
     layerState,
     uiState,
     graticuleLayerGroup,
@@ -2089,7 +2125,7 @@ function syncGraticuleGroupUi() {
 }
 
 function syncColorControlUi(controlId) {
-  layerPanelUi.syncColorControlUi({
+  syncColorControlUiView({
     config: getColorControlConfig(controlId),
     style: getColorStyleState(controlId),
     isPaletteOpen: uiState[getColorControlConfig(controlId)?.paletteOpenKey],
@@ -2100,7 +2136,7 @@ function syncColorControlUi(controlId) {
 }
 
 function syncEarthGroupUi() {
-  layerPanelUi.syncEarthGroupUi({
+  syncEarthGroupUiView({
     uiState,
     earthLayerGroup,
     earthGroupButton,
@@ -2675,7 +2711,7 @@ function requestRender(passes = ["all"]) {
 }
 
 function configureCanvases() {
-  const viewDimensions = window.AtlasCore.getViewDimensions(projectionState.selectedProjection);
+  const viewDimensions = getViewDimensions(projectionState.selectedProjection);
   pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 
   earthCanvas.width = Math.round(viewDimensions.width * pixelRatio);

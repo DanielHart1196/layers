@@ -1,6 +1,5 @@
-(() => {
-  let geometryIdCounter = 0;
-  const geometryIds = new WeakMap();
+let geometryIdCounter = 0;
+const geometryIds = new WeakMap();
 
   function getGeometryId(geometry) {
     if (!geometry || (typeof geometry !== "object" && typeof geometry !== "function")) {
@@ -97,10 +96,20 @@
     };
   }
 
-  window.AtlasPathCache = {
-    createProjectedPathCache,
-    getGeometryId,
-    getSceneCacheKey,
-    shouldCacheScene,
-  };
-})();
+const AtlasPathCache = {
+  createProjectedPathCache,
+  getGeometryId,
+  getSceneCacheKey,
+  shouldCacheScene,
+};
+
+export {
+  createProjectedPathCache,
+  getGeometryId,
+  getSceneCacheKey,
+  shouldCacheScene,
+};
+
+export default AtlasPathCache;
+
+window.AtlasPathCache = AtlasPathCache;

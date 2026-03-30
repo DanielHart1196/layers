@@ -1,8 +1,18 @@
-(() => {
-  const projectedPathCache = window.AtlasPathCache?.createProjectedPathCache?.() ?? null;
+import { createProjection } from "./atlas-core.js";
+import {
+  clipRingToPolygon,
+  createFacePolygons,
+  createProjector,
+  getLayerData,
+  projectCoordinates,
+  traceGeometry as traceDymaxionGeometry,
+} from "./atlas-dymaxion.js";
+import { createProjectedPathCache } from "./atlas-path-cache.js";
+
+const projectedPathCache = createProjectedPathCache?.() ?? null;
 
   function createContinuousAdapter(scene, context, renderState = {}) {
-    const baseProjection = window.AtlasCore.createProjection(scene, {
+    const baseProjection = createProjection(scene, {
       precision:
         scene.projectionKind === "azimuthal-equidistant"
         ? (renderState.isInteracting ? 2.4 : 0.35)
@@ -235,10 +245,10 @@
   }
 
   function createDymaxionAdapter(scene, context, worldData) {
-    const projector = window.AtlasDymaxion.createProjector(scene);
-    const facePolygons = window.AtlasDymaxion.createFacePolygons(scene).filter(Boolean);
+    const projector = createProjector(scene);
+    const facePolygons = createFacePolygons(scene).filter(Boolean);
     const dymaxionCountrySource = window.DYMAXION_COUNTRIES ?? window.countries ?? null;
-    const dymaxionLayerData = window.AtlasDymaxion.getLayerData(dymaxionCountrySource);
+    const dymaxionLayerData = getLayerData(dymaxionCountrySource);
 
     function withFaceClip(facePolygon, draw) {
       const [firstPoint, ...restPoints] = facePolygon.points;
@@ -258,7 +268,7 @@
       facePolygons.forEach((facePolygon) => {
         withFaceClip(facePolygon, () => {
           context.beginPath();
-          window.AtlasDymaxion.traceGeometry(context, projector, geometry, {
+          traceDymaxionGeometry(context, projector, geometry, {
             maxStepDegrees: options.maxStepDegrees ?? 0.8,
             splitDepth: options.splitDepth ?? 10,
             minimumStepDegrees: options.minimumStepDegrees ?? 0.05,
@@ -296,12 +306,12 @@
 
     function appendClippedPolygon(facePolygon, polygon, fillOptions) {
       polygon.forEach((ring) => {
-        const projectedRing = window.AtlasDymaxion.projectCoordinates(projector, ring, {
+        const projectedRing = projectCoordinates(projector, ring, {
           maxStepDegrees: fillOptions.maxStepDegrees ?? 0.6,
           splitDepth: fillOptions.splitDepth ?? 11,
           minimumStepDegrees: fillOptions.minimumStepDegrees ?? 0.04,
         });
-        const clippedRing = window.AtlasDymaxion.clipRingToPolygon(projectedRing, facePolygon.points);
+        const clippedRing = clipRingToPolygon(projectedRing, facePolygon.points);
 
         if (clippedRing.length < 4) {
           return;
@@ -350,7 +360,7 @@
         return null;
       },
       traceGeometry(geometry, options = {}) {
-        window.AtlasDymaxion.traceGeometry(context, projector, geometry, options);
+        traceDymaxionGeometry(context, projector, geometry, options);
       },
       preparePath2D() {
         return null;
@@ -375,8 +385,16 @@
       && projectionKind !== "waterman";
   }
 
-  window.AtlasAdapters = {
-    createAdapter,
-    projectionSupportsRaster,
-  };
-})();
+const AtlasAdapters = {
+  createAdapter,
+  projectionSupportsRaster,
+};
+
+export {
+  createAdapter,
+  projectionSupportsRaster,
+};
+
+export default AtlasAdapters;
+
+window.AtlasAdapters = AtlasAdapters;

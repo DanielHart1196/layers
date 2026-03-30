@@ -1,9 +1,8 @@
-(() => {
-  const {
-    getColorControlDefinitions,
-    getSliderControlDefinitions,
-    resolveStyleScope,
-  } = window.AtlasLayersRegistry;
+import {
+  getColorControlDefinitions,
+  getSliderControlDefinitions,
+  resolveStyleScope,
+} from "./layers-registry.js";
 
   function ensureScopeObject(root, scope) {
     return scope.split(".").reduce((current, segment) => {
@@ -266,10 +265,20 @@
     }
   }
 
-  window.AtlasStatePersistence = {
-    loadStyleSettings,
-    loadViewState,
-    saveStyleSettings,
-    saveViewState,
-  };
-})();
+const AtlasStatePersistence = {
+  loadStyleSettings,
+  loadViewState,
+  saveStyleSettings,
+  saveViewState,
+};
+
+export {
+  loadStyleSettings,
+  loadViewState,
+  saveStyleSettings,
+  saveViewState,
+};
+
+export default AtlasStatePersistence;
+
+window.AtlasStatePersistence = AtlasStatePersistence;

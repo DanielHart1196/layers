@@ -1,5 +1,4 @@
-(() => {
-  const SQRT_3 = Math.sqrt(3);
+const SQRT_3 = Math.sqrt(3);
   const SQRT_5 = Math.sqrt(5);
   const SQRT_8 = Math.sqrt(8);
   const SQRT_10 = Math.sqrt(10);
@@ -783,14 +782,28 @@
     };
   }
 
-  window.AtlasDymaxion = {
-    clipRingToPolygon,
-    createLayerData,
-    createFacePolygons,
-    createProjection,
-    createProjector,
-    getLayerData,
-    projectCoordinates,
-    traceGeometry,
-  };
-})();
+const AtlasDymaxion = {
+  clipRingToPolygon,
+  createLayerData,
+  createFacePolygons,
+  createProjection,
+  createProjector,
+  getLayerData,
+  projectCoordinates,
+  traceGeometry,
+};
+
+export {
+  clipRingToPolygon,
+  createLayerData,
+  createFacePolygons,
+  createProjection,
+  createProjector,
+  getLayerData,
+  projectCoordinates,
+  traceGeometry,
+};
+
+export default AtlasDymaxion;
+
+window.AtlasDymaxion = AtlasDymaxion;
