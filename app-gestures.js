@@ -140,7 +140,8 @@ function createMapGestureController() {
         }
 
         event.preventDefault();
-        const delta = Math.exp(-event.deltaY * 0.0015);
+        const wheelZoomSensitivity = mobileLayerMenuMediaQuery.matches ? 0.0015 : 0.003;
+        const delta = Math.exp(-event.deltaY * wheelZoomSensitivity);
         adjustZoomBy(delta);
       },
       { passive: false },
@@ -263,6 +264,7 @@ function createProjectionSwitcherController() {
   let projectionSwipeSettleTimer = null;
   let suppressNextClick = false;
   let suppressNextClickResetTimer = null;
+  let triggerProjectionStepAnimation = null;
 
   function bind({
     projectionSwitcher,
@@ -314,6 +316,43 @@ function createProjectionSwitcherController() {
       return true;
     };
 
+    const queueProjectionStepAnimation = (steps) => {
+      if (!Number.isFinite(steps) || steps === 0 || projectionSwipeAnimating) {
+        return false;
+      }
+
+      const slotWidth = getProjectionSlotWidth();
+      projectionSwipeAnimating = true;
+      suppressNextClick = true;
+      debugLog?.("suppress=true");
+      if (suppressNextClickResetTimer !== null) {
+        window.clearTimeout(suppressNextClickResetTimer);
+      }
+      suppressNextClickResetTimer = window.setTimeout(() => {
+        suppressNextClick = false;
+        suppressNextClickResetTimer = null;
+        debugLog?.("suppress timeout reset");
+      }, 220);
+      projectionSwitcher.classList.add("is-settling");
+      renderProjectionSwitcher(steps * slotWidth);
+      debugLog?.(`settle steps=${steps}`);
+      if (projectionSwipeSettleTimer !== null) {
+        window.clearTimeout(projectionSwipeSettleTimer);
+      }
+      projectionSwipeSettleTimer = window.setTimeout(() => {
+        projectionSwipeSettleTimer = null;
+        projectionSwitcher.classList.remove("is-settling");
+        cycleProjection(-steps);
+        projectionSwipeAnimating = false;
+      }, 140);
+      return true;
+    };
+
+    triggerProjectionStepAnimation = (direction) => {
+      const normalizedDirection = direction > 0 ? 1 : -1;
+      return queueProjectionStepAnimation(-normalizedDirection);
+    };
+
     const endProjectionSwipe = () => {
       if (projectionSwipeStartX === null) {
         debugLog?.("end ignored no-start");
@@ -341,29 +380,8 @@ function createProjectionSwitcherController() {
         return true;
       }
 
-      projectionSwipeAnimating = true;
-      suppressNextClick = true;
-      debugLog?.("suppress=true");
-      if (suppressNextClickResetTimer !== null) {
-        window.clearTimeout(suppressNextClickResetTimer);
-      }
-      suppressNextClickResetTimer = window.setTimeout(() => {
-        suppressNextClick = false;
-        suppressNextClickResetTimer = null;
-        debugLog?.("suppress timeout reset");
-      }, 220);
-      projectionSwitcher.classList.add("is-settling");
-      renderProjectionSwitcher(steps * slotWidth);
       debugLog?.(`end swipe steps=${steps}`);
-      if (projectionSwipeSettleTimer !== null) {
-        window.clearTimeout(projectionSwipeSettleTimer);
-      }
-      projectionSwipeSettleTimer = window.setTimeout(() => {
-        projectionSwipeSettleTimer = null;
-        projectionSwitcher.classList.remove("is-settling");
-        cycleProjection(-steps);
-        projectionSwipeAnimating = false;
-      }, 140);
+      queueProjectionStepAnimation(steps);
       projectionSwipeDeltaX = 0;
       projectionSwipeStartTime = 0;
       return true;
@@ -520,6 +538,9 @@ function createProjectionSwitcherController() {
 
   return {
     bind,
+    triggerStepAnimation(direction) {
+      return triggerProjectionStepAnimation?.(direction) ?? false;
+    },
   };
 }
 

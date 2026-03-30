@@ -27,6 +27,10 @@
 - Before substantial implementation work in `layers`, review the relevant sections of `PROJECT_NOTES.md` and keep the current architecture direction explicit while working.
 - If a request appears to conflict with the agreed architecture in `PROJECT_NOTES.md`, call that out before coding and explain the tradeoff instead of silently drifting.
 - If a prompt is underspecified in a way that risks rework, propose a concrete assumption set or ask a short clarifying question before making structural changes.
+- If the user asks a conversational alignment question like `do you know what I mean?`, `thoughts?`, or similar check-in phrasing ending in `?`, treat it as a pause to confirm understanding rather than implicit approval to implement immediately.
+- When the user asks a question, answer the question first and do not make code changes in the same turn unless they explicitly ask to implement, proceed, patch, change, fix, or similar.
+- If a prompt is ambiguous between analysis and implementation, prefer analysis-only.
+- Treat question-led prompts like `can you see why...`, `are you confident...`, `what's causing...`, `does that make sense...`, and similar reasoning checks as non-implementation turns by default.
 - When a new rule, architecture decision, or repeated pitfall becomes clear during work, suggest adding it to `PROJECT_NOTES.md` rather than keeping it implicit.
 - After JavaScript edits in `layers`, run `node --check` on changed JS files before finishing.
 - Keep behavior-preserving extraction separate from behavior-changing refactors. If a change touches rendering cadence, gesture semantics, projection math, or other fragile interaction paths, say so explicitly before making it.
@@ -41,6 +45,9 @@
 - Before implementing a new UI interaction in `layers`, identify the exact existing file and section it should mirror, and use that as the implementation template.
 - If a requested UI change cannot be implemented by reusing an existing pattern, say that explicitly before coding and explain what constraint prevents reuse.
 - Prefer structural reuse of existing patterns over one-off fixes, custom wrappers, or new layout abstractions, even if the custom approach appears faster at first.
+- Prefer shared layout primitives and a single source of truth for linked UI.
+- When related controls should stay visually or behaviorally aligned, use shared design tokens, derived layout, and composable UI primitives instead of duplicated constants or matching magic numbers.
+- Favor constraint-driven UI and explicit structural relationships where intentional coupling keeps the interface genuinely linked and consistent.
 - If spacing or ordering behavior should be inspectable and shared across layers, prefer explicit structural elements over implicit CSS-only spacing.
 - Prefer preserving working mobile gesture behavior and fixing browser-specific issues in the narrowest path possible.
 - For flat projections in `layers`, keep raster and vector layers on the same camera transform model to avoid alignment drift.

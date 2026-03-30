@@ -121,6 +121,8 @@ const hardReloadButton = document.getElementById("hardReloadButton");
 const clearCacheReloadButton = document.getElementById("clearCacheReloadButton");
 const projectionSwitcher = document.getElementById("projectionSwitcher");
 const projectionSwitcherTrack = document.getElementById("projectionSwitcherTrack");
+const projectionArrowLeft = document.getElementById("projectionArrowLeft");
+const projectionArrowRight = document.getElementById("projectionArrowRight");
 const projectionWheel = document.getElementById("projectionWheel");
 const projectionWheelWindow = document.getElementById("projectionWheelWindow");
 const layerButtons = Array.from(document.querySelectorAll(".layer-item"));
@@ -309,7 +311,7 @@ function renderProjectionSwitcher(offset = 0) {
     const distance = getProjectionDistanceFromCurrent(projectionKind);
     item.textContent = getProjectionLabel(projectionKind);
     item.style.setProperty("--projection-item-offset", `${offset + (distance * slotWidth)}px`);
-    item.style.opacity = Math.abs(distance - (offset / slotWidth)) < 0.9 ? "1" : "0.5";
+    item.style.opacity = "1";
   });
 }
 
@@ -324,7 +326,7 @@ function syncProjectionWheelPosition() {
   }
 
   const rect = projectionSwitcher.getBoundingClientRect();
-  const width = Math.max(196, Math.min(224, rect.width + 24));
+  const width = Math.min(window.innerWidth - 28, Math.max(196, rect.width));
   const left = clamp(rect.left + (rect.width / 2), 16 + (width / 2), window.innerWidth - 16 - (width / 2));
   const wheelHeight = 220;
   const centeredTop = rect.top + (rect.height / 2) - (wheelHeight / 2);
@@ -462,6 +464,10 @@ function setProjectionMenuOpen(isOpen) {
   projectionPickerButton?.setAttribute("aria-expanded", uiState.isProjectionMenuOpen ? "true" : "false");
 }
 
+function isProjectionArrowTarget(target) {
+  return target instanceof Element && Boolean(target.closest(".projection-arrow"));
+}
+
 function syncProjectionPicker() {
   const activeProjection = normalizeProjectionSelection(projectionState.selectedProjection);
   if (projectionPickerValue) {
@@ -505,6 +511,7 @@ function isWithinInteractiveUi(target) {
         ".layer-menu-toggle",
         ".mobile-refresh",
         ".projection-switcher",
+        ".projection-wheel",
         "select",
         "option",
         "label",
@@ -585,7 +592,10 @@ function syncProjectionSwitcherMorph() {
   const startCenterX = viewportWidth / 2;
   const endCenterX = viewportWidth - 18 - 24;
   const shiftX = (endCenterX - startCenterX) * progress;
-  const width = 208 - (160 * progress);
+  const expandedWidth = Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--projection-switcher-mobile-expanded-width"),
+  ) || 276;
+  const width = expandedWidth - ((expandedWidth - 48) * progress);
   const height = 46 + (2 * progress);
   const paddingX = 16 * (1 - progress);
   const paddingY = 11 * (1 - progress);
@@ -1145,8 +1155,22 @@ function withSceneClip(scene, renderFn) {
   overlayContext.restore();
 }
 
-function getEffectiveDragSensitivity() {
-  return dragSensitivity * (1.5 / Math.max(zoomState.scale, 1));
+function getEffectiveDragSensitivity(sourceEvent) {
+  return dragSensitivity
+    * (1.5 / Math.max(zoomState.scale, 1))
+    * getProjectionDragSensitivityMultiplier(sourceEvent);
+}
+
+function getProjectionDragSensitivityMultiplier(sourceEvent) {
+  if (projectionState.selectedProjection !== "orthographic") {
+    return 1;
+  }
+
+  const pointerType = sourceEvent?.pointerType;
+  const isMouseLikeInput = pointerType === "mouse"
+    || (!mobileLayerMenuMediaQuery.matches && sourceEvent instanceof MouseEvent);
+
+  return isMouseLikeInput ? 0.5 : 1;
 }
 
 function usesFlatProjectionPan() {
@@ -1229,9 +1253,12 @@ function enableDragging() {
       requestRender(["earth", "empire", "overlay", "poster"]);
     },
     onRotate: (event) => {
-      const effectiveDragSensitivity = getEffectiveDragSensitivity();
-      rotationOffset.lambda += event.dx * effectiveDragSensitivity;
-      rotationOffset.phi -= event.dy * effectiveDragSensitivity * getMercatorPhiSensitivityMultiplier();
+      const effectiveDragSensitivity = getEffectiveDragSensitivity(event.sourceEvent);
+      const phiMultiplier = getMercatorPhiSensitivityMultiplier();
+      const lambdaDelta = event.dx * effectiveDragSensitivity;
+      const phiDelta = -event.dy * effectiveDragSensitivity * phiMultiplier;
+      rotationOffset.lambda += lambdaDelta;
+      rotationOffset.phi += phiDelta;
       const phiClampRange = getProjectionPhiClampRange();
       rotationOffset.phi = clamp(rotationOffset.phi, -phiClampRange, phiClampRange);
       markInteractionActivity();
@@ -2377,7 +2404,7 @@ function enableRefreshControls() {
   };
 
   mobileRefreshButton.addEventListener("pointerdown", (event) => {
-    if (!mobileLayerMenuMediaQuery.matches || event.pointerType === "mouse") {
+    if (event.pointerType === "mouse") {
       return;
     }
 
@@ -2397,10 +2424,6 @@ function enableRefreshControls() {
   });
 
   mobileRefreshButton.addEventListener("click", (event) => {
-    if (!mobileLayerMenuMediaQuery.matches) {
-      return;
-    }
-
     if (refreshMenuLongPressTriggered) {
       event.preventDefault();
       refreshMenuLongPressTriggered = false;
@@ -2408,6 +2431,15 @@ function enableRefreshControls() {
     }
 
     window.location.reload();
+  });
+
+  mobileRefreshButton.addEventListener("contextmenu", (event) => {
+    if (mobileLayerMenuMediaQuery.matches) {
+      return;
+    }
+
+    event.preventDefault();
+    setRefreshMenuOpen(!mobileRefreshMenu.classList.contains("is-open"));
   });
 
   hardReloadButton.addEventListener("click", () => {
@@ -2569,6 +2601,11 @@ function enableProjectionWheel() {
   };
 
   projectionSwitcher.addEventListener("pointerdown", (event) => {
+    if (isProjectionArrowTarget(event.target)) {
+      switcherTapPointerId = null;
+      return;
+    }
+
     switcherTapPointerId = event.pointerId;
     switcherTapStartX = event.clientX;
     switcherTapStartY = event.clientY;
@@ -2670,6 +2707,79 @@ function enableProjectionSwitcher() {
     getProjectionSlotWidth,
     cycleProjection,
   });
+
+  const bindProjectionArrow = (button, direction) => {
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    let activePointerId = null;
+    let handledByDesktopPointer = false;
+
+    const triggerArrowAction = () => {
+      button.classList.remove("is-pulsing");
+      void button.offsetWidth;
+      button.classList.add("is-pulsing");
+      projectionSwitcherController.triggerStepAnimation(direction);
+    };
+
+    button.addEventListener("pointerdown", (event) => {
+      activePointerId = event.pointerId;
+      handledByDesktopPointer = false;
+      if (event.pointerType === "mouse") {
+        event.stopPropagation();
+        button.setPointerCapture?.(event.pointerId);
+      }
+    });
+
+    button.addEventListener("pointerup", (event) => {
+      if (activePointerId !== event.pointerId) {
+        return;
+      }
+
+      activePointerId = null;
+      if (event.pointerType !== "mouse") {
+        return;
+      }
+
+      button.releasePointerCapture?.(event.pointerId);
+      const releaseTarget = document.elementFromPoint(event.clientX, event.clientY);
+      if (!(releaseTarget instanceof Element) || !button.contains(releaseTarget)) {
+        return;
+      }
+
+      handledByDesktopPointer = true;
+      triggerArrowAction();
+    });
+
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (handledByDesktopPointer) {
+        handledByDesktopPointer = false;
+        return;
+      }
+      triggerArrowAction();
+    });
+
+    button.addEventListener("pointercancel", (event) => {
+      activePointerId = null;
+      handledByDesktopPointer = false;
+      button.releasePointerCapture?.(event.pointerId);
+    });
+
+    button.addEventListener("lostpointercapture", () => {
+      activePointerId = null;
+      handledByDesktopPointer = false;
+    });
+
+    button.addEventListener("animationend", () => {
+      button.classList.remove("is-pulsing");
+    });
+  };
+
+  bindProjectionArrow(projectionArrowLeft, -1);
+  bindProjectionArrow(projectionArrowRight, 1);
 }
 
 function enableTemporalControls() {

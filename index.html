@@ -158,38 +158,41 @@
           </div>
         </div>
 
-        <div class="layer-trigger" aria-hidden="true"></div>
-        <button
-          class="layer-menu-toggle"
-          id="layerMenuToggle"
-          type="button"
-          aria-label="Open layers menu"
-          aria-controls="layerPanel"
-          aria-expanded="false"
-        >
-          <span class="layer-menu-toggle-bar"></span>
-          <span class="layer-menu-toggle-bar"></span>
-          <span class="layer-menu-toggle-bar"></span>
-        </button>
-        <div class="mobile-refresh" id="mobileRefresh">
-          <button
-            class="mobile-refresh-button"
-            id="mobileRefreshButton"
-            type="button"
-            aria-label="Refresh page"
-            aria-expanded="false"
-            aria-controls="mobileRefreshMenu"
-          >
-            <span class="mobile-refresh-icon" aria-hidden="true"></span>
-          </button>
-          <div class="mobile-refresh-menu" id="mobileRefreshMenu" role="menu" aria-label="Reload options">
-            <button class="mobile-refresh-menu-item" id="hardReloadButton" type="button" role="menuitem">
-              Hard reload
+        <div class="layer-ui" aria-label="Layers controls">
+          <div class="mobile-refresh" id="mobileRefresh">
+            <button
+              class="mobile-refresh-button"
+              id="mobileRefreshButton"
+              type="button"
+              aria-label="Refresh page"
+              aria-expanded="false"
+              aria-controls="mobileRefreshMenu"
+            >
+              <span class="mobile-refresh-icon" aria-hidden="true"></span>
             </button>
-            <button class="mobile-refresh-menu-item" id="clearCacheReloadButton" type="button" role="menuitem">
-              Clear cache reload
-            </button>
+            <div class="mobile-refresh-menu" id="mobileRefreshMenu" role="menu" aria-label="Reload options">
+              <button class="mobile-refresh-menu-item" id="hardReloadButton" type="button" role="menuitem">
+                Hard reload
+              </button>
+              <button class="mobile-refresh-menu-item" id="clearCacheReloadButton" type="button" role="menuitem">
+                Clear cache reload
+              </button>
+            </div>
           </div>
+          <button
+            class="layer-menu-toggle"
+            id="layerMenuToggle"
+            type="button"
+            aria-label="Open layers menu"
+            aria-controls="layerPanel"
+            aria-expanded="false"
+          >
+            <svg class="layer-menu-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 7.5h14"></path>
+              <path d="M5 12h14"></path>
+              <path d="M5 16.5h14"></path>
+            </svg>
+          </button>
         </div>
         <div
           class="projection-switcher"
@@ -198,6 +201,14 @@
           tabindex="0"
           aria-label="Current projection. Swipe to change projection"
         >
+          <button
+            class="projection-arrow projection-arrow-left"
+            id="projectionArrowLeft"
+            type="button"
+            aria-label="Previous projection"
+          >
+            <span class="projection-arrow-chevron" aria-hidden="true"></span>
+          </button>
           <svg class="projection-switcher-icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="8.25"></circle>
             <ellipse cx="12" cy="12" rx="3.75" ry="8.25"></ellipse>
@@ -206,8 +217,17 @@
             <path d="M5.5 15.5c2.1-1.05 4.3-1.55 6.5-1.55s4.4.5 6.5 1.55"></path>
           </svg>
           <span class="projection-switcher-track" id="projectionSwitcherTrack"></span>
+          <button
+            class="projection-arrow projection-arrow-right"
+            id="projectionArrowRight"
+            type="button"
+            aria-label="Next projection"
+          >
+            <span class="projection-arrow-chevron" aria-hidden="true"></span>
+          </button>
         </div>
         <div class="projection-wheel" id="projectionWheel" aria-hidden="true">
+          <div class="projection-wheel-guide" aria-hidden="true"></div>
           <div class="projection-wheel-window" id="projectionWheelWindow" role="listbox" aria-label="Select projection"></div>
         </div>
         <aside class="layer-panel" id="layerPanel" aria-label="Map layers">

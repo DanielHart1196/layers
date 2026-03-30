@@ -26,6 +26,14 @@
 - When suggesting a solution, also suggest whether the rule belongs in `PROJECT_NOTES.md` or `AGENTS.md`.
 - Treat the notes, registry, and existing working UI patterns as shared sources of truth, not optional context.
 
+## Shared UI Architecture
+- Prefer shared layout primitives for related controls.
+- When two UI elements are meant to stay visually or behaviorally linked, derive them from the same variable, token, or state instead of duplicating values.
+- Prefer a single source of truth for widths, anchors, spacing, control sizes, and other repeated layout constants.
+- Favor derived layout over duplicated constants and structural relationships over matching magic numbers.
+- Use shared design tokens, composable UI primitives, and constraint-driven UI when building linked controls so consistency is encoded in the structure instead of remembered manually.
+- Allow intentional structural coupling when it preserves consistency between related controls, but keep the coupling explicit and inspectable.
+
 ## Git / Remote Notes
 - Current primary branch: `main`
 - HTTPS push is working for this repo.
@@ -37,6 +45,28 @@
 - `orthographic`, `azimuthal-equidistant`, and `mercator` behave like direct interactive projections.
 - `natural-earth-ii`, `goode-homolosine`, and `waterman` are viewport-based flat projections.
 - `dymaxion` remains special-cased and should be treated as lower-confidence for interaction work.
+
+## Projection Architecture Direction
+- Long-term direction: one viewport/display architecture with many projection definitions, not separate globe-vs-flat app architectures.
+- Prefer one shared display system for framing, zoom, clipping, hit behavior, and general viewport handling across all projections.
+- Projection-specific code should primarily provide transformation math plus explicit metadata and constraints, rather than bespoke rendering or interaction stacks.
+- Favor a projection contract over projection-specific pipelines. A projection definition should eventually be able to describe:
+  - forward transform
+  - inverse transform when available
+  - frame or fit geometry
+  - clipping shape / visible domain
+  - interaction capabilities
+  - zoom / pan / rotation constraints
+- The goal is not fake uniformity. Different projections may still need different math, bounds, seams, or capability flags, but those differences should live behind one explicit contract.
+- Prefer one shared interaction pipeline that routes drag, wheel, pinch, buttons, and other inputs through projection capabilities instead of branching into unrelated architectures.
+- Prefer one shared render/display pipeline that asks the active projection how to transform and constrain coordinates, instead of letting each projection own its own framing and viewport behavior.
+- When future projection work resumes, bias toward adding or refining projection definitions rather than creating new top-level systems.
+- This direction should make future projection creation possible without rewriting the app architecture each time a new projection is introduced.
+- Medium-term interaction direction: separate projection-internal camera movement from whole-projection frame movement.
+- Projections should eventually support both:
+  - moving / zooming within the projection
+  - moving / scaling the projection frame itself
+- Interaction modes or locks should make it explicit whether the user is manipulating projection content or the projection object as a whole.
 
 ## Zoom And Pan
 - Global zoom state lives in `app.js`.
