@@ -168,7 +168,7 @@ function createSliderRow({
         saturationKey: "fillSaturation",
         valueKey: "fillValue",
       },
-      renderPasses: ["empire", "poster"],
+      renderPasses: ["overlay", "poster"],
     },
     romanEmpireBorder: {
       controlId: "romanEmpireBorder",
@@ -194,7 +194,7 @@ function createSliderRow({
         saturationKey: "strokeSaturation",
         valueKey: "strokeValue",
       },
-      renderPasses: ["empire", "poster"],
+      renderPasses: ["overlay", "poster"],
     },
     mongolEmpireFill: {
       controlId: "mongolEmpireFill",
@@ -220,7 +220,7 @@ function createSliderRow({
         saturationKey: "fillSaturation",
         valueKey: "fillValue",
       },
-      renderPasses: ["empire", "poster"],
+      renderPasses: ["overlay", "poster"],
     },
     mongolEmpireBorder: {
       controlId: "mongolEmpireBorder",
@@ -246,7 +246,7 @@ function createSliderRow({
         saturationKey: "strokeSaturation",
         valueKey: "strokeValue",
       },
-      renderPasses: ["empire", "poster"],
+      renderPasses: ["overlay", "poster"],
     },
     britishEmpireFill: {
       controlId: "britishEmpireFill",
@@ -272,7 +272,7 @@ function createSliderRow({
         saturationKey: "fillSaturation",
         valueKey: "fillValue",
       },
-      renderPasses: ["empire", "poster"],
+      renderPasses: ["overlay", "poster"],
     },
     britishEmpireBorder: {
       controlId: "britishEmpireBorder",
@@ -298,7 +298,7 @@ function createSliderRow({
         saturationKey: "strokeSaturation",
         valueKey: "strokeValue",
       },
-      renderPasses: ["empire", "poster"],
+      renderPasses: ["overlay", "poster"],
     },
   };
 
@@ -348,7 +348,7 @@ function createSliderRow({
           binding: { kind: "empireQualityAll" },
           valueFormat: "qualityLabel",
           uiSync: "empire",
-          renderPasses: ["empire", "poster"],
+          renderPasses: ["overlay", "poster"],
         }),
         { type: "layer", layerId: "roman", rowElementId: "romanEmpireLayerGroup" },
         { type: "layer", layerId: "mongol", rowElementId: "mongolEmpireLayerGroup" },
@@ -486,7 +486,7 @@ function createSliderRow({
           binding: { kind: "percent", scope: "layers.roman", key: "fillOpacity" },
           valueFormat: "percent",
           uiSync: "empire",
-          renderPasses: ["empire", "poster"],
+          renderPasses: ["overlay", "poster"],
         }),
         createColorRow({ controlId: "romanEmpireBorder", rowElementId: "romanEmpireBorderRow" }),
         createSliderRow({
@@ -501,7 +501,7 @@ function createSliderRow({
           binding: { kind: "float", scope: "layers.roman", key: "strokeWidth" },
           valueFormat: "widthPx",
           uiSync: "empire",
-          renderPasses: ["empire", "poster"],
+          renderPasses: ["overlay", "poster"],
         }),
         createSliderRow({
           controlId: "romanEmpireBorderOpacity",
@@ -515,7 +515,7 @@ function createSliderRow({
           binding: { kind: "percent", scope: "layers.roman", key: "strokeOpacity" },
           valueFormat: "percent",
           uiSync: "empire",
-          renderPasses: ["empire", "poster"],
+          renderPasses: ["overlay", "poster"],
         }),
       ],
       bodySectionId: "romanEmpireLayerControls",
@@ -547,7 +547,7 @@ function createSliderRow({
           binding: { kind: "percent", scope: "layers.mongol", key: "fillOpacity" },
           valueFormat: "percent",
           uiSync: "empire",
-          renderPasses: ["empire", "poster"],
+          renderPasses: ["overlay", "poster"],
         }),
         createColorRow({ controlId: "mongolEmpireBorder", rowElementId: "mongolEmpireBorderRow" }),
         createSliderRow({
@@ -562,7 +562,7 @@ function createSliderRow({
           binding: { kind: "float", scope: "layers.mongol", key: "strokeWidth" },
           valueFormat: "widthPx",
           uiSync: "empire",
-          renderPasses: ["empire", "poster"],
+          renderPasses: ["overlay", "poster"],
         }),
         createSliderRow({
           controlId: "mongolEmpireBorderOpacity",
@@ -576,7 +576,7 @@ function createSliderRow({
           binding: { kind: "percent", scope: "layers.mongol", key: "strokeOpacity" },
           valueFormat: "percent",
           uiSync: "empire",
-          renderPasses: ["empire", "poster"],
+          renderPasses: ["overlay", "poster"],
         }),
       ],
       bodySectionId: "mongolEmpireLayerControls",
@@ -608,7 +608,7 @@ function createSliderRow({
           binding: { kind: "percent", scope: "layers.british", key: "fillOpacity" },
           valueFormat: "percent",
           uiSync: "empire",
-          renderPasses: ["empire", "poster"],
+          renderPasses: ["overlay", "poster"],
         }),
         createColorRow({ controlId: "britishEmpireBorder", rowElementId: "britishEmpireBorderRow" }),
         createSliderRow({
@@ -623,7 +623,7 @@ function createSliderRow({
           binding: { kind: "float", scope: "layers.british", key: "strokeWidth" },
           valueFormat: "widthPx",
           uiSync: "empire",
-          renderPasses: ["empire", "poster"],
+          renderPasses: ["overlay", "poster"],
         }),
         createSliderRow({
           controlId: "britishEmpireBorderOpacity",

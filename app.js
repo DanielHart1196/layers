@@ -913,46 +913,48 @@ function markInteractionActivity() {
 
 function drawAtlas(passes = ["all"]) {
   renderer.draw({
-    passes: ["all"],
-    render: (dirtyPasses) => {
-      const scenes = getResolvedScenes();
-      const isMercator = projectionState.selectedProjection === "mercator";
-      const isViewportStage =
-        projectionState.selectedProjection === "mercator" ||
-        projectionState.selectedProjection === "orthographic" ||
-        projectionState.selectedProjection === "natural-earth-ii" ||
-        projectionState.selectedProjection === "goode-homolosine" ||
-        projectionState.selectedProjection === "waterman";
-      const isFlatProjection =
-        isMercator ||
-        projectionState.selectedProjection === "natural-earth-ii" ||
-        projectionState.selectedProjection === "goode-homolosine" ||
-        projectionState.selectedProjection === "waterman" ||
-        projectionState.selectedProjection === "dymaxion";
-
-      if (dirtyPasses.has("chrome")) {
-        document.body.classList.toggle("is-viewport-stage", isViewportStage);
-        stage.classList.toggle("is-single-globe", projectionState.selectedProjection === "orthographic");
-        stage.classList.toggle("is-viewport-stage", isViewportStage);
-        stage.classList.toggle("is-flat-projection", isFlatProjection);
-        stage.classList.toggle("is-mercator", isMercator);
-        stage.classList.toggle("is-natural-earth-ii", projectionState.selectedProjection === "natural-earth-ii");
-        stage.classList.toggle("is-goode-homolosine", projectionState.selectedProjection === "goode-homolosine");
-        stage.classList.toggle("is-waterman", projectionState.selectedProjection === "waterman");
-        stage.classList.toggle("is-dymaxion", projectionState.selectedProjection === "dymaxion");
-      }
-
-      if (dirtyPasses.has("earth")) {
-        drawEarthPass(scenes);
-      }
-      if (dirtyPasses.has("overlay")) {
-        drawOverlayPass(scenes);
-      }
-      if (dirtyPasses.has("poster")) {
-        scheduleBootStagePosterSnapshot();
-      }
-    },
+    passes,
+    render: renderDirtyPasses,
   });
+}
+
+function renderDirtyPasses(dirtyPasses) {
+  const scenes = getResolvedScenes();
+  const isMercator = projectionState.selectedProjection === "mercator";
+  const isViewportStage =
+    projectionState.selectedProjection === "mercator" ||
+    projectionState.selectedProjection === "orthographic" ||
+    projectionState.selectedProjection === "natural-earth-ii" ||
+    projectionState.selectedProjection === "goode-homolosine" ||
+    projectionState.selectedProjection === "waterman";
+  const isFlatProjection =
+    isMercator ||
+    projectionState.selectedProjection === "natural-earth-ii" ||
+    projectionState.selectedProjection === "goode-homolosine" ||
+    projectionState.selectedProjection === "waterman" ||
+    projectionState.selectedProjection === "dymaxion";
+
+  if (dirtyPasses.has("chrome")) {
+    document.body.classList.toggle("is-viewport-stage", isViewportStage);
+    stage.classList.toggle("is-single-globe", projectionState.selectedProjection === "orthographic");
+    stage.classList.toggle("is-viewport-stage", isViewportStage);
+    stage.classList.toggle("is-flat-projection", isFlatProjection);
+    stage.classList.toggle("is-mercator", isMercator);
+    stage.classList.toggle("is-natural-earth-ii", projectionState.selectedProjection === "natural-earth-ii");
+    stage.classList.toggle("is-goode-homolosine", projectionState.selectedProjection === "goode-homolosine");
+    stage.classList.toggle("is-waterman", projectionState.selectedProjection === "waterman");
+    stage.classList.toggle("is-dymaxion", projectionState.selectedProjection === "dymaxion");
+  }
+
+  if (dirtyPasses.has("earth")) {
+    drawEarthPass(scenes);
+  }
+  if (dirtyPasses.has("overlay")) {
+    drawOverlayPass(scenes);
+  }
+  if (dirtyPasses.has("poster")) {
+    scheduleBootStagePosterSnapshot();
+  }
 }
 
 function getEmpireRenderKey(scenes) {
@@ -2322,9 +2324,51 @@ function getSliderControlBehavior(controlId) {
     return null;
   }
 
+  const syncGroupForDefinition = () => {
+    switch (definition.uiSync) {
+      case "border":
+        syncBorderGroupUi();
+        break;
+      case "graticule":
+        syncGraticuleGroupUi();
+        break;
+      case "empire":
+        syncEmpireGroupUi();
+        break;
+      default:
+        break;
+    }
+  };
+
+  const applyStyleValue = (value) => {
+    const scopeTarget = resolveStyleScope(binding.scope, {
+      borderStyleState,
+      graticuleStyleState,
+      earthStyleState,
+      layerStyleState,
+    });
+    if (!scopeTarget) {
+      return false;
+    }
+
+    if (binding.kind === "percent") {
+      scopeTarget[binding.key] = clampOpacityPercent(value) / 100;
+    } else if (binding.kind === "float") {
+      const nextValue = Number.parseFloat(value);
+      if (!Number.isFinite(nextValue)) {
+        return false;
+      }
+      scopeTarget[binding.key] = nextValue;
+    } else {
+      return false;
+    }
+
+    return true;
+  };
+
   return {
     input: elements.input,
-    applyValue: (value) => {
+    applyLiveValue: (value) => {
       if (binding.kind === "empireQualityAll") {
         const nextIndex = clamp(Number.parseInt(value, 10) || 0, 0, EMPIRE_QUALITY_LEVELS.length - 1);
         setAllEmpireQuality(empireQualityState, EMPIRE_QUALITY_LEVELS[nextIndex]);
@@ -2332,46 +2376,29 @@ function getSliderControlBehavior(controlId) {
         lastEmpireRenderKey = null;
         scheduleViewStateSave();
         drawAtlas(definition.renderPasses ?? ["overlay", "poster"]);
+        return true;
+      }
+
+      if (!applyStyleValue(value)) {
+        return false;
+      }
+
+      syncSliderControlUi(controlId);
+      drawAtlas(definition.renderPasses ?? ["all"]);
+      return true;
+    },
+    commitValue: (value) => {
+      if (binding.kind === "empireQualityAll") {
+        scheduleViewStateSave();
         return;
       }
 
-      const scopeTarget = resolveStyleScope(binding.scope, {
-        borderStyleState,
-        graticuleStyleState,
-        earthStyleState,
-        layerStyleState,
-      });
-      if (!scopeTarget) {
-        return;
-      }
-
-      if (binding.kind === "percent") {
-        scopeTarget[binding.key] = clampOpacityPercent(value) / 100;
-      } else if (binding.kind === "float") {
-        const nextValue = Number.parseFloat(value);
-        if (!Number.isFinite(nextValue)) {
-          return;
-        }
-        scopeTarget[binding.key] = nextValue;
-      } else {
+      if (!applyStyleValue(value)) {
         return;
       }
 
       saveStyleSettings();
-      switch (definition.uiSync) {
-        case "border":
-          syncBorderGroupUi();
-          break;
-        case "graticule":
-          syncGraticuleGroupUi();
-          break;
-        case "empire":
-          syncEmpireGroupUi();
-          break;
-        default:
-          break;
-      }
-      drawAtlas(definition.renderPasses ?? ["all"]);
+      syncGroupForDefinition();
     },
   };
 }
@@ -2383,18 +2410,29 @@ function bindSharedSliderControl(controlId) {
     return;
   }
 
+  let hasPendingCommit = false;
   input.dataset.sliderBound = "true";
   input.addEventListener("input", () => {
-    behavior.applyValue(input.value);
+    hasPendingCommit = Boolean(behavior.applyLiveValue(input.value));
   });
   input.addEventListener("pointerdown", () => {
     setSliderPreviewState(input, true);
   });
 
+  const commitValue = () => {
+    if (!hasPendingCommit) {
+      return;
+    }
+    hasPendingCommit = false;
+    behavior.commitValue(input.value);
+  };
+
   const endPreview = () => {
+    commitValue();
     setSliderPreviewState(input, false);
   };
 
+  input.addEventListener("change", commitValue);
   input.addEventListener("pointerup", endPreview);
   input.addEventListener("pointercancel", endPreview);
   input.addEventListener("touchend", endPreview, { passive: true });
@@ -2870,10 +2908,8 @@ function syncMonthButtons() {
 
 function requestRender(passes = ["all"]) {
   renderer.request({
-    passes: ["all"],
-    render: () => {
-      drawAtlas([]);
-    },
+    passes,
+    render: renderDirtyPasses,
   });
 }
 
