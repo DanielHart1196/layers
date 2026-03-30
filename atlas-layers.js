@@ -99,6 +99,9 @@ function createEarthTextureStore() {
     const rasterCache = new Map();
     const rasterBuildState = new Set();
     const flatRasterPrewarmState = new Set();
+    const vectorAreaCache = new Map();
+    const vectorAreaScratchCanvas = document.createElement("canvas");
+    const vectorAreaScratchContext = vectorAreaScratchCanvas.getContext("2d");
     const flatMapRenderer = createFlatMapRenderer?.() ?? null;
     const tissotGeometry = {
       type: "FeatureCollection",
@@ -200,6 +203,85 @@ function createEarthTextureStore() {
       return createAdapter(scene, contextOverride, worldDataRef(), {
         isInteracting: Boolean(layerStateRef?.().isInteracting),
       });
+    }
+
+    function buildVectorAreaCacheKey(layerKey, scene, options = {}) {
+      return JSON.stringify({
+        layerKey,
+        projectionKind: scene.projectionKind,
+        center: scene.center,
+        width: scene.width,
+        height: scene.height,
+        radius: scene.radius,
+        projectionScale: scene.projectionScale,
+        zoomScale: scene.zoomScale,
+        rotate: scene.rotate,
+        panOffset: scene.panOffset,
+        options,
+      });
+    }
+
+    function setVectorAreaCacheEntry(cacheKey, canvas) {
+      if (!cacheKey) {
+        return;
+      }
+
+      if (!vectorAreaCache.has(cacheKey) && vectorAreaCache.size >= 24) {
+        vectorAreaCache.clear();
+      }
+
+      vectorAreaCache.set(cacheKey, canvas);
+    }
+
+    function renderPreparedVectorAreaLayer(scene, {
+      layerKey,
+      cacheOptions = {},
+      internalScale = 1,
+      renderToContext,
+    }) {
+      const bounds = getSceneBounds(scene);
+      const width = Math.max(1, Math.round(bounds.width * internalScale));
+      const height = Math.max(1, Math.round(bounds.height * internalScale));
+      const cacheKey = internalScale >= 0.999
+        ? buildVectorAreaCacheKey(layerKey, scene, cacheOptions)
+        : null;
+
+      if (cacheKey && vectorAreaCache.has(cacheKey)) {
+        return {
+          canvas: vectorAreaCache.get(cacheKey),
+          bounds,
+        };
+      }
+
+      const canvas = cacheKey ? document.createElement("canvas") : vectorAreaScratchCanvas;
+      const context = cacheKey
+        ? canvas.getContext("2d")
+        : vectorAreaScratchContext;
+
+      if (!context) {
+        return null;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.clearRect(0, 0, width, height);
+      context.setTransform(
+        internalScale,
+        0,
+        0,
+        internalScale,
+        -bounds.left * internalScale,
+        -bounds.top * internalScale,
+      );
+
+      renderToContext(context);
+
+      if (cacheKey) {
+        setVectorAreaCacheEntry(cacheKey, canvas);
+      }
+
+      return { canvas, bounds };
     }
 
     function getSourcePixels(image) {
@@ -540,57 +622,94 @@ function createEarthTextureStore() {
         return;
       }
 
-      const adapter = createSceneAdapter(scene, options.contextOverride ?? overlayContext);
       const isInteracting = Boolean(layerStateRef().isInteracting);
-      const selectedEmpireQuality = options.empireQuality ?? "medium";
+      const selectedEmpireQuality = options.empireQuality
+        ?? layerStateRef().empireQuality?.romanComparison
+        ?? "medium";
       const empireLayerState = layerStateRef().empireSublayers ?? {};
       const empireStyles = layerStateRef().empireStyles ?? {};
       const empireGeometries = Object.entries(empireLayerState)
         .filter(([, isEnabled]) => isEnabled)
         .map(([empireKey]) => ({
+          empireKey,
           geometry: worldDataRef()?.layerSources?.empires?.[empireKey]?.[selectedEmpireQuality]
             ?? worldDataRef()?.layerSources?.empires?.[empireKey]?.high
             ?? worldDataRef()?.layerSources?.empires?.[empireKey]?.canonical,
           style: empireStyles[empireKey] ?? null,
         }))
         .filter(({ geometry }) => Boolean(geometry));
-      if (!adapter.isReady || !adapter.canRenderLayer("land") || !empireGeometries.length) {
+      if (!empireGeometries.length) {
         return;
       }
 
-      const empireFillOptions = isInteracting
-        ? {
-            maxStepDegrees: adapter.kind === "interrupted" ? 1.25 : 1.4,
-            minimumStepDegrees: adapter.kind === "interrupted" ? 0.12 : 0.14,
+      const internalScale = isInteracting ? 0.6 : 1;
+      const preparedLayer = renderPreparedVectorAreaLayer(scene, {
+        layerKey: "vector-area:empires",
+        internalScale,
+        cacheOptions: {
+          empireQuality: selectedEmpireQuality,
+          empireSublayers: empireGeometries.map(({ empireKey }) => empireKey),
+          empireStyles,
+          interacting: isInteracting,
+        },
+        renderToContext: (context) => {
+          const adapter = createSceneAdapter(scene, context);
+          if (!adapter.isReady || !adapter.canRenderLayer("land")) {
+            return;
           }
-        : {};
-      const empireStrokeOptions = isInteracting
-        ? {
-            maxStepDegrees: adapter.kind === "interrupted" ? 1.4 : 1.6,
-            minimumStepDegrees: adapter.kind === "interrupted" ? 0.14 : 0.16,
-          }
-        : {
-            maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
-          };
 
-      empireGeometries.forEach(({ geometry, style }) => {
-        const fillColor = style?.fillColor ?? "#C48B35";
-        const fillOpacity = Number.isFinite(style?.fillOpacity) ? style.fillOpacity : 0.22;
-        const strokeColor = style?.strokeColor ?? "#B07825";
-        const strokeOpacity = Number.isFinite(style?.strokeOpacity) ? style.strokeOpacity : 0.9;
-        const strokeWidth = Number.isFinite(style?.strokeWidth) ? style.strokeWidth : 1.1;
-        const fillHex = fillColor.replace('#', '');
-        const strokeHex = strokeColor.replace('#', '');
-        const fillR = Number.parseInt(fillHex.slice(0, 2), 16);
-        const fillG = Number.parseInt(fillHex.slice(2, 4), 16);
-        const fillB = Number.parseInt(fillHex.slice(4, 6), 16);
-        const strokeR = Number.parseInt(strokeHex.slice(0, 2), 16);
-        const strokeG = Number.parseInt(strokeHex.slice(2, 4), 16);
-        const strokeB = Number.parseInt(strokeHex.slice(4, 6), 16);
+          const areaFillOptions = isInteracting
+            ? {
+                maxStepDegrees: adapter.kind === "interrupted" ? 1.25 : 1.4,
+                minimumStepDegrees: adapter.kind === "interrupted" ? 0.12 : 0.14,
+              }
+            : {};
+          const areaStrokeOptions = isInteracting
+            ? {
+                maxStepDegrees: adapter.kind === "interrupted" ? 1.4 : 1.6,
+                minimumStepDegrees: adapter.kind === "interrupted" ? 0.14 : 0.16,
+              }
+            : {
+                maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
+              };
 
-        adapter.fillGeometry(geometry, `rgba(${fillR}, ${fillG}, ${fillB}, ${fillOpacity})`, "evenodd", empireFillOptions);
-        adapter.strokeGeometry(geometry, `rgba(${strokeR}, ${strokeG}, ${strokeB}, ${strokeOpacity})`, strokeWidth, empireStrokeOptions);
+          empireGeometries.forEach(({ geometry, style }) => {
+            const fillColor = style?.fillColor ?? "#C48B35";
+            const fillOpacity = Number.isFinite(style?.fillOpacity) ? style.fillOpacity : 0.22;
+            const strokeColor = style?.strokeColor ?? "#B07825";
+            const strokeOpacity = Number.isFinite(style?.strokeOpacity) ? style.strokeOpacity : 0.9;
+            const strokeWidth = Number.isFinite(style?.strokeWidth) ? style.strokeWidth : 1.1;
+            const fillHex = fillColor.replace('#', '');
+            const strokeHex = strokeColor.replace('#', '');
+            const fillR = Number.parseInt(fillHex.slice(0, 2), 16);
+            const fillG = Number.parseInt(fillHex.slice(2, 4), 16);
+            const fillB = Number.parseInt(fillHex.slice(4, 6), 16);
+            const strokeR = Number.parseInt(strokeHex.slice(0, 2), 16);
+            const strokeG = Number.parseInt(strokeHex.slice(2, 4), 16);
+            const strokeB = Number.parseInt(strokeHex.slice(4, 6), 16);
+
+            adapter.fillGeometry(geometry, `rgba(${fillR}, ${fillG}, ${fillB}, ${fillOpacity})`, "evenodd", areaFillOptions);
+            adapter.strokeGeometry(geometry, `rgba(${strokeR}, ${strokeG}, ${strokeB}, ${strokeOpacity})`, strokeWidth, areaStrokeOptions);
+          });
+        },
       });
+
+      if (!preparedLayer) {
+        return;
+      }
+
+      const targetContext = options.contextOverride ?? overlayContext;
+      targetContext.save();
+      targetContext.imageSmoothingEnabled = true;
+      targetContext.imageSmoothingQuality = isInteracting ? "medium" : "high";
+      targetContext.drawImage(
+        preparedLayer.canvas,
+        preparedLayer.bounds.left,
+        preparedLayer.bounds.top,
+        preparedLayer.bounds.width,
+        preparedLayer.bounds.height,
+      );
+      targetContext.restore();
     }
 
     function renderProjectionFrame(scene) {
@@ -620,7 +739,14 @@ function createEarthTextureStore() {
 
         scheduleFlatRasterPrewarm(scene, image, pixelRatioRef?.() ?? 1);
       },
-      renderers: [renderFallbackLayer, renderGraticuleLayer, renderTissotLayer, renderBordersLayer, renderProjectionFrame],
+      renderers: [
+        renderFallbackLayer,
+        renderEmpiresLayer,
+        renderGraticuleLayer,
+        renderTissotLayer,
+        renderBordersLayer,
+        renderProjectionFrame,
+      ],
       bordersRenderer: renderBordersLayer,
       graticuleRenderer: renderGraticuleLayer,
       empireRenderer: renderEmpiresLayer,

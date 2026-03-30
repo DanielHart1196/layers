@@ -698,7 +698,8 @@ body:not(.is-earth-enabled) .month-overlay {
   background: rgba(244, 235, 220, 0.96);
 }
 
-.atlas-earth-canvas {
+.atlas-earth-canvas,
+.atlas-empire-canvas {
   -webkit-mask-image: var(--atlas-mask-image);
   -webkit-mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
@@ -707,12 +708,14 @@ body:not(.is-earth-enabled) .month-overlay {
   mask-repeat: no-repeat;
 }
 
-.atlas-stage.is-flat-projection .atlas-earth-canvas {
+.atlas-stage.is-flat-projection .atlas-earth-canvas,
+.atlas-stage.is-flat-projection .atlas-empire-canvas {
   -webkit-mask-image: none;
   mask-image: none;
 }
 
-.atlas-stage.is-single-globe .atlas-earth-canvas {
+.atlas-stage.is-single-globe .atlas-earth-canvas,
+.atlas-stage.is-single-globe .atlas-empire-canvas {
   -webkit-mask-image: var(--single-globe-mask-image);
   mask-image: var(--single-globe-mask-image);
 }

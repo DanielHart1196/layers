@@ -92,6 +92,18 @@
 - Flat projection raster performance is sensitive. Avoid returning to “rebuild everything on every zoom tick”.
 - `atlas-layers.js` owns flat raster prewarm behavior and integrates the flat renderer into overlay drawing.
 
+## Layer Rendering Direction
+- Long-term direction: all map content should be modeled as layers, including earth, satellite, terrain, future PNG/image-backed content, and thematic overlays.
+- Backend differences are allowed; scene/window differences are not.
+- For now, leave satellite out of scope while normalizing empire and other non-satellite layers first.
+- Current seam:
+  - overlays share the main overlay pass and scene/window behavior
+  - empire shares overlay-style geometry drawing but still diverges at the pass/composition layer
+- Near-term plan:
+  - make empire render the same way as other non-satellite layers
+  - use that as the first proof of a true shared layer model
+  - revisit satellite later as a raster-backed layer under the same scene/layer contract
+
 ## Empire Layer State Model
 - `layerState.empires` is category visibility, not the canonical source of child preference truth.
 - Empire sublayer preferences live separately in `empireLayerState`.

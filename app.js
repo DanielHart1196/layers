@@ -677,6 +677,7 @@ async function init() {
     layerStateRef: () => ({
       ...layerState,
       empireSublayers: empireLayerState,
+      empireQuality: empireQualityState,
       borderStyle: borderStyleState,
       graticuleStyle: graticuleStyleState,
       earthStyle: earthStyleState,
@@ -902,7 +903,7 @@ function markInteractionActivity() {
     interactionSettleTimer = null;
     uiState.isInteracting = false;
     syncMobileMonthChrome();
-    requestRender(["overlay", "empire", "poster"]);
+    requestRender(["overlay", "poster"]);
   }, 140);
 }
 
@@ -939,9 +940,6 @@ function drawAtlas(passes = ["all"]) {
 
       if (dirtyPasses.has("earth")) {
         drawEarthPass(scenes);
-      }
-      if (dirtyPasses.has("empire")) {
-        drawEmpirePass(scenes);
       }
       if (dirtyPasses.has("overlay")) {
         drawOverlayPass(scenes);
@@ -1020,10 +1018,19 @@ function drawEmpirePass(scenes) {
 
   const globalEmpireQuality = empireQualityState.romanComparison;
   scenes.forEach((scene) => {
-    empireLayerRenderer(scene, {
-      contextOverride: empireContext,
-      empireQuality: globalEmpireQuality,
-    });
+    const renderEmpireScene = () => {
+      empireLayerRenderer(scene, {
+        contextOverride: empireContext,
+        empireQuality: globalEmpireQuality,
+      });
+    };
+
+    if (scene.projectionKind === "azimuthal-equidistant") {
+      withSceneClipForContext(empireContext, scene, renderEmpireScene);
+      return;
+    }
+
+    renderEmpireScene();
   });
 }
 
@@ -1120,11 +1127,14 @@ function drawOverlayPass(scenes) {
       overlayLayerRenderers.forEach((renderer) => renderer(scene));
     });
   });
-
 }
 
 function withSceneClip(scene, renderFn) {
-  overlayContext.save();
+  withSceneClipForContext(overlayContext, scene, renderFn);
+}
+
+function withSceneClipForContext(context, scene, renderFn) {
+  context.save();
 
   if (
     (scene.projectionKind === "natural-earth-ii" ||
@@ -1132,27 +1142,27 @@ function withSceneClip(scene, renderFn) {
       scene.projectionKind === "waterman") &&
     ((scene.zoomScale ?? 1) > 1.001 || (scene.panOffset?.x ?? 0) !== 0 || (scene.panOffset?.y ?? 0) !== 0)
   ) {
-    overlayContext.translate(
+    context.translate(
       scene.center[0] + (scene.panOffset?.x ?? 0),
       scene.center[1] + (scene.panOffset?.y ?? 0),
     );
-    overlayContext.scale(scene.zoomScale ?? 1, scene.zoomScale ?? 1);
-    overlayContext.translate(-scene.center[0], -scene.center[1]);
-    traceSceneShape(overlayContext, scene);
-    overlayContext.clip();
-    overlayContext.translate(scene.center[0], scene.center[1]);
-    overlayContext.scale(1 / (scene.zoomScale ?? 1), 1 / (scene.zoomScale ?? 1));
-    overlayContext.translate(
+    context.scale(scene.zoomScale ?? 1, scene.zoomScale ?? 1);
+    context.translate(-scene.center[0], -scene.center[1]);
+    traceSceneShape(context, scene);
+    context.clip();
+    context.translate(scene.center[0], scene.center[1]);
+    context.scale(1 / (scene.zoomScale ?? 1), 1 / (scene.zoomScale ?? 1));
+    context.translate(
       -(scene.center[0] + (scene.panOffset?.x ?? 0)),
       -(scene.center[1] + (scene.panOffset?.y ?? 0)),
     );
   } else {
-    traceSceneShape(overlayContext, scene);
-    overlayContext.clip();
+    traceSceneShape(context, scene);
+    context.clip();
   }
 
   renderFn();
-  overlayContext.restore();
+  context.restore();
 }
 
 function getEffectiveDragSensitivity(sourceEvent) {
@@ -1250,7 +1260,7 @@ function enableDragging() {
         y: currentOffset.y + event.dy,
       });
       markInteractionActivity();
-      requestRender(["earth", "empire", "overlay", "poster"]);
+      requestRender(["earth", "overlay", "poster"]);
     },
     onRotate: (event) => {
       const effectiveDragSensitivity = getEffectiveDragSensitivity(event.sourceEvent);
@@ -1262,7 +1272,7 @@ function enableDragging() {
       const phiClampRange = getProjectionPhiClampRange();
       rotationOffset.phi = clamp(rotationOffset.phi, -phiClampRange, phiClampRange);
       markInteractionActivity();
-      requestRender(["earth", "empire", "overlay", "poster"]);
+      requestRender(["earth", "overlay", "poster"]);
     },
   });
 }
@@ -1315,7 +1325,7 @@ function setZoomScale(nextScale) {
   syncMobileMonthChrome();
   syncStageChrome();
   markInteractionActivity();
-  requestRender(["chrome", "earth", "empire", "overlay", "poster"]);
+  requestRender(["chrome", "earth", "overlay", "poster"]);
 }
 
 function adjustZoomBy(delta) {
@@ -1720,7 +1730,7 @@ function drawForGraticuleStyle() {
 }
 
 function drawForEmpireStyle() {
-  drawAtlas(["empire", "poster"]);
+  drawAtlas(["overlay", "poster"]);
 }
 
 function drawForLayerToggle(layerId) {
@@ -1729,7 +1739,7 @@ function drawForLayerToggle(layerId) {
       drawAtlas(["earth", "overlay", "poster"]);
       return;
     case "empires":
-      drawAtlas(["empire", "poster"]);
+      drawAtlas(["overlay", "poster"]);
       return;
     case "borders":
     case "graticule":
@@ -1742,11 +1752,11 @@ function drawForLayerToggle(layerId) {
 }
 
 function drawForEmpireSublayerToggle() {
-  drawAtlas(["empire", "poster"]);
+  drawAtlas(["overlay", "poster"]);
 }
 
 function drawForEmpireQuality() {
-  drawAtlas(["empire", "poster"]);
+  drawAtlas(["overlay", "poster"]);
 }
 
 function normalizeHexColor(value) {
@@ -2274,7 +2284,7 @@ function getSliderControlBehavior(controlId) {
         syncEmpireQualityUi();
         lastEmpireRenderKey = null;
         scheduleViewStateSave();
-        drawAtlas(definition.renderPasses ?? ["empire", "poster"]);
+        drawAtlas(definition.renderPasses ?? ["overlay", "poster"]);
         return;
       }
 
