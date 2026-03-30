@@ -77,3 +77,9 @@
 - Seed temporary debug output immediately on init, not only after the first successful interaction, so refresh-time bugs can be diagnosed from the first screenshot.
 - When using temporary runtime debug instrumentation in `layers`, include a visible version token or other runtime identity marker if browser caching could cause mixed old/new JS to be mistaken for current behavior.
 - Before trusting a browser-based diagnosis in `layers`, verify that the page is actually running the intended current code when cache inconsistency is plausible.
+- During the current ES module migration in `layers`, do not import a module export under the same name as an existing local wrapper/helper in the target file. Alias imported names first to avoid shadowing or recursive self-calls.
+- During the current ES module migration in `layers`, keep temporary `window.Atlas...` compatibility exports in migrated files until the dependent graph is actually moved over. Do not remove them opportunistically mid-slice.
+- After each ES module migration slice in `layers`:
+  - run `node --check` on each changed JS file
+  - run `npm run build`
+  - prefer validating the app against the built preview runtime if the raw-source dev path is behaving inconsistently

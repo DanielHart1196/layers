@@ -261,6 +261,12 @@
 
 ## Build System Direction
 - The long-term fix for cache/version drift is a real frontend build pipeline with hashed assets, not manual query-string management.
+- Vite is now installed and wired up in the repo.
+- The app now has a single module entry:
+  - `main.js`
+- `index.html` now loads that single module entry instead of the older long ordered local-script list.
+- `npm run build` is currently passing.
+- `vite preview` has been the most reliable validation runtime during the migration work.
 - Preferred direction:
   - adopt a minimal build tool such as Vite
   - migrate local JS from global ordered scripts toward module imports
@@ -278,6 +284,18 @@
   - hashed output
   - no fancy code splitting unless it clearly helps
 - Do not mix build-system migration with unrelated feature work. Treat it as its own refactor track.
+
+## ES Module Migration Status
+- Large parts of the app have now been migrated from ordered `window.Atlas...` globals to ES modules with `import` / `export`.
+- Migrated areas currently include:
+  - registry, state, persistence
+  - actions, selectors, gestures
+  - panel/body/render helpers
+  - color model and color controls
+  - atlas path cache, dymaxion, core, adapters, earth, and layers
+- `app.js` has been moved onto direct imports for most of the app/runtime graph.
+- Temporary `window.Atlas...` compatibility exports are still present in migrated files during the transition. They are intentional and should be removed only after the remaining dependency graph is stable.
+- A repeated migration pitfall so far has been local wrapper names colliding with imported module names in `app.js`. Alias imported names when a local wrapper still exists.
 
 ## Target App Architecture
 - Current app-level complexity is concentrated too heavily in `app.js`.
