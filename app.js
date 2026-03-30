@@ -1,14 +1,14 @@
 import {
   createDefaultBorderStyleState,
   createDefaultEarthStyleState,
-  createDefaultEmpireLayerState,
   createDefaultEmpireQualityState,
-  createDefaultEmpireStyleState,
+  createDefaultLayerStyleState,
   createDefaultGraticuleStyleState,
   createDefaultLayerState,
   empireQualityLevels,
   getColorControlDefinition,
   getColorControlDefinitions,
+  getEmpireSublayerIds,
   getLayerRows,
   getSliderControlDefinition,
   getSliderControlDefinitions,
@@ -103,6 +103,12 @@ const empireQualityValue = document.getElementById("empireQualityValue");
 const romanEmpireLayerGroup = document.getElementById("romanEmpireLayerGroup");
 const romanEmpireRow = document.getElementById("romanEmpireRow");
 const romanEmpireGroupToggle = document.getElementById("romanEmpireGroupToggle");
+const mongolEmpireLayerGroup = document.getElementById("mongolEmpireLayerGroup");
+const mongolEmpireRow = document.getElementById("mongolEmpireRow");
+const mongolEmpireGroupToggle = document.getElementById("mongolEmpireGroupToggle");
+const britishEmpireLayerGroup = document.getElementById("britishEmpireLayerGroup");
+const britishEmpireRow = document.getElementById("britishEmpireRow");
+const britishEmpireGroupToggle = document.getElementById("britishEmpireGroupToggle");
 const earthLayerGroup = document.getElementById("earthLayerGroup");
 const earthGroupButton = document.getElementById("earthGroupButton");
 const earthGroupToggle = document.getElementById("earthGroupToggle");
@@ -189,15 +195,13 @@ const appState = createAppState({
   getDefaultMonth,
   getDefaultProjection,
   createDefaultLayerState,
-  createDefaultEmpireLayerState,
   createDefaultEmpireQualityState,
   createDefaultEarthStyleState,
   createDefaultBorderStyleState,
   createDefaultGraticuleStyleState,
-  createDefaultEmpireStyleState,
+  createDefaultLayerStyleState,
 });
 const layerState = appState.layers;
-const empireLayerState = appState.empireSublayers;
 const empireQualityState = appState.empireQuality;
 const temporalState = appState.temporal;
 const projectionState = appState.projection;
@@ -206,9 +210,10 @@ const uiState = appState.ui;
 const earthStyleState = appState.styles.earth;
 const borderStyleState = appState.styles.borders;
 const graticuleStyleState = appState.styles.graticule;
-const empireStyleState = appState.styles.empires;
+const layerStyleState = appState.styles.layers;
 const colorControlRuntimeState = appState.controlRuntime;
 const EMPIRE_QUALITY_LEVELS = empireQualityLevels;
+const EMPIRE_CHILD_LAYER_IDS = getEmpireSublayerIds();
 const SUPPORTED_PROJECTIONS = new Set([
   "orthographic",
   "azimuthal-equidistant",
@@ -676,12 +681,11 @@ async function init() {
     manifestRef: () => assetManifest,
     layerStateRef: () => ({
       ...layerState,
-      empireSublayers: empireLayerState,
       empireQuality: empireQualityState,
       borderStyle: borderStyleState,
       graticuleStyle: graticuleStyleState,
       earthStyle: earthStyleState,
-      empireStyles: empireStyleState,
+      layerStyles: layerStyleState,
       isInteracting: uiState.isInteracting,
     }),
     earthTextureRef: () => earthTextureImage,
@@ -788,12 +792,12 @@ async function loadWorld() {
     land10,
     land50,
     land110,
-    romanComparisonEmpire,
+    romanEmpire,
     mongolEmpire,
     britishEmpire,
-    romanComparisonHigh,
-    romanComparisonMedium,
-    romanComparisonLow,
+    romanEmpireHigh,
+    romanEmpireMedium,
+    romanEmpireLow,
     mongolEmpireHigh,
     mongolEmpireMedium,
     mongolEmpireLow,
@@ -830,7 +834,7 @@ async function loadWorld() {
   return {
     topology: countriesTopology10,
     empires: {
-      romanComparison: romanComparisonEmpire,
+      roman: romanEmpire,
       mongol: mongolEmpire,
       british: britishEmpire,
     },
@@ -845,11 +849,11 @@ async function loadWorld() {
         "110m": borders,
       },
       empires: {
-        romanComparison: {
-          high: romanComparisonHigh,
-          medium: romanComparisonMedium,
-          low: romanComparisonLow,
-          canonical: romanComparisonEmpire,
+        roman: {
+          high: romanEmpireHigh,
+          medium: romanEmpireMedium,
+          low: romanEmpireLow,
+          canonical: romanEmpire,
         },
         mongol: {
           high: mongolEmpireHigh,
@@ -955,8 +959,8 @@ function getEmpireRenderKey(scenes) {
   return JSON.stringify({
     projection: projectionState.selectedProjection,
     empiresEnabled: layerState.empires,
-    empireSublayers: empireLayerState,
-    empireStyles: empireStyleState,
+    empireSublayers: Object.fromEntries(EMPIRE_CHILD_LAYER_IDS.map((layerId) => [layerId, layerState[layerId]])),
+    layerStyles: layerStyleState,
     empireQuality: empireQualityState,
     empirePixelRatio: currentEmpirePixelRatio,
     scenes: scenes.map((scene) => ({
@@ -1016,7 +1020,7 @@ function drawEmpirePass(scenes) {
   empireContext.restore();
   empireContext.setTransform(currentEmpirePixelRatio, 0, 0, currentEmpirePixelRatio, 0, 0);
 
-  const globalEmpireQuality = empireQualityState.romanComparison;
+  const globalEmpireQuality = empireQualityState.roman;
   scenes.forEach((scene) => {
     const renderEmpireScene = () => {
       empireLayerRenderer(scene, {
@@ -1168,7 +1172,21 @@ function withSceneClipForContext(context, scene, renderFn) {
 function getEffectiveDragSensitivity(sourceEvent) {
   return dragSensitivity
     * (1.5 / Math.max(zoomState.scale, 1))
+    * getMobileTouchDragSensitivityMultiplier(sourceEvent)
     * getProjectionDragSensitivityMultiplier(sourceEvent);
+}
+
+function getMobileTouchDragSensitivityMultiplier(sourceEvent) {
+  const pointerType = sourceEvent?.pointerType;
+  const isTouchLikeInput = pointerType === "touch"
+    || pointerType === "pen"
+    || (typeof TouchEvent !== "undefined" && sourceEvent instanceof TouchEvent);
+
+  if (!isTouchLikeInput) {
+    return 1;
+  }
+
+  return 1;
 }
 
 function getProjectionDragSensitivityMultiplier(sourceEvent) {
@@ -1354,10 +1372,12 @@ function enableLayerControls() {
       empires: empireGroupToggle,
       borders: borderGroupToggle,
       graticule: graticuleGroupToggle,
-      romanComparison: romanEmpireGroupToggle,
+      roman: romanEmpireGroupToggle,
+      mongol: mongolEmpireGroupToggle,
+      british: britishEmpireGroupToggle,
     },
     layerState,
-    empireLayerState,
+    empireChildLayerIds: EMPIRE_CHILD_LAYER_IDS,
     uiState,
     hasAnyEmpireChildEnabled,
     toggleLayerGroupOpen,
@@ -1602,19 +1622,22 @@ function syncColorControlParentSections(controlId) {
 function syncEmpireGroupUi() {
   syncEmpireGroupUiView({
     layerState,
-    empireLayerState,
+    empireChildLayerIds: EMPIRE_CHILD_LAYER_IDS,
     uiState,
     empireLayerGroup,
     empireGroupToggle,
     empiresButton: document.querySelector('[data-layer-id="empires"]'),
     empireLayerButtons,
-    romanEmpireLayerGroup,
-    romanEmpireRow,
-    romanEmpireGroupToggle,
+    toggleElementsByLayerId: {
+      roman: romanEmpireGroupToggle,
+      mongol: mongolEmpireGroupToggle,
+      british: britishEmpireGroupToggle,
+    },
     isEmpireParentActive,
     isEmpireChildDisplayed,
     scheduleExpandableLayoutSync,
     syncSliderControlsForLayer,
+    syncColorControlsForLayer,
     syncColorControlUi,
   });
 }
@@ -1649,14 +1672,14 @@ function getSliderDisplayValue(controlId) {
   }
 
   if (binding.kind === "empireQualityAll") {
-    return empireQualityState.romanComparison;
+    return empireQualityState.roman;
   }
 
   const scopeTarget = resolveStyleScope(binding.scope, {
     borderStyleState,
     graticuleStyleState,
     earthStyleState,
-    empireStyleState,
+    layerStyleState,
   });
   return scopeTarget ? scopeTarget[binding.key] : null;
 }
@@ -1710,6 +1733,14 @@ function syncSliderControlsForLayer(layerId) {
     .filter((row) => row.type === "slider" && row.controlId)
     .forEach((row) => {
       syncSliderControlUi(row.controlId);
+    });
+}
+
+function syncColorControlsForLayer(layerId) {
+  getLayerRows(layerId)
+    .filter((row) => row.type === "color" && row.controlId)
+    .forEach((row) => {
+      syncColorControlUi(row.controlId);
     });
 }
 
@@ -1817,7 +1848,7 @@ function saveStyleSettings() {
     borderStyleState,
     graticuleStyleState,
     earthStyleState,
-    empireStyleState,
+    layerStyleState,
   });
 }
 
@@ -1827,11 +1858,11 @@ function loadStyleSettings() {
     storageKey: STYLE_SETTINGS_STORAGE_KEY,
     normalizeHexColor,
     clamp,
-    setColorControlValue,
+    applyPersistedColorControlValue,
     borderStyleState,
     graticuleStyleState,
     earthStyleState,
-    empireStyleState,
+    layerStyleState,
   });
 }
 
@@ -1844,7 +1875,6 @@ function saveViewState() {
     rotationOffset,
     flatProjectionPanOffsets,
     layerState,
-    empireLayerState,
     empireQualityState,
     temporalState,
   });
@@ -1870,7 +1900,7 @@ function loadViewState() {
     clampPhi: (value) => clamp(value, -getProjectionPhiClampRange(), getProjectionPhiClampRange()),
     flatProjectionPanOffsets,
     layerState,
-    empireLayerState,
+    empireChildLayerIds: EMPIRE_CHILD_LAYER_IDS,
     empireQualityState,
     temporalState,
     projectionState,
@@ -1986,7 +2016,7 @@ function getColorStyleState(controlId) {
     borderStyleState,
     graticuleStyleState,
     earthStyleState,
-    empireStyleState,
+    layerStyleState,
   });
   if (!scopeTarget) {
     return null;
@@ -2073,6 +2103,23 @@ function setColorControlValue(controlId, colorHex) {
     style.value = hsv.value;
   }
   saveStyleSettings();
+  return true;
+}
+
+function applyPersistedColorControlValue(controlId, colorHex) {
+  const normalizedColor = normalizeHexColor(colorHex);
+  const style = getColorStyleState(controlId);
+  if (!normalizedColor || !style) {
+    return false;
+  }
+
+  const hsv = hexToHsv(normalizedColor);
+  style.color = normalizedColor;
+  if (hsv) {
+    style.hue = hsv.hue;
+    style.saturation = hsv.saturation;
+    style.value = hsv.value;
+  }
   return true;
 }
 
@@ -2292,7 +2339,7 @@ function getSliderControlBehavior(controlId) {
         borderStyleState,
         graticuleStyleState,
         earthStyleState,
-        empireStyleState,
+        layerStyleState,
       });
       if (!scopeTarget) {
         return;

@@ -1,4 +1,25 @@
-import { getExpandableSectionDefinitions } from "./layers-registry.js";
+import { getExpandableSectionDefinitions, getLayerGroupUiKey, getLayerRows } from "./layers-registry.js";
+
+function getOwnedLayerGroup(button) {
+  if (!button) {
+    return null;
+  }
+
+  const parentElement = button.parentElement;
+  if (!parentElement) {
+    return null;
+  }
+
+  if (parentElement.classList.contains("layer-group-head")) {
+    return parentElement.parentElement;
+  }
+
+  if (parentElement.classList.contains("layer-group")) {
+    return parentElement;
+  }
+
+  return null;
+}
 
 function syncGroupChrome({
   groupElement,
@@ -117,22 +138,21 @@ function syncGraticuleGroupUi({
 
 function syncEmpireGroupUi({
   layerState,
-  empireLayerState,
+  empireChildLayerIds,
   uiState,
   empireLayerGroup,
   empireGroupToggle,
   empiresButton,
   empireLayerButtons,
-  romanEmpireLayerGroup,
-  romanEmpireRow,
-  romanEmpireGroupToggle,
+  toggleElementsByLayerId,
   isEmpireParentActive,
   isEmpireChildDisplayed,
   scheduleExpandableLayoutSync,
   syncSliderControlsForLayer,
+  syncColorControlsForLayer,
   syncColorControlUi: syncSharedColorControlUi,
 }) {
-  const parentIsActive = isEmpireParentActive(layerState, empireLayerState);
+  const parentIsActive = isEmpireParentActive(layerState, empireChildLayerIds);
 
   syncGroupChrome({
     groupElement: empireLayerGroup,
@@ -146,24 +166,33 @@ function syncEmpireGroupUi({
   empireLayerButtons.forEach((button) => {
     const empireLayerId = button.dataset.empireLayerId;
     const displayIsActive = empireLayerId
-      ? isEmpireChildDisplayed(layerState, empireLayerState, empireLayerId)
+      ? isEmpireChildDisplayed(layerState, empireLayerId)
       : false;
     button.classList.toggle("is-active", displayIsActive);
     button.disabled = false;
     button.setAttribute("aria-disabled", "false");
+    const groupElement = getOwnedLayerGroup(button);
+    const toggleElement = empireLayerId ? toggleElementsByLayerId?.[empireLayerId] : null;
+    const groupUiKey = empireLayerId ? getLayerGroupUiKey(empireLayerId) : null;
+    if (!groupElement || !toggleElement || !groupUiKey) {
+      return;
+    }
+    syncGroupChrome({
+      groupElement,
+      buttonElement: button,
+      toggleElement,
+      isActive: displayIsActive,
+      isOpen: Boolean(uiState[groupUiKey]),
+    });
   });
 
-  syncGroupChrome({
-    groupElement: romanEmpireLayerGroup,
-    buttonElement: romanEmpireRow,
-    toggleElement: romanEmpireGroupToggle,
-    isActive: layerState.empires && Boolean(empireLayerState.romanComparison),
-    isOpen: uiState.isRomanEmpireGroupOpen,
+  empireChildLayerIds.forEach((layerId) => {
+    if (!getLayerRows(layerId).length) {
+      return;
+    }
+    syncSliderControlsForLayer(layerId);
+    syncColorControlsForLayer(layerId);
   });
-
-  syncSliderControlsForLayer("romanComparison");
-  syncSharedColorControlUi("romanEmpireFill");
-  syncSharedColorControlUi("romanEmpireBorder");
   scheduleExpandableLayoutSync();
 }
 

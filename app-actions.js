@@ -10,17 +10,21 @@ function toggleLayerGroupOpen(uiState, layerId) {
   return true;
 }
 
-function toggleLayerEnabled(layerState, empireLayerState, layerId, hasAnyEmpireChildEnabled) {
+function hasAnyEnabled(layerState, layerIds) {
+  return layerIds.some((layerId) => Boolean(layerState?.[layerId]));
+}
+
+function toggleLayerEnabled(layerState, layerId, childLayerIds = []) {
   if (!(layerId in layerState)) {
     return false;
   }
 
   if (layerId === "empires") {
     const nextEmpireVisibility = !layerState.empires;
-    if (nextEmpireVisibility && !hasAnyEmpireChildEnabled(empireLayerState)) {
+    if (nextEmpireVisibility && !hasAnyEnabled(layerState, childLayerIds)) {
       const defaultEmpireChildOnEnable = getDefaultEmpireChildOnEnable();
-      if (defaultEmpireChildOnEnable && defaultEmpireChildOnEnable in empireLayerState) {
-        empireLayerState[defaultEmpireChildOnEnable] = true;
+      if (defaultEmpireChildOnEnable && defaultEmpireChildOnEnable in layerState) {
+        layerState[defaultEmpireChildOnEnable] = true;
       }
     }
     layerState.empires = nextEmpireVisibility;
@@ -31,18 +35,18 @@ function toggleLayerEnabled(layerState, empireLayerState, layerId, hasAnyEmpireC
   return true;
 }
 
-function toggleEmpireSublayer(layerState, empireLayerState, empireLayerId, hasAnyEmpireChildEnabled) {
-  if (!(empireLayerId in empireLayerState)) {
+function toggleEmpireSublayer(layerState, empireLayerId, childLayerIds = []) {
+  if (!(empireLayerId in layerState)) {
     return false;
   }
 
   if (!layerState.empires) {
-    empireLayerState[empireLayerId] = true;
+    layerState[empireLayerId] = true;
   } else {
-    empireLayerState[empireLayerId] = !empireLayerState[empireLayerId];
+    layerState[empireLayerId] = !layerState[empireLayerId];
   }
 
-  layerState.empires = hasAnyEmpireChildEnabled(empireLayerState);
+  layerState.empires = hasAnyEnabled(layerState, childLayerIds);
   return true;
 }
 

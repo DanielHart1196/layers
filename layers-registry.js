@@ -162,7 +162,7 @@ function createSliderRow({
       hueHandleId: "romanEmpireFillColorHueHandle",
       addButtonId: "romanEmpireFillColorAddButton",
       styleBinding: {
-        scope: "empires.romanComparison",
+        scope: "layers.roman",
         colorKey: "fillColor",
         hueKey: "fillHue",
         saturationKey: "fillSaturation",
@@ -188,7 +188,111 @@ function createSliderRow({
       hueHandleId: "romanEmpireBorderColorHueHandle",
       addButtonId: "romanEmpireBorderColorAddButton",
       styleBinding: {
-        scope: "empires.romanComparison",
+        scope: "layers.roman",
+        colorKey: "strokeColor",
+        hueKey: "strokeHue",
+        saturationKey: "strokeSaturation",
+        valueKey: "strokeValue",
+      },
+      renderPasses: ["empire", "poster"],
+    },
+    mongolEmpireFill: {
+      controlId: "mongolEmpireFill",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "mongolEmpireFillColor",
+      paletteOpenKey: "isMongolEmpireFillColorPaletteOpen",
+      inputId: "mongolEmpireFillColorInput",
+      valueId: "mongolEmpireFillColorValue",
+      inlineDotId: "mongolEmpireFillColorInlineDot",
+      swatchButtonId: "mongolEmpireFillColorSwatchButton",
+      customsId: "mongolEmpireFillColorCustoms",
+      presetSelector: "[data-mongol-empire-fill-color]",
+      panelId: "mongolEmpireFillColorPanel",
+      fieldId: "mongolEmpireFillColorField",
+      fieldHandleId: "mongolEmpireFillColorFieldHandle",
+      hueSliderId: "mongolEmpireFillColorHueSlider",
+      hueHandleId: "mongolEmpireFillColorHueHandle",
+      addButtonId: "mongolEmpireFillColorAddButton",
+      styleBinding: {
+        scope: "layers.mongol",
+        colorKey: "fillColor",
+        hueKey: "fillHue",
+        saturationKey: "fillSaturation",
+        valueKey: "fillValue",
+      },
+      renderPasses: ["empire", "poster"],
+    },
+    mongolEmpireBorder: {
+      controlId: "mongolEmpireBorder",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "mongolEmpireBorderColor",
+      paletteOpenKey: "isMongolEmpireBorderColorPaletteOpen",
+      inputId: "mongolEmpireBorderColorInput",
+      valueId: "mongolEmpireBorderColorValue",
+      inlineDotId: "mongolEmpireBorderColorInlineDot",
+      swatchButtonId: "mongolEmpireBorderColorSwatchButton",
+      customsId: "mongolEmpireBorderColorCustoms",
+      presetSelector: "[data-mongol-empire-border-color]",
+      panelId: "mongolEmpireBorderColorPanel",
+      fieldId: "mongolEmpireBorderColorField",
+      fieldHandleId: "mongolEmpireBorderColorFieldHandle",
+      hueSliderId: "mongolEmpireBorderColorHueSlider",
+      hueHandleId: "mongolEmpireBorderColorHueHandle",
+      addButtonId: "mongolEmpireBorderColorAddButton",
+      styleBinding: {
+        scope: "layers.mongol",
+        colorKey: "strokeColor",
+        hueKey: "strokeHue",
+        saturationKey: "strokeSaturation",
+        valueKey: "strokeValue",
+      },
+      renderPasses: ["empire", "poster"],
+    },
+    britishEmpireFill: {
+      controlId: "britishEmpireFill",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "britishEmpireFillColor",
+      paletteOpenKey: "isBritishEmpireFillColorPaletteOpen",
+      inputId: "britishEmpireFillColorInput",
+      valueId: "britishEmpireFillColorValue",
+      inlineDotId: "britishEmpireFillColorInlineDot",
+      swatchButtonId: "britishEmpireFillColorSwatchButton",
+      customsId: "britishEmpireFillColorCustoms",
+      presetSelector: "[data-british-empire-fill-color]",
+      panelId: "britishEmpireFillColorPanel",
+      fieldId: "britishEmpireFillColorField",
+      fieldHandleId: "britishEmpireFillColorFieldHandle",
+      hueSliderId: "britishEmpireFillColorHueSlider",
+      hueHandleId: "britishEmpireFillColorHueHandle",
+      addButtonId: "britishEmpireFillColorAddButton",
+      styleBinding: {
+        scope: "layers.british",
+        colorKey: "fillColor",
+        hueKey: "fillHue",
+        saturationKey: "fillSaturation",
+        valueKey: "fillValue",
+      },
+      renderPasses: ["empire", "poster"],
+    },
+    britishEmpireBorder: {
+      controlId: "britishEmpireBorder",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "britishEmpireBorderColor",
+      paletteOpenKey: "isBritishEmpireBorderColorPaletteOpen",
+      inputId: "britishEmpireBorderColorInput",
+      valueId: "britishEmpireBorderColorValue",
+      inlineDotId: "britishEmpireBorderColorInlineDot",
+      swatchButtonId: "britishEmpireBorderColorSwatchButton",
+      customsId: "britishEmpireBorderColorCustoms",
+      presetSelector: "[data-british-empire-border-color]",
+      panelId: "britishEmpireBorderColorPanel",
+      fieldId: "britishEmpireBorderColorField",
+      fieldHandleId: "britishEmpireBorderColorFieldHandle",
+      hueSliderId: "britishEmpireBorderColorHueSlider",
+      hueHandleId: "britishEmpireBorderColorHueHandle",
+      addButtonId: "britishEmpireBorderColorAddButton",
+      styleBinding: {
+        scope: "layers.british",
         colorKey: "strokeColor",
         hueKey: "strokeHue",
         saturationKey: "strokeSaturation",
@@ -228,8 +332,8 @@ function createSliderRow({
       uiOpenKey: "isEmpireGroupOpen",
       uiSection: "layers",
       parentId: null,
-      children: ["romanComparison", "mongol", "british"],
-      defaultChildOnEnable: "romanComparison",
+      children: ["roman", "mongol", "british"],
+      defaultChildOnEnable: "roman",
       controls: ["empireQuality"],
       rows: [
         createSliderRow({
@@ -246,9 +350,9 @@ function createSliderRow({
           uiSync: "empire",
           renderPasses: ["empire", "poster"],
         }),
-        { type: "layer", layerId: "romanComparison", rowElementId: "romanEmpireLayerGroup" },
-        { type: "layer", layerId: "mongol", rowElementId: "mongolLayerRow" },
-        { type: "layer", layerId: "british", rowElementId: "britishLayerRow" },
+        { type: "layer", layerId: "roman", rowElementId: "romanEmpireLayerGroup" },
+        { type: "layer", layerId: "mongol", rowElementId: "mongolEmpireLayerGroup" },
+        { type: "layer", layerId: "british", rowElementId: "britishEmpireLayerGroup" },
       ],
       bodySectionId: "empireSubLayers",
       renderSource: "empires",
@@ -356,8 +460,8 @@ function createSliderRow({
       controls: [],
       renderSource: "tissot",
     },
-    romanComparison: {
-      id: "romanComparison",
+    roman: {
+      id: "roman",
       definitionType: "layer-definition",
       layerKind: "thematic",
       ownerType: "system",
@@ -379,7 +483,7 @@ function createSliderRow({
           min: 0,
           max: 100,
           step: 1,
-          binding: { kind: "percent", scope: "empires.romanComparison", key: "fillOpacity" },
+          binding: { kind: "percent", scope: "layers.roman", key: "fillOpacity" },
           valueFormat: "percent",
           uiSync: "empire",
           renderPasses: ["empire", "poster"],
@@ -394,7 +498,7 @@ function createSliderRow({
           min: 0.4,
           max: 3,
           step: 0.1,
-          binding: { kind: "float", scope: "empires.romanComparison", key: "strokeWidth" },
+          binding: { kind: "float", scope: "layers.roman", key: "strokeWidth" },
           valueFormat: "widthPx",
           uiSync: "empire",
           renderPasses: ["empire", "poster"],
@@ -408,14 +512,14 @@ function createSliderRow({
           min: 0,
           max: 100,
           step: 1,
-          binding: { kind: "percent", scope: "empires.romanComparison", key: "strokeOpacity" },
+          binding: { kind: "percent", scope: "layers.roman", key: "strokeOpacity" },
           valueFormat: "percent",
           uiSync: "empire",
           renderPasses: ["empire", "poster"],
         }),
       ],
       bodySectionId: "romanEmpireLayerControls",
-      renderSource: "romanComparison",
+      renderSource: "roman",
     },
     mongol: {
       id: "mongol",
@@ -425,10 +529,57 @@ function createSliderRow({
       parentId: "empires",
       defaultEnabled: false,
       defaultQuality: "medium",
+      uiOpenKey: "isMongolEmpireGroupOpen",
       uiSection: "layers",
       children: [],
-      rows: [],
-      controls: [],
+      controls: ["mongolEmpireFill", "mongolEmpireFillOpacity", "mongolEmpireBorder", "mongolEmpireBorderWidth", "mongolEmpireBorderOpacity"],
+      rows: [
+        createColorRow({ controlId: "mongolEmpireFill", rowElementId: "mongolEmpireFillRow" }),
+        createSliderRow({
+          controlId: "mongolEmpireFillOpacity",
+          rowElementId: "mongolEmpireFillOpacityRow",
+          label: "Fill Opacity",
+          inputId: "mongolEmpireFillOpacityInput",
+          valueElementId: "mongolEmpireFillOpacityValue",
+          min: 0,
+          max: 100,
+          step: 1,
+          binding: { kind: "percent", scope: "layers.mongol", key: "fillOpacity" },
+          valueFormat: "percent",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
+        }),
+        createColorRow({ controlId: "mongolEmpireBorder", rowElementId: "mongolEmpireBorderRow" }),
+        createSliderRow({
+          controlId: "mongolEmpireBorderWidth",
+          rowElementId: "mongolEmpireBorderWidthRow",
+          label: "Stroke Width",
+          inputId: "mongolEmpireBorderWidthInput",
+          valueElementId: "mongolEmpireBorderWidthValue",
+          min: 0.4,
+          max: 3,
+          step: 0.1,
+          binding: { kind: "float", scope: "layers.mongol", key: "strokeWidth" },
+          valueFormat: "widthPx",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
+        }),
+        createSliderRow({
+          controlId: "mongolEmpireBorderOpacity",
+          rowElementId: "mongolEmpireBorderOpacityRow",
+          label: "Border Opacity",
+          inputId: "mongolEmpireBorderOpacityInput",
+          valueElementId: "mongolEmpireBorderOpacityValue",
+          min: 0,
+          max: 100,
+          step: 1,
+          binding: { kind: "percent", scope: "layers.mongol", key: "strokeOpacity" },
+          valueFormat: "percent",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
+        }),
+      ],
+      bodySectionId: "mongolEmpireLayerControls",
       renderSource: "mongol",
     },
     british: {
@@ -439,10 +590,57 @@ function createSliderRow({
       parentId: "empires",
       defaultEnabled: false,
       defaultQuality: "medium",
+      uiOpenKey: "isBritishEmpireGroupOpen",
       uiSection: "layers",
       children: [],
-      rows: [],
-      controls: [],
+      controls: ["britishEmpireFill", "britishEmpireFillOpacity", "britishEmpireBorder", "britishEmpireBorderWidth", "britishEmpireBorderOpacity"],
+      rows: [
+        createColorRow({ controlId: "britishEmpireFill", rowElementId: "britishEmpireFillRow" }),
+        createSliderRow({
+          controlId: "britishEmpireFillOpacity",
+          rowElementId: "britishEmpireFillOpacityRow",
+          label: "Fill Opacity",
+          inputId: "britishEmpireFillOpacityInput",
+          valueElementId: "britishEmpireFillOpacityValue",
+          min: 0,
+          max: 100,
+          step: 1,
+          binding: { kind: "percent", scope: "layers.british", key: "fillOpacity" },
+          valueFormat: "percent",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
+        }),
+        createColorRow({ controlId: "britishEmpireBorder", rowElementId: "britishEmpireBorderRow" }),
+        createSliderRow({
+          controlId: "britishEmpireBorderWidth",
+          rowElementId: "britishEmpireBorderWidthRow",
+          label: "Stroke Width",
+          inputId: "britishEmpireBorderWidthInput",
+          valueElementId: "britishEmpireBorderWidthValue",
+          min: 0.4,
+          max: 3,
+          step: 0.1,
+          binding: { kind: "float", scope: "layers.british", key: "strokeWidth" },
+          valueFormat: "widthPx",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
+        }),
+        createSliderRow({
+          controlId: "britishEmpireBorderOpacity",
+          rowElementId: "britishEmpireBorderOpacityRow",
+          label: "Border Opacity",
+          inputId: "britishEmpireBorderOpacityInput",
+          valueElementId: "britishEmpireBorderOpacityValue",
+          min: 0,
+          max: 100,
+          step: 1,
+          binding: { kind: "percent", scope: "layers.british", key: "strokeOpacity" },
+          valueFormat: "percent",
+          uiSync: "empire",
+          renderPasses: ["empire", "poster"],
+        }),
+      ],
+      bodySectionId: "britishEmpireLayerControls",
       renderSource: "british",
     },
   };
@@ -482,8 +680,34 @@ function createSliderRow({
     value: 1,
   };
 
-  const defaultEmpireStyleState = {
-    romanComparison: {
+  const defaultLayerStyleState = {
+    roman: {
+      fillColor: "#C48B35",
+      fillOpacity: 0.22,
+      fillHue: 35,
+      fillSaturation: 0.73,
+      fillValue: 0.77,
+      strokeColor: "#B07825",
+      strokeOpacity: 0.9,
+      strokeWidth: 1.1,
+      strokeHue: 37,
+      strokeSaturation: 0.79,
+      strokeValue: 0.69,
+    },
+    mongol: {
+      fillColor: "#C48B35",
+      fillOpacity: 0.22,
+      fillHue: 35,
+      fillSaturation: 0.73,
+      fillValue: 0.77,
+      strokeColor: "#B07825",
+      strokeOpacity: 0.9,
+      strokeWidth: 1.1,
+      strokeHue: 37,
+      strokeSaturation: 0.79,
+      strokeValue: 0.69,
+    },
+    british: {
       fillColor: "#C48B35",
       fillOpacity: 0.22,
       fillHue: 35,
@@ -535,7 +759,7 @@ function createSliderRow({
   }
 
   function getGenericLayerDefinitions() {
-    return Object.values(layerDefinitions).filter((definition) => definition.parentId !== "empires");
+    return Object.values(layerDefinitions);
   }
 
   function getDefinitionsBySection(sectionId) {
@@ -572,7 +796,7 @@ function createSliderRow({
     borderStyleState,
     graticuleStyleState,
     earthStyleState,
-    empireStyleState,
+    layerStyleState,
   }) {
     switch (scope) {
       case "border":
@@ -583,8 +807,12 @@ function createSliderRow({
         return earthStyleState.land;
       case "earth.water":
         return earthStyleState.water;
-      case "empires.romanComparison":
-        return empireStyleState.romanComparison;
+      case "layers.roman":
+        return layerStyleState.roman;
+      case "layers.mongol":
+        return layerStyleState.mongol;
+      case "layers.british":
+        return layerStyleState.british;
       default:
         return null;
     }
@@ -661,12 +889,6 @@ function createSliderRow({
     );
   }
 
-  function createDefaultEmpireLayerState() {
-    return Object.fromEntries(
-      getEmpireSublayerDefinitions().map((definition) => [definition.id, definition.defaultEnabled]),
-    );
-  }
-
   function createDefaultEmpireQualityState() {
     return Object.fromEntries(
       getEmpireSublayerDefinitions().map((definition) => [definition.id, definition.defaultQuality]),
@@ -685,17 +907,16 @@ function createSliderRow({
     return cloneValue(defaultGraticuleStyleState);
   }
 
-  function createDefaultEmpireStyleState() {
-    return cloneValue(defaultEmpireStyleState);
+  function createDefaultLayerStyleState() {
+    return cloneValue(defaultLayerStyleState);
   }
 
 const AtlasLayersRegistry = {
   colorControlDefinitions,
   createDefaultBorderStyleState,
   createDefaultEarthStyleState,
-  createDefaultEmpireLayerState,
   createDefaultEmpireQualityState,
-  createDefaultEmpireStyleState,
+  createDefaultLayerStyleState,
   createDefaultGraticuleStyleState,
   createDefaultLayerState,
   createLayerInstance,
@@ -728,9 +949,8 @@ export {
   colorControlDefinitions,
   createDefaultBorderStyleState,
   createDefaultEarthStyleState,
-  createDefaultEmpireLayerState,
   createDefaultEmpireQualityState,
-  createDefaultEmpireStyleState,
+  createDefaultLayerStyleState,
   createDefaultGraticuleStyleState,
   createDefaultLayerState,
   createLayerInstance,

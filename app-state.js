@@ -1,19 +1,20 @@
-import { getColorControlDefinitions } from "./layers-registry.js";
+import { getColorControlDefinitions, getExpandableSectionDefinitions } from "./layers-registry.js";
 
 function createDefaultUiState() {
   const uiState = {
     isLayerPanelOpen: false,
     isMonthOverlayOpen: false,
-    isEarthGroupOpen: false,
-    isGraticuleGroupOpen: false,
-    isEmpireGroupOpen: false,
-    isRomanEmpireGroupOpen: false,
-    isBorderGroupOpen: false,
     isProjectionMenuOpen: false,
     isProjectionWheelOpen: false,
     isProjectionSwitcherReady: false,
     isInteracting: false,
   };
+
+  getExpandableSectionDefinitions().forEach((definition) => {
+    if (definition?.uiOpenKey) {
+      uiState[definition.uiOpenKey] = false;
+    }
+  });
 
   Object.values(getColorControlDefinitions()).forEach((definition) => {
     if (definition?.paletteOpenKey) {
@@ -42,16 +43,14 @@ function createAppState({
   getDefaultMonth,
   getDefaultProjection,
   createDefaultLayerState,
-  createDefaultEmpireLayerState,
   createDefaultEmpireQualityState,
   createDefaultEarthStyleState,
   createDefaultBorderStyleState,
   createDefaultGraticuleStyleState,
-  createDefaultEmpireStyleState,
+  createDefaultLayerStyleState,
 }) {
   return {
     layers: createDefaultLayerState(),
-    empireSublayers: createDefaultEmpireLayerState(),
     empireQuality: createDefaultEmpireQualityState(),
     temporal: {
       selectedMonth: getDefaultMonth(),
@@ -67,7 +66,7 @@ function createAppState({
       earth: createDefaultEarthStyleState(),
       borders: createDefaultBorderStyleState(),
       graticule: createDefaultGraticuleStyleState(),
-      empires: createDefaultEmpireStyleState(),
+      layers: createDefaultLayerStyleState(),
     },
     controlRuntime: createDefaultColorControlRuntimeState(),
   };

@@ -17,14 +17,14 @@ import {
     return scope.split(".").reduce((current, segment) => current?.[segment], root) ?? null;
   }
 
-  function saveStyleSettings({
-    storage,
-    storageKey,
-    borderStyleState,
-    graticuleStyleState,
-    earthStyleState,
-    empireStyleState,
-  }) {
+function saveStyleSettings({
+  storage,
+  storageKey,
+  borderStyleState,
+  graticuleStyleState,
+  earthStyleState,
+  layerStyleState,
+}) {
     try {
       const payload = {};
 
@@ -37,7 +37,7 @@ import {
           borderStyleState,
           graticuleStyleState,
           earthStyleState,
-          empireStyleState,
+          layerStyleState,
         });
         if (!scopeTarget) {
           return;
@@ -54,7 +54,7 @@ import {
           borderStyleState,
           graticuleStyleState,
           earthStyleState,
-          empireStyleState,
+          layerStyleState,
         });
         if (!scopeTarget) {
           return;
@@ -71,17 +71,17 @@ import {
     }
   }
 
-  function loadStyleSettings({
-    storage,
-    storageKey,
-    normalizeHexColor,
-    clamp,
-    setColorControlValue,
-    borderStyleState,
-    graticuleStyleState,
-    earthStyleState,
-    empireStyleState,
-  }) {
+function loadStyleSettings({
+  storage,
+  storageKey,
+  normalizeHexColor,
+  clamp,
+  applyPersistedColorControlValue,
+  borderStyleState,
+  graticuleStyleState,
+  earthStyleState,
+  layerStyleState,
+}) {
     try {
       const stored = storage?.getItem(storageKey);
       if (!stored) {
@@ -98,7 +98,7 @@ import {
         const scopeObject = getScopeObject(parsed, binding.scope);
         const colorValue = normalizeHexColor(scopeObject?.[binding.colorKey]);
         if (colorValue) {
-          setColorControlValue(definition.controlId, colorValue);
+          applyPersistedColorControlValue(definition.controlId, colorValue);
         }
       });
 
@@ -111,7 +111,7 @@ import {
           borderStyleState,
           graticuleStyleState,
           earthStyleState,
-          empireStyleState,
+          layerStyleState,
         });
         const scopeObject = getScopeObject(parsed, binding.scope);
         const rawValue = Number(scopeObject?.[binding.key]);
@@ -141,7 +141,6 @@ import {
     rotationOffset,
     flatProjectionPanOffsets,
     layerState,
-    empireLayerState,
     empireQualityState,
     temporalState,
   }) {
@@ -156,16 +155,7 @@ import {
             phi: rotationOffset.phi,
           },
           flatProjectionPanOffsets,
-          layers: {
-            earth: layerState.earth,
-            empires: layerState.empires,
-            borders: layerState.borders,
-            graticule: layerState.graticule,
-            tissot: layerState.tissot,
-          },
-          empireSublayers: {
-            ...empireLayerState,
-          },
+          layers: { ...layerState },
           empireQuality: {
             ...empireQualityState,
           },
@@ -185,7 +175,7 @@ import {
     clampPhi,
     flatProjectionPanOffsets,
     layerState,
-    empireLayerState,
+    empireChildLayerIds,
     empireQualityState,
     temporalState,
     projectionState,
@@ -237,15 +227,16 @@ import {
         });
       }
 
-      if (parsed?.empireSublayers && typeof parsed.empireSublayers === "object") {
-        Object.keys(empireLayerState).forEach((key) => {
-          if (typeof parsed.empireSublayers[key] === "boolean") {
-            empireLayerState[key] = parsed.empireSublayers[key];
+      if (!hasStoredLayerVisibility && parsed?.empireSublayers && typeof parsed.empireSublayers === "object") {
+        Object.keys(parsed.empireSublayers).forEach((key) => {
+          if (typeof parsed.empireSublayers[key] === "boolean" && key in layerState) {
+            layerState[key] = parsed.empireSublayers[key];
           }
         });
-        if (!hasStoredLayerVisibility || typeof parsed.layers.empires !== "boolean") {
-          layerState.empires = hasAnyEmpireChildEnabled(empireLayerState);
-        }
+      }
+
+      if (!hasStoredLayerVisibility || typeof parsed.layers?.empires !== "boolean") {
+        layerState.empires = hasAnyEmpireChildEnabled(layerState, empireChildLayerIds);
       }
 
       if (parsed?.empireQuality && typeof parsed.empireQuality === "object") {

@@ -51,7 +51,7 @@ function bindLayerControls({
   earthGroupButton,
   toggleElementsByLayerId,
   layerState,
-  empireLayerState,
+  empireChildLayerIds,
   uiState,
   hasAnyEmpireChildEnabled,
   toggleLayerGroupOpen,
@@ -112,7 +112,7 @@ function bindLayerControls({
         return;
       }
 
-      toggleLayerEnabled(layerState, empireLayerState, layerId, hasAnyEmpireChildEnabled);
+      toggleLayerEnabled(layerState, layerId, empireChildLayerIds);
       if (layerId !== "empires") {
         button.classList.toggle("is-active", layerState[layerId]);
         ownedLayerGroup?.classList.toggle("is-active", layerState[layerId]);
@@ -152,7 +152,7 @@ function bindLayerControls({
       return;
     }
 
-    button.classList.toggle("is-active", Boolean(empireLayerState[empireLayerId]));
+    button.classList.toggle("is-active", Boolean(layerState[empireLayerId]));
     button.addEventListener("click", (event) => {
       if (expandableLayersById[empireLayerId] && handleExpandableToggleClick({
         event,
@@ -169,7 +169,7 @@ function bindLayerControls({
         return;
       }
 
-      toggleEmpireSublayer(layerState, empireLayerState, empireLayerId, hasAnyEmpireChildEnabled);
+      toggleEmpireSublayer(layerState, empireLayerId, empireChildLayerIds);
       syncEmpireGroupUi();
       scheduleViewStateSave();
       drawForEmpireSublayerToggle();

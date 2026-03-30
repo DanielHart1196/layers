@@ -52,8 +52,8 @@
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4/dist/d3-geo-projection.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
-    <script type="module" crossorigin src="/assets/index-nRT45B_c.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CKWmTUn3.css">
+    <script type="module" crossorigin src="/assets/index-D4gS-VL5.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BaBKu0Z9.css">
   </head>
   <body>
     <main class="app-shell">
@@ -159,38 +159,41 @@
           </div>
         </div>
 
-        <div class="layer-trigger" aria-hidden="true"></div>
-        <button
-          class="layer-menu-toggle"
-          id="layerMenuToggle"
-          type="button"
-          aria-label="Open layers menu"
-          aria-controls="layerPanel"
-          aria-expanded="false"
-        >
-          <span class="layer-menu-toggle-bar"></span>
-          <span class="layer-menu-toggle-bar"></span>
-          <span class="layer-menu-toggle-bar"></span>
-        </button>
-        <div class="mobile-refresh" id="mobileRefresh">
-          <button
-            class="mobile-refresh-button"
-            id="mobileRefreshButton"
-            type="button"
-            aria-label="Refresh page"
-            aria-expanded="false"
-            aria-controls="mobileRefreshMenu"
-          >
-            <span class="mobile-refresh-icon" aria-hidden="true"></span>
-          </button>
-          <div class="mobile-refresh-menu" id="mobileRefreshMenu" role="menu" aria-label="Reload options">
-            <button class="mobile-refresh-menu-item" id="hardReloadButton" type="button" role="menuitem">
-              Hard reload
+        <div class="layer-ui" aria-label="Layers controls">
+          <div class="mobile-refresh" id="mobileRefresh">
+            <button
+              class="mobile-refresh-button"
+              id="mobileRefreshButton"
+              type="button"
+              aria-label="Refresh page"
+              aria-expanded="false"
+              aria-controls="mobileRefreshMenu"
+            >
+              <span class="mobile-refresh-icon" aria-hidden="true"></span>
             </button>
-            <button class="mobile-refresh-menu-item" id="clearCacheReloadButton" type="button" role="menuitem">
-              Clear cache reload
-            </button>
+            <div class="mobile-refresh-menu" id="mobileRefreshMenu" role="menu" aria-label="Reload options">
+              <button class="mobile-refresh-menu-item" id="hardReloadButton" type="button" role="menuitem">
+                Hard reload
+              </button>
+              <button class="mobile-refresh-menu-item" id="clearCacheReloadButton" type="button" role="menuitem">
+                Clear cache reload
+              </button>
+            </div>
           </div>
+          <button
+            class="layer-menu-toggle"
+            id="layerMenuToggle"
+            type="button"
+            aria-label="Open layers menu"
+            aria-controls="layerPanel"
+            aria-expanded="false"
+          >
+            <svg class="layer-menu-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 7.5h14"></path>
+              <path d="M5 12h14"></path>
+              <path d="M5 16.5h14"></path>
+            </svg>
+          </button>
         </div>
         <div
           class="projection-switcher"
@@ -199,6 +202,14 @@
           tabindex="0"
           aria-label="Current projection. Swipe to change projection"
         >
+          <button
+            class="projection-arrow projection-arrow-left"
+            id="projectionArrowLeft"
+            type="button"
+            aria-label="Previous projection"
+          >
+            <span class="projection-arrow-chevron" aria-hidden="true"></span>
+          </button>
           <svg class="projection-switcher-icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="8.25"></circle>
             <ellipse cx="12" cy="12" rx="3.75" ry="8.25"></ellipse>
@@ -207,8 +218,17 @@
             <path d="M5.5 15.5c2.1-1.05 4.3-1.55 6.5-1.55s4.4.5 6.5 1.55"></path>
           </svg>
           <span class="projection-switcher-track" id="projectionSwitcherTrack"></span>
+          <button
+            class="projection-arrow projection-arrow-right"
+            id="projectionArrowRight"
+            type="button"
+            aria-label="Next projection"
+          >
+            <span class="projection-arrow-chevron" aria-hidden="true"></span>
+          </button>
         </div>
         <div class="projection-wheel" id="projectionWheel" aria-hidden="true">
+          <div class="projection-wheel-guide" aria-hidden="true"></div>
           <div class="projection-wheel-window" id="projectionWheelWindow" role="listbox" aria-label="Select projection"></div>
         </div>
         <aside class="layer-panel" id="layerPanel" aria-label="Map layers">
@@ -636,7 +656,7 @@
                   </label>
                   <section class="layer-group layer-group-shell" id="romanEmpireLayerGroup">
                     <div class="layer-group-head">
-                      <button class="layer-item layer-item-sub layer-item-group" id="romanEmpireRow" data-empire-layer-id="romanComparison" type="button">
+                      <button class="layer-item layer-item-sub layer-item-group" id="romanEmpireRow" data-empire-layer-id="roman" type="button">
                         <span class="layer-checkbox" aria-hidden="true">
                           <span class="layer-checkmark"></span>
                         </span>
@@ -784,22 +804,306 @@
                     </label>
                     </div>
                   </section>
-                  <button class="layer-item layer-item-sub" id="mongolLayerRow" data-empire-layer-id="mongol" type="button">
-                    <span class="layer-checkbox" aria-hidden="true">
-                      <span class="layer-checkmark"></span>
-                    </span>
-                    <span class="layer-copy">
-                      <strong>Mongol (1279)</strong>
-                    </span>
-                  </button>
-                  <button class="layer-item layer-item-sub" id="britishLayerRow" data-empire-layer-id="british" type="button">
-                    <span class="layer-checkbox" aria-hidden="true">
-                      <span class="layer-checkmark"></span>
-                    </span>
-                    <span class="layer-copy">
-                      <strong>British (1921)</strong>
-                    </span>
-                  </button>
+                  <section class="layer-group layer-group-shell" id="mongolEmpireLayerGroup">
+                    <div class="layer-group-head">
+                      <button class="layer-item layer-item-sub layer-item-group" id="mongolEmpireRow" data-empire-layer-id="mongol" type="button">
+                        <span class="layer-checkbox" aria-hidden="true">
+                          <span class="layer-checkmark"></span>
+                        </span>
+                        <span class="layer-copy">
+                          <strong>Mongol (1279)</strong>
+                        </span>
+                        <span
+                          class="layer-group-toggle"
+                          id="mongolEmpireGroupToggle"
+                          aria-label="Toggle Mongol Empire controls"
+                          aria-controls="mongolEmpireLayerControls"
+                          aria-expanded="false"
+                        >
+                          <span class="layer-group-chevron" aria-hidden="true"></span>
+                        </span>
+                      </button>
+                    </div>
+                    <div class="layer-sublist layer-sublist-controls" id="mongolEmpireLayerControls">
+                    <div class="layer-control layer-control-color" id="mongolEmpireFillRow">
+                      <div class="layer-control-copy">
+                        <strong>Fill Color</strong>
+                        <small id="mongolEmpireFillColorValue">#C48B35</small>
+                        <span class="layer-inline-color-dot" id="mongolEmpireFillColorInlineDot" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-swatch-scroll">
+                        <div class="layer-color-swatch-row" aria-label="Mongol Empire fill color presets">
+                          <button
+                            class="layer-inline-color-button layer-inline-color-button-plus"
+                            id="mongolEmpireFillColorSwatchButton"
+                            type="button"
+                            aria-label="Open custom Mongol Empire fill color picker"
+                            aria-expanded="false"
+                          >
+                            <span class="layer-inline-color-plus" aria-hidden="true">+</span>
+                          </button>
+                          <div class="layer-inline-color-customs" id="mongolEmpireFillColorCustoms"></div>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-fill-color="#FFFFFF" aria-label="White"><span class="layer-inline-color-dot" style="--layer-active-color:#FFFFFF;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-fill-color="#0F2430" aria-label="Black"><span class="layer-inline-color-dot" style="--layer-active-color:#0F2430;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-fill-color="#D94B4B" aria-label="Red"><span class="layer-inline-color-dot" style="--layer-active-color:#D94B4B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-fill-color="#E58A2B" aria-label="Orange"><span class="layer-inline-color-dot" style="--layer-active-color:#E58A2B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-fill-color="#E5C84A" aria-label="Yellow"><span class="layer-inline-color-dot" style="--layer-active-color:#E5C84A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-fill-color="#5B8C5A" aria-label="Green"><span class="layer-inline-color-dot" style="--layer-active-color:#5B8C5A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-fill-color="#4B6ED9" aria-label="Blue"><span class="layer-inline-color-dot" style="--layer-active-color:#4B6ED9;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-fill-color="#8C5BD6" aria-label="Purple"><span class="layer-inline-color-dot" style="--layer-active-color:#8C5BD6;" aria-hidden="true"></span></button>
+                        </div>
+                      </div>
+                      <div class="layer-color-panel" id="mongolEmpireFillColorPanel" aria-hidden="true">
+                        <div class="layer-color-field" id="mongolEmpireFillColorField" role="application" aria-label="Mongol Empire fill color gradient field">
+                          <span class="layer-color-field-handle" id="mongolEmpireFillColorFieldHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-hue-slider" id="mongolEmpireFillColorHueSlider" role="slider" aria-label="Mongol Empire fill hue slider">
+                          <span class="layer-color-hue-handle" id="mongolEmpireFillColorHueHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-input-row">
+                          <input class="layer-hex-input" id="mongolEmpireFillColorInput" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" value="#C48B35" aria-label="Mongol Empire fill color hex code" />
+                          <button class="layer-color-add-button" id="mongolEmpireFillColorAddButton" type="button">Add</button>
+                        </div>
+                      </div>
+                    </div>
+                    <label class="layer-control" id="mongolEmpireFillOpacityRow" for="mongolEmpireFillOpacityInput">
+                      <span class="layer-control-copy">
+                        <strong>Fill Opacity</strong>
+                        <small id="mongolEmpireFillOpacityValue">22%</small>
+                      </span>
+                      <input
+                        class="layer-range-input"
+                        id="mongolEmpireFillOpacityInput"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value="22"
+                      />
+                    </label>
+                    <div class="layer-control layer-control-color" id="mongolEmpireBorderRow">
+                      <div class="layer-control-copy">
+                        <strong>Border Color</strong>
+                        <small id="mongolEmpireBorderColorValue">#B07825</small>
+                        <span class="layer-inline-color-dot" id="mongolEmpireBorderColorInlineDot" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-swatch-scroll">
+                        <div class="layer-color-swatch-row" aria-label="Mongol Empire border color presets">
+                          <button
+                            class="layer-inline-color-button layer-inline-color-button-plus"
+                            id="mongolEmpireBorderColorSwatchButton"
+                            type="button"
+                            aria-label="Open custom Mongol Empire border color picker"
+                            aria-expanded="false"
+                          >
+                            <span class="layer-inline-color-plus" aria-hidden="true">+</span>
+                          </button>
+                          <div class="layer-inline-color-customs" id="mongolEmpireBorderColorCustoms"></div>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-border-color="#FFFFFF" aria-label="White"><span class="layer-inline-color-dot" style="--layer-active-color:#FFFFFF;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-border-color="#0F2430" aria-label="Black"><span class="layer-inline-color-dot" style="--layer-active-color:#0F2430;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-border-color="#D94B4B" aria-label="Red"><span class="layer-inline-color-dot" style="--layer-active-color:#D94B4B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-border-color="#E58A2B" aria-label="Orange"><span class="layer-inline-color-dot" style="--layer-active-color:#E58A2B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-border-color="#E5C84A" aria-label="Yellow"><span class="layer-inline-color-dot" style="--layer-active-color:#E5C84A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-border-color="#5B8C5A" aria-label="Green"><span class="layer-inline-color-dot" style="--layer-active-color:#5B8C5A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-border-color="#4B6ED9" aria-label="Blue"><span class="layer-inline-color-dot" style="--layer-active-color:#4B6ED9;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-mongol-empire-border-color="#8C5BD6" aria-label="Purple"><span class="layer-inline-color-dot" style="--layer-active-color:#8C5BD6;" aria-hidden="true"></span></button>
+                        </div>
+                      </div>
+                      <div class="layer-color-panel" id="mongolEmpireBorderColorPanel" aria-hidden="true">
+                        <div class="layer-color-field" id="mongolEmpireBorderColorField" role="application" aria-label="Mongol Empire border color gradient field">
+                          <span class="layer-color-field-handle" id="mongolEmpireBorderColorFieldHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-hue-slider" id="mongolEmpireBorderColorHueSlider" role="slider" aria-label="Mongol Empire border hue slider">
+                          <span class="layer-color-hue-handle" id="mongolEmpireBorderColorHueHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-input-row">
+                          <input class="layer-hex-input" id="mongolEmpireBorderColorInput" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" value="#B07825" aria-label="Mongol Empire border color hex code" />
+                          <button class="layer-color-add-button" id="mongolEmpireBorderColorAddButton" type="button">Add</button>
+                        </div>
+                      </div>
+                    </div>
+                    <label class="layer-control" id="mongolEmpireBorderWidthRow" for="mongolEmpireBorderWidthInput">
+                      <span class="layer-control-copy">
+                        <strong>Stroke Width</strong>
+                        <small id="mongolEmpireBorderWidthValue">1.1 px</small>
+                      </span>
+                      <input
+                        class="layer-range-input"
+                        id="mongolEmpireBorderWidthInput"
+                        type="range"
+                        min="0.4"
+                        max="3"
+                        step="0.1"
+                        value="1.1"
+                      />
+                    </label>
+                    <label class="layer-control" id="mongolEmpireBorderOpacityRow" for="mongolEmpireBorderOpacityInput">
+                      <span class="layer-control-copy">
+                        <strong>Border Opacity</strong>
+                        <small id="mongolEmpireBorderOpacityValue">90%</small>
+                      </span>
+                      <input
+                        class="layer-range-input"
+                        id="mongolEmpireBorderOpacityInput"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value="90"
+                      />
+                    </label>
+                    </div>
+                  </section>
+                  <section class="layer-group layer-group-shell" id="britishEmpireLayerGroup">
+                    <div class="layer-group-head">
+                      <button class="layer-item layer-item-sub layer-item-group" id="britishEmpireRow" data-empire-layer-id="british" type="button">
+                        <span class="layer-checkbox" aria-hidden="true">
+                          <span class="layer-checkmark"></span>
+                        </span>
+                        <span class="layer-copy">
+                          <strong>British (1921)</strong>
+                        </span>
+                        <span
+                          class="layer-group-toggle"
+                          id="britishEmpireGroupToggle"
+                          aria-label="Toggle British Empire controls"
+                          aria-controls="britishEmpireLayerControls"
+                          aria-expanded="false"
+                        >
+                          <span class="layer-group-chevron" aria-hidden="true"></span>
+                        </span>
+                      </button>
+                    </div>
+                    <div class="layer-sublist layer-sublist-controls" id="britishEmpireLayerControls">
+                    <div class="layer-control layer-control-color" id="britishEmpireFillRow">
+                      <div class="layer-control-copy">
+                        <strong>Fill Color</strong>
+                        <small id="britishEmpireFillColorValue">#C48B35</small>
+                        <span class="layer-inline-color-dot" id="britishEmpireFillColorInlineDot" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-swatch-scroll">
+                        <div class="layer-color-swatch-row" aria-label="British Empire fill color presets">
+                          <button
+                            class="layer-inline-color-button layer-inline-color-button-plus"
+                            id="britishEmpireFillColorSwatchButton"
+                            type="button"
+                            aria-label="Open custom British Empire fill color picker"
+                            aria-expanded="false"
+                          >
+                            <span class="layer-inline-color-plus" aria-hidden="true">+</span>
+                          </button>
+                          <div class="layer-inline-color-customs" id="britishEmpireFillColorCustoms"></div>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-fill-color="#FFFFFF" aria-label="White"><span class="layer-inline-color-dot" style="--layer-active-color:#FFFFFF;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-fill-color="#0F2430" aria-label="Black"><span class="layer-inline-color-dot" style="--layer-active-color:#0F2430;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-fill-color="#D94B4B" aria-label="Red"><span class="layer-inline-color-dot" style="--layer-active-color:#D94B4B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-fill-color="#E58A2B" aria-label="Orange"><span class="layer-inline-color-dot" style="--layer-active-color:#E58A2B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-fill-color="#E5C84A" aria-label="Yellow"><span class="layer-inline-color-dot" style="--layer-active-color:#E5C84A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-fill-color="#5B8C5A" aria-label="Green"><span class="layer-inline-color-dot" style="--layer-active-color:#5B8C5A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-fill-color="#4B6ED9" aria-label="Blue"><span class="layer-inline-color-dot" style="--layer-active-color:#4B6ED9;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-fill-color="#8C5BD6" aria-label="Purple"><span class="layer-inline-color-dot" style="--layer-active-color:#8C5BD6;" aria-hidden="true"></span></button>
+                        </div>
+                      </div>
+                      <div class="layer-color-panel" id="britishEmpireFillColorPanel" aria-hidden="true">
+                        <div class="layer-color-field" id="britishEmpireFillColorField" role="application" aria-label="British Empire fill color gradient field">
+                          <span class="layer-color-field-handle" id="britishEmpireFillColorFieldHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-hue-slider" id="britishEmpireFillColorHueSlider" role="slider" aria-label="British Empire fill hue slider">
+                          <span class="layer-color-hue-handle" id="britishEmpireFillColorHueHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-input-row">
+                          <input class="layer-hex-input" id="britishEmpireFillColorInput" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" value="#C48B35" aria-label="British Empire fill color hex code" />
+                          <button class="layer-color-add-button" id="britishEmpireFillColorAddButton" type="button">Add</button>
+                        </div>
+                      </div>
+                    </div>
+                    <label class="layer-control" id="britishEmpireFillOpacityRow" for="britishEmpireFillOpacityInput">
+                      <span class="layer-control-copy">
+                        <strong>Fill Opacity</strong>
+                        <small id="britishEmpireFillOpacityValue">22%</small>
+                      </span>
+                      <input
+                        class="layer-range-input"
+                        id="britishEmpireFillOpacityInput"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value="22"
+                      />
+                    </label>
+                    <div class="layer-control layer-control-color" id="britishEmpireBorderRow">
+                      <div class="layer-control-copy">
+                        <strong>Border Color</strong>
+                        <small id="britishEmpireBorderColorValue">#B07825</small>
+                        <span class="layer-inline-color-dot" id="britishEmpireBorderColorInlineDot" aria-hidden="true"></span>
+                      </div>
+                      <div class="layer-color-swatch-scroll">
+                        <div class="layer-color-swatch-row" aria-label="British Empire border color presets">
+                          <button
+                            class="layer-inline-color-button layer-inline-color-button-plus"
+                            id="britishEmpireBorderColorSwatchButton"
+                            type="button"
+                            aria-label="Open custom British Empire border color picker"
+                            aria-expanded="false"
+                          >
+                            <span class="layer-inline-color-plus" aria-hidden="true">+</span>
+                          </button>
+                          <div class="layer-inline-color-customs" id="britishEmpireBorderColorCustoms"></div>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-border-color="#FFFFFF" aria-label="White"><span class="layer-inline-color-dot" style="--layer-active-color:#FFFFFF;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-border-color="#0F2430" aria-label="Black"><span class="layer-inline-color-dot" style="--layer-active-color:#0F2430;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-border-color="#D94B4B" aria-label="Red"><span class="layer-inline-color-dot" style="--layer-active-color:#D94B4B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-border-color="#E58A2B" aria-label="Orange"><span class="layer-inline-color-dot" style="--layer-active-color:#E58A2B;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-border-color="#E5C84A" aria-label="Yellow"><span class="layer-inline-color-dot" style="--layer-active-color:#E5C84A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-border-color="#5B8C5A" aria-label="Green"><span class="layer-inline-color-dot" style="--layer-active-color:#5B8C5A;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-border-color="#4B6ED9" aria-label="Blue"><span class="layer-inline-color-dot" style="--layer-active-color:#4B6ED9;" aria-hidden="true"></span></button>
+                          <button class="layer-inline-color-button layer-inline-color-choice" type="button" data-british-empire-border-color="#8C5BD6" aria-label="Purple"><span class="layer-inline-color-dot" style="--layer-active-color:#8C5BD6;" aria-hidden="true"></span></button>
+                        </div>
+                      </div>
+                      <div class="layer-color-panel" id="britishEmpireBorderColorPanel" aria-hidden="true">
+                        <div class="layer-color-field" id="britishEmpireBorderColorField" role="application" aria-label="British Empire border color gradient field">
+                          <span class="layer-color-field-handle" id="britishEmpireBorderColorFieldHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-hue-slider" id="britishEmpireBorderColorHueSlider" role="slider" aria-label="British Empire border hue slider">
+                          <span class="layer-color-hue-handle" id="britishEmpireBorderColorHueHandle" aria-hidden="true"></span>
+                        </div>
+                        <div class="layer-color-input-row">
+                          <input class="layer-hex-input" id="britishEmpireBorderColorInput" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" value="#B07825" aria-label="British Empire border color hex code" />
+                          <button class="layer-color-add-button" id="britishEmpireBorderColorAddButton" type="button">Add</button>
+                        </div>
+                      </div>
+                    </div>
+                    <label class="layer-control" id="britishEmpireBorderWidthRow" for="britishEmpireBorderWidthInput">
+                      <span class="layer-control-copy">
+                        <strong>Stroke Width</strong>
+                        <small id="britishEmpireBorderWidthValue">1.1 px</small>
+                      </span>
+                      <input
+                        class="layer-range-input"
+                        id="britishEmpireBorderWidthInput"
+                        type="range"
+                        min="0.4"
+                        max="3"
+                        step="0.1"
+                        value="1.1"
+                      />
+                    </label>
+                    <label class="layer-control" id="britishEmpireBorderOpacityRow" for="britishEmpireBorderOpacityInput">
+                      <span class="layer-control-copy">
+                        <strong>Border Opacity</strong>
+                        <small id="britishEmpireBorderOpacityValue">90%</small>
+                      </span>
+                      <input
+                        class="layer-range-input"
+                        id="britishEmpireBorderOpacityInput"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value="90"
+                      />
+                    </label>
+                    </div>
+                  </section>
                 </div>
               </section>
             </div>

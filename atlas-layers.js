@@ -9,6 +9,7 @@ import {
 } from "./atlas-core.js";
 import { createFlatMapRenderer } from "./atlas-earth.js";
 import { createAdapter } from "./atlas-adapters.js";
+import { getEmpireSublayerIds } from "./layers-registry.js";
 
 function createEarthTextureStore() {
     const textureCache = new Map();
@@ -624,18 +625,17 @@ function createEarthTextureStore() {
 
       const isInteracting = Boolean(layerStateRef().isInteracting);
       const selectedEmpireQuality = options.empireQuality
-        ?? layerStateRef().empireQuality?.romanComparison
+        ?? layerStateRef().empireQuality?.roman
         ?? "medium";
-      const empireLayerState = layerStateRef().empireSublayers ?? {};
-      const empireStyles = layerStateRef().empireStyles ?? {};
-      const empireGeometries = Object.entries(empireLayerState)
-        .filter(([, isEnabled]) => isEnabled)
-        .map(([empireKey]) => ({
+      const layerStyles = layerStateRef().layerStyles ?? {};
+      const empireGeometries = getEmpireSublayerIds()
+        .filter((empireKey) => Boolean(layerStateRef()?.[empireKey]))
+        .map((empireKey) => ({
           empireKey,
           geometry: worldDataRef()?.layerSources?.empires?.[empireKey]?.[selectedEmpireQuality]
             ?? worldDataRef()?.layerSources?.empires?.[empireKey]?.high
             ?? worldDataRef()?.layerSources?.empires?.[empireKey]?.canonical,
-          style: empireStyles[empireKey] ?? null,
+          style: layerStyles[empireKey] ?? null,
         }))
         .filter(({ geometry }) => Boolean(geometry));
       if (!empireGeometries.length) {
@@ -649,7 +649,7 @@ function createEarthTextureStore() {
         cacheOptions: {
           empireQuality: selectedEmpireQuality,
           empireSublayers: empireGeometries.map(({ empireKey }) => empireKey),
-          empireStyles,
+          layerStyles,
           interacting: isInteracting,
         },
         renderToContext: (context) => {

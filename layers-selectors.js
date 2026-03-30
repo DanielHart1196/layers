@@ -1,13 +1,13 @@
-function hasAnyEmpireChildEnabled(empireLayerState) {
-  return Object.values(empireLayerState ?? {}).some(Boolean);
+function hasAnyEmpireChildEnabled(layerState, empireLayerIds) {
+  return (empireLayerIds ?? []).some((layerId) => Boolean(layerState?.[layerId]));
 }
 
-function isEmpireParentActive(layerState, empireLayerState) {
-  return Boolean(layerState?.empires) && hasAnyEmpireChildEnabled(empireLayerState);
+function isEmpireParentActive(layerState, empireLayerIds) {
+  return Boolean(layerState?.empires) && hasAnyEmpireChildEnabled(layerState, empireLayerIds);
 }
 
-function isEmpireChildDisplayed(layerState, empireLayerState, empireLayerId) {
-  return Boolean(layerState?.empires) && Boolean(empireLayerState?.[empireLayerId]);
+function isEmpireChildDisplayed(layerState, empireLayerId) {
+  return Boolean(layerState?.empires) && Boolean(layerState?.[empireLayerId]);
 }
 
 const AtlasLayerSelectors = {
