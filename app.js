@@ -3,6 +3,7 @@ import {
   createDefaultEarthStyleState,
   createDefaultEmpireQualityState,
   createDefaultLayerStyleState,
+  createDefaultLayerTemporalState,
   createDefaultGraticuleStyleState,
   createDefaultLayerState,
   empireQualityLevels,
@@ -10,6 +11,7 @@ import {
   getColorControlDefinitions,
   getEmpireSublayerIds,
   getLayerRows,
+  getLayerToggleElementId,
   getSliderControlDefinition,
   getSliderControlDefinitions,
   resolveStyleScope,
@@ -34,6 +36,10 @@ import {
 } from "./atlas-layers.js";
 import { createGlobeRenderer } from "./atlas-earth.js";
 import { projectionSupportsRaster as projectionSupportsRasterForKind } from "./atlas-adapters.js";
+import {
+  createStateLayerSource,
+  createTemporalLayerSource,
+} from "./layer-data-resolver.js";
 import { createAppState } from "./app-state.js";
 import {
   setAllEmpireQuality,
@@ -63,12 +69,11 @@ import {
 import { bindSharedColorControl } from "./app-color-controls.js";
 import { composeLayerBodies } from "./app-layer-body-composer.js";
 import {
-  syncBorderGroupUi as syncBorderGroupUiView,
   syncColorControlUi as syncColorControlUiView,
   syncEarthGroupUi as syncEarthGroupUiView,
   syncEmpireGroupUi as syncEmpireGroupUiView,
   syncExpandableSections,
-  syncGraticuleGroupUi as syncGraticuleGroupUiView,
+  syncStandardLayerGroupUi as syncStandardLayerGroupUiView,
 } from "./app-layer-panel.js";
 import { bindLayerControls } from "./app-layer-panel-controller.js";
 import {
@@ -116,6 +121,8 @@ const graticuleLayerGroup = document.getElementById("graticuleLayerGroup");
 const graticuleGroupToggle = document.getElementById("graticuleGroupToggle");
 const borderLayerGroup = document.getElementById("borderLayerGroup");
 const borderGroupToggle = document.getElementById("borderGroupToggle");
+const olympicsLayerGroup = document.getElementById("olympicsLayerGroup");
+const olympicsGroupToggle = document.getElementById("olympicsGroupToggle");
 const borderWidthInput = document.getElementById("borderWidthInput");
 const borderWidthValue = document.getElementById("borderWidthValue");
 const borderOpacityInput = document.getElementById("borderOpacityInput");
@@ -195,6 +202,7 @@ const appState = createAppState({
   getDefaultMonth,
   getDefaultProjection,
   createDefaultLayerState,
+  createDefaultLayerTemporalState,
   createDefaultEmpireQualityState,
   createDefaultEarthStyleState,
   createDefaultBorderStyleState,
@@ -204,6 +212,7 @@ const appState = createAppState({
 const layerState = appState.layers;
 const empireQualityState = appState.empireQuality;
 const temporalState = appState.temporal;
+const layerTemporalState = temporalState.layers;
 const projectionState = appState.projection;
 const zoomState = appState.zoom;
 const uiState = appState.ui;
@@ -682,6 +691,7 @@ async function init() {
     layerStateRef: () => ({
       ...layerState,
       empireQuality: empireQualityState,
+      layerTemporal: layerTemporalState,
       borderStyle: borderStyleState,
       graticuleStyle: graticuleStyleState,
       earthStyle: earthStyleState,
@@ -700,9 +710,14 @@ async function init() {
   }
   syncEmpireQualityUi();
   syncEmpireGroupUi();
+  syncLayerGroupUi("olympics");
   drawAtlas();
   document.documentElement.classList.remove("has-boot-stage-poster");
   document.documentElement.classList.remove("is-mobile-default-globe");
+  syncStageChrome();
+  configureCanvases();
+  glRenderer?.resize();
+  drawAtlas();
   enableDragging();
   enableZoomControls();
   enableLayerPanelToggle();
@@ -804,6 +819,7 @@ async function loadWorld() {
     britishEmpireHigh,
     britishEmpireMedium,
     britishEmpireLow,
+    olympicMedalsBirthplaceLayer,
   ] = await Promise.all([
     d3.json("./data/raw/world-atlas/countries-10m.json"),
     d3.json("./data/raw/world-atlas/countries-110m.json"),
@@ -822,6 +838,7 @@ async function loadWorld() {
     d3.json("./data/empires/british_empire_1921_extent.high.geojson"),
     d3.json("./data/empires/british_empire_1921_extent.medium.geojson"),
     d3.json("./data/empires/british_empire_1921_extent.low.geojson"),
+    d3.json("./data/temporal/olympic-medals-birthplace.layer.json"),
   ]);
 
   const land = topojson.feature(land110, land110.objects.land);
@@ -842,12 +859,31 @@ async function loadWorld() {
     land,
     borders,
     layerSources: {
-      land: {
+      land: createStateLayerSource({
         "110m": land,
-      },
-      borders: {
+      }, "110m"),
+      borders: createStateLayerSource({
         "110m": borders,
-      },
+      }, "110m"),
+      roman: createStateLayerSource({
+        high: romanEmpireHigh,
+        medium: romanEmpireMedium,
+        low: romanEmpireLow,
+        canonical: romanEmpire,
+      }, "canonical"),
+      mongol: createStateLayerSource({
+        high: mongolEmpireHigh,
+        medium: mongolEmpireMedium,
+        low: mongolEmpireLow,
+        canonical: mongolEmpire,
+      }, "canonical"),
+      british: createStateLayerSource({
+        high: britishEmpireHigh,
+        medium: britishEmpireMedium,
+        low: britishEmpireLow,
+        canonical: britishEmpire,
+      }, "canonical"),
+      olympics: createTemporalLayerSource(olympicMedalsBirthplaceLayer),
       empires: {
         roman: {
           high: romanEmpireHigh,
@@ -1369,15 +1405,6 @@ function enableLayerControls() {
     layerButtons,
     empireLayerButtons,
     earthGroupButton,
-    toggleElementsByLayerId: {
-      earth: earthGroupToggle,
-      empires: empireGroupToggle,
-      borders: borderGroupToggle,
-      graticule: graticuleGroupToggle,
-      roman: romanEmpireGroupToggle,
-      mongol: mongolEmpireGroupToggle,
-      british: britishEmpireGroupToggle,
-    },
     layerState,
     empireChildLayerIds: EMPIRE_CHILD_LAYER_IDS,
     uiState,
@@ -1385,9 +1412,7 @@ function enableLayerControls() {
     toggleLayerGroupOpen,
     toggleLayerEnabled,
     toggleEmpireSublayer,
-    syncEmpireGroupUi,
-    syncBorderGroupUi,
-    syncGraticuleGroupUi,
+    syncLayerGroupUi,
     syncEarthGroupUi,
     syncMobileMonthChrome,
     refreshEarthTexture,
@@ -1564,6 +1589,7 @@ function enableLayerPanelScrollbar() {
 }
 
 function setRefreshMenuOpen(isOpen) {
+  mobileRefresh?.classList.toggle("is-open", isOpen);
   mobileRefreshMenu?.classList.toggle("is-open", isOpen);
   mobileRefreshButton?.setAttribute("aria-expanded", String(isOpen));
 }
@@ -1644,6 +1670,39 @@ function syncEmpireGroupUi() {
   });
 }
 
+function syncStandardLayerGroupUi(layerId) {
+  const buttonElement = document.querySelector(`[data-layer-id="${layerId}"]`);
+  syncStandardLayerGroupUiView({
+    layerId,
+    layerState,
+    uiState,
+    groupElement: buttonElement?.closest(".layer-group") ?? null,
+    toggleElement: document.getElementById(getLayerToggleElementId(layerId)),
+    buttonElement,
+    scheduleExpandableLayoutSync,
+    syncSliderControlsForLayer,
+    syncColorControlsForLayer,
+  });
+}
+
+function syncLayerGroupUi(layerId) {
+  switch (layerId) {
+    case "empires":
+    case "roman":
+    case "mongol":
+    case "british":
+      syncEmpireGroupUi();
+      break;
+    case "borders":
+    case "graticule":
+    case "olympics":
+      syncStandardLayerGroupUi(layerId);
+      break;
+    default:
+      break;
+  }
+}
+
 
 function formatBorderWidthLabel(width) {
   return `${width.toFixed(1)} px`;
@@ -1651,6 +1710,11 @@ function formatBorderWidthLabel(width) {
 
 function formatOpacityLabel(percent) {
   return `${Math.round(percent)}%`;
+}
+
+function getAvailableLayerTimes(layerId) {
+  const availableTimes = worldData?.layerSources?.[layerId]?.availableTimes;
+  return Array.isArray(availableTimes) ? availableTimes : [];
 }
 
 function getSliderControlElements(controlId) {
@@ -1677,6 +1741,12 @@ function getSliderDisplayValue(controlId) {
     return empireQualityState.roman;
   }
 
+  if (binding.kind === "layerTime") {
+    return layerTemporalState?.[binding.layerId]?.selectedTime
+      ?? getAvailableLayerTimes(binding.layerId).at(-1)
+      ?? null;
+  }
+
   const scopeTarget = resolveStyleScope(binding.scope, {
     borderStyleState,
     graticuleStyleState,
@@ -1695,6 +1765,8 @@ function formatSliderControlValue(controlId, value) {
       return formatOpacityLabel(value);
     case "qualityLabel":
       return value === "low" ? "Low" : value === "high" ? "High" : "Medium";
+    case "timeLabel":
+      return value == null ? "" : String(value);
     default:
       return value == null ? "" : String(value);
   }
@@ -1714,6 +1786,31 @@ function syncSliderControlUi(controlId) {
     elements.input.value = String(qualityIndex);
     if (elements.value) {
       elements.value.textContent = formatSliderControlValue(controlId, rawValue);
+    }
+    return;
+  }
+
+  if (binding.kind === "layerTime") {
+    const availableTimes = getAvailableLayerTimes(binding.layerId);
+    if (!availableTimes.length) {
+      elements.input.min = "0";
+      elements.input.max = "0";
+      elements.input.step = "1";
+      elements.input.value = "0";
+      if (elements.value) {
+        elements.value.textContent = "";
+      }
+      return;
+    }
+
+    const selectedTime = rawValue ?? availableTimes[availableTimes.length - 1];
+    const selectedIndex = Math.max(0, availableTimes.findIndex((time) => String(time) === String(selectedTime)));
+    elements.input.min = "0";
+    elements.input.max = String(Math.max(availableTimes.length - 1, 0));
+    elements.input.step = "1";
+    elements.input.value = String(selectedIndex);
+    if (elements.value) {
+      elements.value.textContent = formatSliderControlValue(controlId, availableTimes[selectedIndex]);
     }
     return;
   }
@@ -1776,6 +1873,7 @@ function drawForLayerToggle(layerId) {
       return;
     case "borders":
     case "graticule":
+    case "olympics":
     case "tissot":
       drawAtlas(["overlay", "poster"]);
       return;
@@ -1877,6 +1975,7 @@ function saveViewState() {
     rotationOffset,
     flatProjectionPanOffsets,
     layerState,
+    layerTemporalState,
     empireQualityState,
     temporalState,
   });
@@ -1902,6 +2001,7 @@ function loadViewState() {
     clampPhi: (value) => clamp(value, -getProjectionPhiClampRange(), getProjectionPhiClampRange()),
     flatProjectionPanOffsets,
     layerState,
+    layerTemporalState,
     empireChildLayerIds: EMPIRE_CHILD_LAYER_IDS,
     empireQualityState,
     temporalState,
@@ -2184,32 +2284,6 @@ function flashColorFeedback(controlId, button) {
   });
 }
 
-function syncBorderGroupUi() {
-  syncBorderGroupUiView({
-    layerState,
-    uiState,
-    borderLayerGroup,
-    borderGroupToggle,
-    bordersButton: document.querySelector('[data-layer-id="borders"]'),
-    scheduleExpandableLayoutSync,
-    syncSliderControlsForLayer,
-    syncColorControlUi,
-  });
-}
-
-function syncGraticuleGroupUi() {
-  syncGraticuleGroupUiView({
-    layerState,
-    uiState,
-    graticuleLayerGroup,
-    graticuleGroupToggle,
-    graticuleButton: document.querySelector('#graticuleLayerGroup [data-layer-id="graticule"]'),
-    scheduleExpandableLayoutSync,
-    syncSliderControlsForLayer,
-    syncColorControlUi,
-  });
-}
-
 function syncColorControlUi(controlId) {
   syncColorControlUiView({
     config: getColorControlConfig(controlId),
@@ -2327,10 +2401,13 @@ function getSliderControlBehavior(controlId) {
   const syncGroupForDefinition = () => {
     switch (definition.uiSync) {
       case "border":
-        syncBorderGroupUi();
-        break;
       case "graticule":
-        syncGraticuleGroupUi();
+      case "olympics":
+        syncLayerGroupUi({
+          border: "borders",
+          graticule: "graticule",
+          olympics: "olympics",
+        }[definition.uiSync]);
         break;
       case "empire":
         syncEmpireGroupUi();
@@ -2379,6 +2456,18 @@ function getSliderControlBehavior(controlId) {
         return true;
       }
 
+      if (binding.kind === "layerTime") {
+        const availableTimes = getAvailableLayerTimes(binding.layerId);
+        if (!availableTimes.length) {
+          return false;
+        }
+        const nextIndex = clamp(Number.parseInt(value, 10) || 0, 0, availableTimes.length - 1);
+        layerTemporalState[binding.layerId].selectedTime = availableTimes[nextIndex];
+        syncSliderControlUi(controlId);
+        drawAtlas(definition.renderPasses ?? ["overlay", "poster"]);
+        return true;
+      }
+
       if (!applyStyleValue(value)) {
         return false;
       }
@@ -2390,6 +2479,12 @@ function getSliderControlBehavior(controlId) {
     commitValue: (value) => {
       if (binding.kind === "empireQualityAll") {
         scheduleViewStateSave();
+        return;
+      }
+
+      if (binding.kind === "layerTime") {
+        scheduleViewStateSave();
+        syncGroupForDefinition();
         return;
       }
 

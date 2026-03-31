@@ -1,4 +1,7 @@
-import { getExpandableLayerDefinitions } from "./layers-registry.js";
+import {
+  getExpandableLayerDefinitions,
+  getLayerToggleElementId,
+} from "./layers-registry.js";
 
 function getOwnedLayerGroup(button) {
   if (!button) {
@@ -49,7 +52,6 @@ function bindLayerControls({
   layerButtons,
   empireLayerButtons,
   earthGroupButton,
-  toggleElementsByLayerId,
   layerState,
   empireChildLayerIds,
   uiState,
@@ -57,9 +59,7 @@ function bindLayerControls({
   toggleLayerGroupOpen,
   toggleLayerEnabled,
   toggleEmpireSublayer,
-  syncEmpireGroupUi,
-  syncBorderGroupUi,
-  syncGraticuleGroupUi,
+  syncLayerGroupUi,
   syncEarthGroupUi,
   syncMobileMonthChrome,
   refreshEarthTexture,
@@ -91,19 +91,13 @@ function bindLayerControls({
 
     button.addEventListener("click", async (event) => {
       const expandableLayer = expandableLayersById[layerId];
-      const syncHandlersByLayerId = {
-        borders: syncBorderGroupUi,
-        empires: syncEmpireGroupUi,
-        graticule: syncGraticuleGroupUi,
-      };
-
       if (expandableLayer && handleExpandableToggleClick({
         event,
-        toggleElement: toggleElementsByLayerId?.[layerId],
+        toggleElement: document.getElementById(getLayerToggleElementId(layerId)),
         uiState,
         layerId,
         toggleLayerGroupOpen,
-        syncUi: syncHandlersByLayerId[layerId],
+        syncUi: () => syncLayerGroupUi(layerId),
         syncLayerPanelScrollbar,
         showLayerPanelScrollbarTemporarily,
         releaseLayerPanelFocusAfterPointerInteraction,
@@ -124,13 +118,16 @@ function bindLayerControls({
         }
       }
       if (layerId === "empires") {
-        syncEmpireGroupUi();
+        syncLayerGroupUi(layerId);
       }
       if (layerId === "borders") {
-        syncBorderGroupUi();
+        syncLayerGroupUi(layerId);
       }
       if (layerId === "graticule") {
-        syncGraticuleGroupUi();
+        syncLayerGroupUi(layerId);
+      }
+      if (layerId === "olympics") {
+        syncLayerGroupUi(layerId);
       }
       scheduleViewStateSave();
       drawForLayerToggle(layerId);
@@ -156,11 +153,11 @@ function bindLayerControls({
     button.addEventListener("click", (event) => {
       if (expandableLayersById[empireLayerId] && handleExpandableToggleClick({
         event,
-        toggleElement: toggleElementsByLayerId?.[empireLayerId],
+        toggleElement: document.getElementById(getLayerToggleElementId(empireLayerId)),
         uiState,
         layerId: empireLayerId,
         toggleLayerGroupOpen,
-        syncUi: syncEmpireGroupUi,
+        syncUi: () => syncLayerGroupUi("empires"),
         syncLayerPanelScrollbar,
         showLayerPanelScrollbarTemporarily,
         releaseLayerPanelFocusAfterPointerInteraction,
@@ -170,17 +167,18 @@ function bindLayerControls({
       }
 
       toggleEmpireSublayer(layerState, empireLayerId, empireChildLayerIds);
-      syncEmpireGroupUi();
+      syncLayerGroupUi("empires");
       scheduleViewStateSave();
       drawForEmpireSublayerToggle();
       releaseLayerPanelFocusAfterPointerInteraction(button);
     });
   });
 
-  syncEmpireGroupUi();
+  syncLayerGroupUi("empires");
+  syncLayerGroupUi("olympics");
+  syncLayerGroupUi("borders");
+  syncLayerGroupUi("graticule");
   syncEarthGroupUi();
-  syncGraticuleGroupUi();
-  syncBorderGroupUi();
 }
 
 const AtlasLayerPanelController = {

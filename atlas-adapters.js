@@ -111,7 +111,7 @@ const projectedPathCache = createProjectedPathCache?.() ?? null;
       });
     }
 
-    function createCachedPath2D(geometry, variantKey = "default") {
+    function createCachedPath2D(geometry, variantKey = "default", options = {}) {
       if (!projectedPathCache || typeof Path2D === "undefined") {
         return null;
       }
@@ -123,6 +123,9 @@ const projectedPathCache = createProjectedPathCache?.() ?? null;
       return projectedPathCache.getOrCreate(scene, geometry, variantKey, () => {
         const path2d = new Path2D();
         const cachedPath = d3.geoPath(cameraProjection, path2d);
+        if (Number.isFinite(options.pointRadius)) {
+          cachedPath.pointRadius(options.pointRadius);
+        }
         cachedPath(geometry);
         return path2d;
       });
@@ -138,9 +141,12 @@ const projectedPathCache = createProjectedPathCache?.() ?? null;
         baseProjection.precision(options.maxStepDegrees);
       }
 
-      const preparedPath = createCachedPath2D(geometry, variantKey) ?? (() => {
+      const preparedPath = createCachedPath2D(geometry, variantKey, options) ?? (() => {
         const path2d = new Path2D();
         const cachedPath = d3.geoPath(cameraProjection, path2d);
+        if (Number.isFinite(options.pointRadius)) {
+          cachedPath.pointRadius(options.pointRadius);
+        }
         cachedPath(geometry);
         return path2d;
       })();
@@ -188,8 +194,9 @@ const projectedPathCache = createProjectedPathCache?.() ?? null;
           `fill:${fillRule}`,
           `step:${options.maxStepDegrees ?? "default"}`,
           `min:${options.minimumStepDegrees ?? "default"}`,
+          `radius:${Number.isFinite(options.pointRadius) ? options.pointRadius : "default"}`,
         ].join("|");
-        const cachedPath = createCachedPath2D(geometry, variantKey);
+        const cachedPath = createCachedPath2D(geometry, variantKey, options);
         if (cachedPath) {
           context.fillStyle = fillStyle;
           context.fill(cachedPath, fillRule);
@@ -197,6 +204,9 @@ const projectedPathCache = createProjectedPathCache?.() ?? null;
         }
 
         const drawPath = d3.geoPath(cameraProjection, context);
+        if (Number.isFinite(options.pointRadius)) {
+          drawPath.pointRadius(options.pointRadius);
+        }
         const previousPrecision = typeof baseProjection.precision === "function" ? baseProjection.precision() : null;
         if (typeof baseProjection.precision === "function" && Number.isFinite(options.maxStepDegrees)) {
           baseProjection.precision(options.maxStepDegrees);
@@ -216,8 +226,9 @@ const projectedPathCache = createProjectedPathCache?.() ?? null;
           "stroke",
           `step:${options.maxStepDegrees ?? "default"}`,
           `min:${options.minimumStepDegrees ?? "default"}`,
+          `radius:${Number.isFinite(options.pointRadius) ? options.pointRadius : "default"}`,
         ].join("|");
-        const cachedPath = createCachedPath2D(geometry, variantKey);
+        const cachedPath = createCachedPath2D(geometry, variantKey, options);
         if (cachedPath) {
           context.strokeStyle = strokeStyle;
           context.lineWidth = lineWidth;
@@ -226,6 +237,9 @@ const projectedPathCache = createProjectedPathCache?.() ?? null;
         }
 
         const drawPath = d3.geoPath(cameraProjection, context);
+        if (Number.isFinite(options.pointRadius)) {
+          drawPath.pointRadius(options.pointRadius);
+        }
         const previousPrecision = typeof baseProjection.precision === "function" ? baseProjection.precision() : null;
         if (typeof baseProjection.precision === "function" && Number.isFinite(options.maxStepDegrees)) {
           baseProjection.precision(options.maxStepDegrees);

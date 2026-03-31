@@ -19,7 +19,7 @@ function createMapGestureController() {
     const tapPosition = { x: event.clientX, y: event.clientY };
     const isDoubleTap = now - lastTapTimestamp < 280
       && lastTapPosition
-      && Math.hypot(tapPosition.x - lastTapPosition.x, tapPosition.y - lastTapPosition.y) < 32;
+      && Math.hypot(tapPosition.x - lastTapPosition.x, tapPosition.y - lastTapPosition.y) < 56;
 
     lastTapTimestamp = now;
     lastTapPosition = tapPosition;

@@ -306,6 +306,10 @@ body:not(.is-earth-enabled) .month-overlay {
   display: block;
 }
 
+.mobile-refresh.is-open {
+  z-index: 2;
+}
+
 .mobile-refresh-button {
   position: relative;
   display: inline-flex;
@@ -351,6 +355,7 @@ body:not(.is-earth-enabled) .month-overlay {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
+  z-index: 1;
   min-width: 170px;
   display: grid;
   gap: 6px;

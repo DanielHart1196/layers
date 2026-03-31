@@ -90,50 +90,28 @@ function syncEarthGroupUi({
   syncSharedColorControlUi("water");
 }
 
-function syncBorderGroupUi({
+function syncStandardLayerGroupUi({
+  layerId,
   layerState,
   uiState,
-  borderLayerGroup,
-  borderGroupToggle,
-  bordersButton,
+  groupElement,
+  toggleElement,
+  buttonElement,
   scheduleExpandableLayoutSync,
   syncSliderControlsForLayer,
-  syncColorControlUi: syncSharedColorControlUi,
+  syncColorControlsForLayer,
 }) {
+  const groupUiKey = getLayerGroupUiKey(layerId);
   syncGroupChrome({
-    groupElement: borderLayerGroup,
-    buttonElement: bordersButton,
-    toggleElement: borderGroupToggle,
-    isActive: layerState.borders,
-    isOpen: uiState.isBorderGroupOpen,
+    groupElement,
+    buttonElement,
+    toggleElement,
+    isActive: layerState[layerId],
+    isOpen: Boolean(groupUiKey ? uiState[groupUiKey] : false),
   });
   scheduleExpandableLayoutSync();
-
-  syncSliderControlsForLayer("borders");
-  syncSharedColorControlUi("border");
-}
-
-function syncGraticuleGroupUi({
-  layerState,
-  uiState,
-  graticuleLayerGroup,
-  graticuleGroupToggle,
-  graticuleButton,
-  scheduleExpandableLayoutSync,
-  syncSliderControlsForLayer,
-  syncColorControlUi: syncSharedColorControlUi,
-}) {
-  syncGroupChrome({
-    groupElement: graticuleLayerGroup,
-    buttonElement: graticuleButton,
-    toggleElement: graticuleGroupToggle,
-    isActive: layerState.graticule,
-    isOpen: uiState.isGraticuleGroupOpen,
-  });
-  scheduleExpandableLayoutSync();
-
-  syncSliderControlsForLayer("graticule");
-  syncSharedColorControlUi("graticule");
+  syncSliderControlsForLayer(layerId);
+  syncColorControlsForLayer(layerId);
 }
 
 function syncEmpireGroupUi({
@@ -246,23 +224,21 @@ function syncExpandableSections({ uiState, empireSubLayers }) {
 }
 
 const AtlasLayerPanel = {
-  syncBorderGroupUi,
   syncColorControlUi,
   syncEarthGroupUi,
   syncEmpireGroupUi,
   syncExpandableSections,
-  syncGraticuleGroupUi,
   syncGroupChrome,
+  syncStandardLayerGroupUi,
 };
 
 export {
-  syncBorderGroupUi,
   syncColorControlUi,
   syncEarthGroupUi,
   syncEmpireGroupUi,
   syncExpandableSections,
-  syncGraticuleGroupUi,
   syncGroupChrome,
+  syncStandardLayerGroupUi,
 };
 
 export default AtlasLayerPanel;

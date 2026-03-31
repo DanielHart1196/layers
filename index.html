@@ -398,7 +398,7 @@
                           class="layer-range-input"
                           id="graticuleWidthInput"
                           type="range"
-                          min="0.4"
+                          min="0"
                           max="3"
                           step="0.1"
                           value="0.7"
@@ -529,7 +529,7 @@
                       class="layer-range-input"
                       id="borderWidthInput"
                       type="range"
-                      min="0.4"
+                      min="0"
                       max="3"
                       step="0.1"
                       value="0.8"
@@ -612,6 +612,105 @@
                       max="100"
                       step="1"
                       value="36"
+                    />
+                  </label>
+                </div>
+              </section>
+              <section class="layer-group layer-group-shell" id="olympicsLayerGroup">
+                <div class="layer-group-head">
+                  <button class="layer-item layer-item-group" data-layer-id="olympics" type="button">
+                    <span class="layer-checkbox" aria-hidden="true">
+                      <span class="layer-checkmark"></span>
+                    </span>
+                    <span class="layer-copy">
+                      <strong>Olympics</strong>
+                      <small>Medalists by birthplace</small>
+                    </span>
+                    <span
+                      class="layer-group-toggle"
+                      id="olympicsGroupToggle"
+                      aria-label="Toggle Olympics controls"
+                      aria-controls="olympicsLayerControls"
+                      aria-expanded="false"
+                    >
+                      <span class="layer-group-chevron" aria-hidden="true"></span>
+                    </span>
+                  </button>
+                </div>
+                <div class="layer-sublist layer-sublist-controls" id="olympicsLayerControls">
+                  <label class="layer-control" id="olympicsYearRow" for="olympicsYearInput">
+                    <span class="layer-control-copy">
+                      <strong>Year</strong>
+                      <small id="olympicsYearValue">2024</small>
+                    </span>
+                    <input
+                      class="layer-range-input"
+                      id="olympicsYearInput"
+                      type="range"
+                      min="0"
+                      max="0"
+                      step="1"
+                      value="0"
+                    />
+                  </label>
+                  <label class="layer-control" id="olympicsFillOpacityRow" for="olympicsFillOpacityInput">
+                    <span class="layer-control-copy">
+                      <strong>Fill Opacity</strong>
+                      <small id="olympicsFillOpacityValue">82%</small>
+                    </span>
+                    <input
+                      class="layer-range-input"
+                      id="olympicsFillOpacityInput"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value="82"
+                    />
+                  </label>
+                  <label class="layer-control" id="olympicsBorderWidthRow" for="olympicsBorderWidthInput">
+                    <span class="layer-control-copy">
+                      <strong>Stroke Width</strong>
+                      <small id="olympicsBorderWidthValue">0.9 px</small>
+                    </span>
+                    <input
+                      class="layer-range-input"
+                      id="olympicsBorderWidthInput"
+                      type="range"
+                      min="0"
+                      max="3"
+                      step="0.1"
+                      value="0.9"
+                    />
+                  </label>
+                  <label class="layer-control" id="olympicsBorderOpacityRow" for="olympicsBorderOpacityInput">
+                    <span class="layer-control-copy">
+                      <strong>Border Opacity</strong>
+                      <small id="olympicsBorderOpacityValue">95%</small>
+                    </span>
+                    <input
+                      class="layer-range-input"
+                      id="olympicsBorderOpacityInput"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value="95"
+                    />
+                  </label>
+                  <label class="layer-control" id="olympicsPointSizeRow" for="olympicsPointSizeInput">
+                    <span class="layer-control-copy">
+                      <strong>Point Size</strong>
+                      <small id="olympicsPointSizeValue">3.4 px</small>
+                    </span>
+                    <input
+                      class="layer-range-input"
+                      id="olympicsPointSizeInput"
+                      type="range"
+                      min="1"
+                      max="12"
+                      step="0.1"
+                      value="3.4"
                     />
                   </label>
                 </div>

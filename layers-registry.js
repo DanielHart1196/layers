@@ -300,6 +300,58 @@ function createSliderRow({
       },
       renderPasses: ["overlay", "poster"],
     },
+    olympicsFill: {
+      controlId: "olympicsFill",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "olympicsFillColor",
+      paletteOpenKey: "isOlympicsFillColorPaletteOpen",
+      inputId: "olympicsFillColorInput",
+      valueId: "olympicsFillColorValue",
+      inlineDotId: "olympicsFillColorInlineDot",
+      swatchButtonId: "olympicsFillColorSwatchButton",
+      customsId: "olympicsFillColorCustoms",
+      presetSelector: "[data-olympics-fill-color]",
+      panelId: "olympicsFillColorPanel",
+      fieldId: "olympicsFillColorField",
+      fieldHandleId: "olympicsFillColorFieldHandle",
+      hueSliderId: "olympicsFillColorHueSlider",
+      hueHandleId: "olympicsFillColorHueHandle",
+      addButtonId: "olympicsFillColorAddButton",
+      styleBinding: {
+        scope: "layers.olympics",
+        colorKey: "fillColor",
+        hueKey: "fillHue",
+        saturationKey: "fillSaturation",
+        valueKey: "fillValue",
+      },
+      renderPasses: ["overlay", "poster"],
+    },
+    olympicsBorder: {
+      controlId: "olympicsBorder",
+      storageKey: SHARED_COLOR_STORAGE_KEY,
+      datasetKey: "olympicsBorderColor",
+      paletteOpenKey: "isOlympicsBorderColorPaletteOpen",
+      inputId: "olympicsBorderColorInput",
+      valueId: "olympicsBorderColorValue",
+      inlineDotId: "olympicsBorderColorInlineDot",
+      swatchButtonId: "olympicsBorderColorSwatchButton",
+      customsId: "olympicsBorderColorCustoms",
+      presetSelector: "[data-olympics-border-color]",
+      panelId: "olympicsBorderColorPanel",
+      fieldId: "olympicsBorderColorField",
+      fieldHandleId: "olympicsBorderColorFieldHandle",
+      hueSliderId: "olympicsBorderColorHueSlider",
+      hueHandleId: "olympicsBorderColorHueHandle",
+      addButtonId: "olympicsBorderColorAddButton",
+      styleBinding: {
+        scope: "layers.olympics",
+        colorKey: "strokeColor",
+        hueKey: "strokeHue",
+        saturationKey: "strokeSaturation",
+        valueKey: "strokeValue",
+      },
+      renderPasses: ["overlay", "poster"],
+    },
   };
 
   const layerDefinitions = {
@@ -310,6 +362,7 @@ function createSliderRow({
       ownerType: "system",
       defaultEnabled: false,
       uiOpenKey: "isEarthGroupOpen",
+      toggleElementId: "earthGroupToggle",
       uiSection: "basemap",
       parentId: null,
       children: ["graticule", "tissot"],
@@ -330,6 +383,7 @@ function createSliderRow({
       ownerType: "system",
       defaultEnabled: false,
       uiOpenKey: "isEmpireGroupOpen",
+      toggleElementId: "empireGroupToggle",
       uiSection: "layers",
       parentId: null,
       children: ["roman", "mongol", "british"],
@@ -364,6 +418,7 @@ function createSliderRow({
       ownerType: "system",
       defaultEnabled: false,
       uiOpenKey: "isBorderGroupOpen",
+      toggleElementId: "borderGroupToggle",
       uiSection: "layers",
       parentId: null,
       children: [],
@@ -375,7 +430,7 @@ function createSliderRow({
           label: "Stroke Width",
           inputId: "borderWidthInput",
           valueElementId: "borderWidthValue",
-          min: 0.4,
+          min: 0,
           max: 3,
           step: 0.1,
           binding: { kind: "float", scope: "border", key: "width" },
@@ -402,6 +457,101 @@ function createSliderRow({
       bodySectionId: "borderLayerControls",
       renderSource: "borders",
     },
+    olympics: {
+      id: "olympics",
+      definitionType: "layer-definition",
+      layerKind: "thematic",
+      ownerType: "system",
+      defaultEnabled: false,
+      uiOpenKey: "isOlympicsGroupOpen",
+      toggleElementId: "olympicsGroupToggle",
+      uiSection: "layers",
+      parentId: null,
+      children: [],
+      controls: [
+        "olympicsYear",
+        "olympicsFill",
+        "olympicsFillOpacity",
+        "olympicsBorder",
+        "olympicsBorderWidth",
+        "olympicsBorderOpacity",
+        "olympicsPointSize",
+      ],
+      rows: [
+        createSliderRow({
+          controlId: "olympicsYear",
+          rowElementId: "olympicsYearRow",
+          label: "Year",
+          inputId: "olympicsYearInput",
+          valueElementId: "olympicsYearValue",
+          min: 0,
+          max: 0,
+          step: 1,
+          binding: { kind: "layerTime", layerId: "olympics" },
+          valueFormat: "timeLabel",
+          uiSync: "olympics",
+          renderPasses: ["overlay", "poster"],
+        }),
+        createSliderRow({
+          controlId: "olympicsFillOpacity",
+          rowElementId: "olympicsFillOpacityRow",
+          label: "Fill Opacity",
+          inputId: "olympicsFillOpacityInput",
+          valueElementId: "olympicsFillOpacityValue",
+          min: 0,
+          max: 100,
+          step: 1,
+          binding: { kind: "percent", scope: "layers.olympics", key: "fillOpacity" },
+          valueFormat: "percent",
+          uiSync: "olympics",
+          renderPasses: ["overlay", "poster"],
+        }),
+        createSliderRow({
+          controlId: "olympicsBorderWidth",
+          rowElementId: "olympicsBorderWidthRow",
+          label: "Stroke Width",
+          inputId: "olympicsBorderWidthInput",
+          valueElementId: "olympicsBorderWidthValue",
+          min: 0,
+          max: 3,
+          step: 0.1,
+          binding: { kind: "float", scope: "layers.olympics", key: "strokeWidth" },
+          valueFormat: "widthPx",
+          uiSync: "olympics",
+          renderPasses: ["overlay", "poster"],
+        }),
+        createSliderRow({
+          controlId: "olympicsBorderOpacity",
+          rowElementId: "olympicsBorderOpacityRow",
+          label: "Border Opacity",
+          inputId: "olympicsBorderOpacityInput",
+          valueElementId: "olympicsBorderOpacityValue",
+          min: 0,
+          max: 100,
+          step: 1,
+          binding: { kind: "percent", scope: "layers.olympics", key: "strokeOpacity" },
+          valueFormat: "percent",
+          uiSync: "olympics",
+          renderPasses: ["overlay", "poster"],
+        }),
+        createSliderRow({
+          controlId: "olympicsPointSize",
+          rowElementId: "olympicsPointSizeRow",
+          label: "Point Size",
+          inputId: "olympicsPointSizeInput",
+          valueElementId: "olympicsPointSizeValue",
+          min: 1,
+          max: 12,
+          step: 0.1,
+          binding: { kind: "float", scope: "layers.olympics", key: "pointRadius" },
+          valueFormat: "widthPx",
+          uiSync: "olympics",
+          renderPasses: ["overlay", "poster"],
+        }),
+      ],
+      bodySectionId: "olympicsLayerControls",
+      renderSource: "olympics",
+    },
     graticule: {
       id: "graticule",
       definitionType: "layer-definition",
@@ -409,6 +559,7 @@ function createSliderRow({
       ownerType: "system",
       defaultEnabled: true,
       uiOpenKey: "isGraticuleGroupOpen",
+      toggleElementId: "graticuleGroupToggle",
       uiSection: "projection-settings",
       parentId: "earth",
       children: [],
@@ -420,7 +571,7 @@ function createSliderRow({
           label: "Stroke Width",
           inputId: "graticuleWidthInput",
           valueElementId: "graticuleWidthValue",
-          min: 0.4,
+          min: 0,
           max: 3,
           step: 0.1,
           binding: { kind: "float", scope: "graticule", key: "width" },
@@ -469,6 +620,7 @@ function createSliderRow({
       defaultEnabled: true,
       defaultQuality: "medium",
       uiOpenKey: "isRomanEmpireGroupOpen",
+      toggleElementId: "romanEmpireGroupToggle",
       uiSection: "layers",
       children: [],
       controls: ["romanEmpireFill", "romanEmpireFillOpacity", "romanEmpireBorder", "romanEmpireBorderWidth", "romanEmpireBorderOpacity"],
@@ -530,6 +682,7 @@ function createSliderRow({
       defaultEnabled: false,
       defaultQuality: "medium",
       uiOpenKey: "isMongolEmpireGroupOpen",
+      toggleElementId: "mongolEmpireGroupToggle",
       uiSection: "layers",
       children: [],
       controls: ["mongolEmpireFill", "mongolEmpireFillOpacity", "mongolEmpireBorder", "mongolEmpireBorderWidth", "mongolEmpireBorderOpacity"],
@@ -591,6 +744,7 @@ function createSliderRow({
       defaultEnabled: false,
       defaultQuality: "medium",
       uiOpenKey: "isBritishEmpireGroupOpen",
+      toggleElementId: "britishEmpireGroupToggle",
       uiSection: "layers",
       children: [],
       controls: ["britishEmpireFill", "britishEmpireFillOpacity", "britishEmpireBorder", "britishEmpireBorderWidth", "britishEmpireBorderOpacity"],
@@ -720,6 +874,20 @@ function createSliderRow({
       strokeSaturation: 0.79,
       strokeValue: 0.69,
     },
+    olympics: {
+      fillColor: "#D54A44",
+      fillOpacity: 0.82,
+      fillHue: 3,
+      fillSaturation: 0.68,
+      fillValue: 0.84,
+      strokeColor: "#FFF4E2",
+      strokeOpacity: 0.95,
+      strokeWidth: 0.9,
+      strokeHue: 38,
+      strokeSaturation: 0.11,
+      strokeValue: 1,
+      pointRadius: 3.4,
+    },
   };
 
   function cloneValue(value) {
@@ -770,6 +938,10 @@ function createSliderRow({
     return getLayerDefinition(layerId)?.uiOpenKey ?? null;
   }
 
+  function getLayerToggleElementId(layerId) {
+    return getLayerDefinition(layerId)?.toggleElementId ?? null;
+  }
+
   function getLayerRows(layerId) {
     return cloneValue(getLayerDefinition(layerId)?.rows ?? []);
   }
@@ -790,6 +962,56 @@ function createSliderRow({
         .filter((row) => row.type === "slider" && row.controlId)
         .map((row) => [row.controlId, cloneValue(row)]),
     );
+  }
+
+  function getColorControlPersistenceDefinition(controlId) {
+    const definition = colorControlDefinitions[controlId] ?? null;
+    const styleBinding = definition?.styleBinding;
+    if (!styleBinding) {
+      return null;
+    }
+
+    return {
+      domain: "style",
+      scope: styleBinding.scope,
+      key: styleBinding.colorKey,
+      valueType: "color",
+    };
+  }
+
+  function getSliderControlPersistenceDefinition(controlId) {
+    const definition = Object.values(layerDefinitions)
+      .flatMap((layerDefinition) => layerDefinition.rows ?? [])
+      .find((row) => row.type === "slider" && row.controlId === controlId)
+      ?? null;
+    const binding = definition?.binding;
+    if (!binding) {
+      return null;
+    }
+
+    switch (binding.kind) {
+      case "percent":
+      case "float":
+        return {
+          domain: "style",
+          scope: binding.scope,
+          key: binding.key,
+          valueType: binding.kind,
+          min: definition.min,
+          max: definition.max,
+        };
+      case "layerTime":
+        return {
+          domain: "layer-time",
+          layerId: binding.layerId,
+        };
+      case "empireQualityAll":
+        return {
+          domain: "empire-quality-all",
+        };
+      default:
+        return null;
+    }
   }
 
   function resolveStyleScope(scope, {
@@ -813,6 +1035,8 @@ function createSliderRow({
         return layerStyleState.mongol;
       case "layers.british":
         return layerStyleState.british;
+      case "layers.olympics":
+        return layerStyleState.olympics;
       default:
         return null;
     }
@@ -889,6 +1113,16 @@ function createSliderRow({
     );
   }
 
+  function createDefaultLayerTemporalState() {
+    return Object.fromEntries(
+      getGenericLayerDefinitions()
+        .map((definition) => [definition.id, {
+          selectedTime: null,
+          isTimeLocked: false,
+        }]),
+    );
+  }
+
   function createDefaultEmpireQualityState() {
     return Object.fromEntries(
       getEmpireSublayerDefinitions().map((definition) => [definition.id, definition.defaultQuality]),
@@ -919,11 +1153,13 @@ const AtlasLayersRegistry = {
   createDefaultLayerStyleState,
   createDefaultGraticuleStyleState,
   createDefaultLayerState,
+  createDefaultLayerTemporalState,
   createLayerInstance,
   createSystemLayerInstances,
   empireQualityLevels,
   getColorControlDefinition,
   getColorControlDefinitions,
+  getColorControlPersistenceDefinition,
   getDefaultEmpireChildOnEnable,
   getDefinitionsBySection,
   getExpandableLayerDefinitions,
@@ -935,11 +1171,13 @@ const AtlasLayersRegistry = {
   isRootLayer,
   getLayerChildrenDefinitions,
   getLayerDefinition,
+  getLayerToggleElementId,
   getLayerGroupUiKey,
   getLayerRows,
   getRootLayerDefinitions,
   getSliderControlDefinition,
   getSliderControlDefinitions,
+  getSliderControlPersistenceDefinition,
   resolveStyleScope,
   isExpandableLayer,
   layerDefinitions,
@@ -953,11 +1191,13 @@ export {
   createDefaultLayerStyleState,
   createDefaultGraticuleStyleState,
   createDefaultLayerState,
+  createDefaultLayerTemporalState,
   createLayerInstance,
   createSystemLayerInstances,
   empireQualityLevels,
   getColorControlDefinition,
   getColorControlDefinitions,
+  getColorControlPersistenceDefinition,
   getDefaultEmpireChildOnEnable,
   getDefinitionsBySection,
   getExpandableLayerDefinitions,
@@ -969,11 +1209,13 @@ export {
   isRootLayer,
   getLayerChildrenDefinitions,
   getLayerDefinition,
+  getLayerToggleElementId,
   getLayerGroupUiKey,
   getLayerRows,
   getRootLayerDefinitions,
   getSliderControlDefinition,
   getSliderControlDefinitions,
+  getSliderControlPersistenceDefinition,
   resolveStyleScope,
   isExpandableLayer,
   layerDefinitions,

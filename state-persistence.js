@@ -1,6 +1,8 @@
 import {
   getColorControlDefinitions,
+  getColorControlPersistenceDefinition,
   getSliderControlDefinitions,
+  getSliderControlPersistenceDefinition,
   resolveStyleScope,
 } from "./layers-registry.js";
 
@@ -29,11 +31,11 @@ function saveStyleSettings({
       const payload = {};
 
       Object.values(getColorControlDefinitions()).forEach((definition) => {
-        const binding = definition?.styleBinding;
-        if (!binding) {
+        const persistence = getColorControlPersistenceDefinition(definition?.controlId);
+        if (!persistence || persistence.domain !== "style") {
           return;
         }
-        const scopeTarget = resolveStyleScope(binding.scope, {
+        const scopeTarget = resolveStyleScope(persistence.scope, {
           borderStyleState,
           graticuleStyleState,
           earthStyleState,
@@ -42,15 +44,15 @@ function saveStyleSettings({
         if (!scopeTarget) {
           return;
         }
-        ensureScopeObject(payload, binding.scope)[binding.colorKey] = scopeTarget[binding.colorKey];
+        ensureScopeObject(payload, persistence.scope)[persistence.key] = scopeTarget[persistence.key];
       });
 
       Object.values(getSliderControlDefinitions()).forEach((definition) => {
-        const binding = definition?.binding;
-        if (!binding || binding.kind === "empireQualityAll") {
+        const persistence = getSliderControlPersistenceDefinition(definition?.controlId);
+        if (!persistence || persistence.domain !== "style") {
           return;
         }
-        const scopeTarget = resolveStyleScope(binding.scope, {
+        const scopeTarget = resolveStyleScope(persistence.scope, {
           borderStyleState,
           graticuleStyleState,
           earthStyleState,
@@ -59,7 +61,7 @@ function saveStyleSettings({
         if (!scopeTarget) {
           return;
         }
-        ensureScopeObject(payload, binding.scope)[binding.key] = scopeTarget[binding.key];
+        ensureScopeObject(payload, persistence.scope)[persistence.key] = scopeTarget[persistence.key];
       });
 
       storage?.setItem(
@@ -91,41 +93,41 @@ function loadStyleSettings({
       const parsed = JSON.parse(stored);
 
       Object.values(getColorControlDefinitions()).forEach((definition) => {
-        const binding = definition?.styleBinding;
-        if (!binding) {
+        const persistence = getColorControlPersistenceDefinition(definition?.controlId);
+        if (!persistence || persistence.domain !== "style") {
           return;
         }
-        const scopeObject = getScopeObject(parsed, binding.scope);
-        const colorValue = normalizeHexColor(scopeObject?.[binding.colorKey]);
+        const scopeObject = getScopeObject(parsed, persistence.scope);
+        const colorValue = normalizeHexColor(scopeObject?.[persistence.key]);
         if (colorValue) {
           applyPersistedColorControlValue(definition.controlId, colorValue);
         }
       });
 
       Object.values(getSliderControlDefinitions()).forEach((definition) => {
-        const binding = definition?.binding;
-        if (!binding || binding.kind === "empireQualityAll") {
+        const persistence = getSliderControlPersistenceDefinition(definition?.controlId);
+        if (!persistence || persistence.domain !== "style") {
           return;
         }
-        const scopeTarget = resolveStyleScope(binding.scope, {
+        const scopeTarget = resolveStyleScope(persistence.scope, {
           borderStyleState,
           graticuleStyleState,
           earthStyleState,
           layerStyleState,
         });
-        const scopeObject = getScopeObject(parsed, binding.scope);
-        const rawValue = Number(scopeObject?.[binding.key]);
+        const scopeObject = getScopeObject(parsed, persistence.scope);
+        const rawValue = Number(scopeObject?.[persistence.key]);
         if (!scopeTarget || !Number.isFinite(rawValue)) {
           return;
         }
 
-        if (binding.kind === "percent") {
-          scopeTarget[binding.key] = clamp(rawValue, 0, 1);
+        if (persistence.valueType === "percent") {
+          scopeTarget[persistence.key] = clamp(rawValue, 0, 1);
           return;
         }
 
-        if (binding.kind === "float") {
-          scopeTarget[binding.key] = clamp(rawValue, definition.min, definition.max);
+        if (persistence.valueType === "float") {
+          scopeTarget[persistence.key] = clamp(rawValue, persistence.min, persistence.max);
         }
       });
     } catch (error) {
@@ -141,10 +143,28 @@ function loadStyleSettings({
     rotationOffset,
     flatProjectionPanOffsets,
     layerState,
+    layerTemporalState,
     empireQualityState,
     temporalState,
   }) {
     try {
+      const persistedLayerTimes = {};
+      Object.values(getSliderControlDefinitions()).forEach((definition) => {
+        const persistence = getSliderControlPersistenceDefinition(definition?.controlId);
+        if (!persistence || persistence.domain !== "layer-time") {
+          return;
+        }
+        persistedLayerTimes[persistence.layerId] = {
+          selectedTime: layerTemporalState?.[persistence.layerId]?.selectedTime ?? null,
+          isTimeLocked: Boolean(layerTemporalState?.[persistence.layerId]?.isTimeLocked),
+        };
+      });
+
+      const hasEmpireQualityControl = Object.values(getSliderControlDefinitions()).some((definition) => {
+        const persistence = getSliderControlPersistenceDefinition(definition?.controlId);
+        return persistence?.domain === "empire-quality-all";
+      });
+
       storage?.setItem(
         storageKey,
         JSON.stringify({
@@ -156,9 +176,12 @@ function loadStyleSettings({
           },
           flatProjectionPanOffsets,
           layers: { ...layerState },
-          empireQuality: {
-            ...empireQualityState,
-          },
+          layerTimes: persistedLayerTimes,
+          empireQuality: hasEmpireQualityControl
+            ? {
+                ...empireQualityState,
+              }
+            : undefined,
           month: temporalState.selectedMonth,
         }),
       );
@@ -175,6 +198,7 @@ function loadStyleSettings({
     clampPhi,
     flatProjectionPanOffsets,
     layerState,
+    layerTemporalState,
     empireChildLayerIds,
     empireQualityState,
     temporalState,
@@ -237,6 +261,26 @@ function loadStyleSettings({
 
       if (!hasStoredLayerVisibility || typeof parsed.layers?.empires !== "boolean") {
         layerState.empires = hasAnyEmpireChildEnabled(layerState, empireChildLayerIds);
+      }
+
+      if (parsed?.layerTimes && typeof parsed.layerTimes === "object") {
+        Object.keys(layerTemporalState ?? {}).forEach((key) => {
+          const persistedState = parsed.layerTimes?.[key];
+          if (!persistedState || typeof persistedState !== "object") {
+            return;
+          }
+
+          if (
+            typeof persistedState.selectedTime === "string"
+            || typeof persistedState.selectedTime === "number"
+          ) {
+            layerTemporalState[key].selectedTime = persistedState.selectedTime;
+          }
+
+          if (typeof persistedState.isTimeLocked === "boolean") {
+            layerTemporalState[key].isTimeLocked = persistedState.isTimeLocked;
+          }
+        });
       }
 
       if (parsed?.empireQuality && typeof parsed.empireQuality === "object") {

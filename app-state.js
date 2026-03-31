@@ -1,4 +1,8 @@
-import { getColorControlDefinitions, getExpandableSectionDefinitions } from "./layers-registry.js";
+import {
+  createDefaultLayerTemporalState,
+  getColorControlDefinitions,
+  getExpandableSectionDefinitions,
+} from "./layers-registry.js";
 
 function createDefaultUiState() {
   const uiState = {
@@ -54,6 +58,7 @@ function createAppState({
     empireQuality: createDefaultEmpireQualityState(),
     temporal: {
       selectedMonth: getDefaultMonth(),
+      layers: createDefaultLayerTemporalState(),
     },
     projection: {
       selectedProjection: getDefaultProjection(),

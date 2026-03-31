@@ -10,6 +10,10 @@ import {
 import { createFlatMapRenderer } from "./atlas-earth.js";
 import { createAdapter } from "./atlas-adapters.js";
 import { getEmpireSublayerIds } from "./layers-registry.js";
+import {
+  resolveActiveLayerSourceData,
+  resolveLayerSourceData,
+} from "./layer-data-resolver.js";
 
 function createEarthTextureStore() {
     const textureCache = new Map();
@@ -104,6 +108,7 @@ function createEarthTextureStore() {
     const vectorAreaScratchCanvas = document.createElement("canvas");
     const vectorAreaScratchContext = vectorAreaScratchCanvas.getContext("2d");
     const flatMapRenderer = createFlatMapRenderer?.() ?? null;
+    const pointFeatureGroupCache = new WeakMap();
     const tissotGeometry = {
       type: "FeatureCollection",
       features: (() => {
@@ -156,6 +161,92 @@ function createEarthTextureStore() {
       return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
     }
 
+    function shouldRenderStroke({ width, opacity = 1 }) {
+      return Number.isFinite(width) && width > 0 && Number.isFinite(opacity) && opacity > 0;
+    }
+
+    function getLayerPointCircleStyle(layerId, overrides = {}) {
+      const layerStyle = layerStateRef().layerStyles?.[layerId] ?? {};
+      return {
+        fillColor: overrides.fillColor ?? layerStyle.fillColor ?? "#D54A44",
+        fillOpacity: Number.isFinite(overrides.fillOpacity) ? overrides.fillOpacity : (
+          Number.isFinite(layerStyle.fillOpacity) ? layerStyle.fillOpacity : 0.82
+        ),
+        strokeColor: overrides.strokeColor ?? layerStyle.strokeColor ?? "#FFF4E2",
+        strokeOpacity: Number.isFinite(overrides.strokeOpacity) ? overrides.strokeOpacity : (
+          Number.isFinite(layerStyle.strokeOpacity) ? layerStyle.strokeOpacity : 0.95
+        ),
+        strokeWidth: Number.isFinite(overrides.strokeWidth) ? overrides.strokeWidth : (
+          Number.isFinite(layerStyle.strokeWidth) ? layerStyle.strokeWidth : 0.9
+        ),
+        pointRadius: Number.isFinite(overrides.pointRadius) ? overrides.pointRadius : (
+          Number.isFinite(layerStyle.pointRadius) ? layerStyle.pointRadius : 3.4
+        ),
+      };
+    }
+
+    function renderPointCircleLayer(adapter, geometry, style, options = {}) {
+      if (!geometry) {
+        return;
+      }
+
+      adapter.fillGeometry(
+        geometry,
+        withOpacity(style.fillColor, style.fillOpacity),
+        "nonzero",
+        {
+          maxStepDegrees: options.maxStepDegrees,
+          minimumStepDegrees: options.minimumStepDegrees,
+          pointRadius: style.pointRadius,
+        },
+      );
+      if (shouldRenderStroke({
+        width: style.strokeWidth,
+        opacity: style.strokeOpacity,
+      })) {
+        adapter.strokeGeometry(
+          geometry,
+          withOpacity(style.strokeColor, style.strokeOpacity),
+          style.strokeWidth,
+          {
+            maxStepDegrees: options.maxStepDegrees,
+            minimumStepDegrees: options.minimumStepDegrees,
+            pointRadius: style.pointRadius,
+          },
+        );
+      }
+    }
+
+    function groupFeaturesByProperty(featureCollection, propertyKey) {
+      if (!featureCollection || featureCollection.type !== "FeatureCollection") {
+        return new Map();
+      }
+
+      let collectionCache = pointFeatureGroupCache.get(featureCollection);
+      if (!collectionCache) {
+        collectionCache = new Map();
+        pointFeatureGroupCache.set(featureCollection, collectionCache);
+      }
+
+      if (collectionCache.has(propertyKey)) {
+        return collectionCache.get(propertyKey);
+      }
+
+      const grouped = new Map();
+      (featureCollection.features ?? []).forEach((feature) => {
+        const propertyValue = feature?.properties?.[propertyKey] ?? "unknown";
+        if (!grouped.has(propertyValue)) {
+          grouped.set(propertyValue, {
+            type: "FeatureCollection",
+            features: [],
+          });
+        }
+        grouped.get(propertyValue).features.push(feature);
+      });
+      collectionCache.set(propertyKey, grouped);
+      return grouped;
+    }
+
     function getSelectedLodKey(layerKey, scene) {
       const manifest = manifestRef?.();
       const manifestLayer = manifest?.layers?.[layerKey];
@@ -182,22 +273,14 @@ function createEarthTextureStore() {
 
     function getLayerGeometry(layerKey, scene, fallbackGeometry) {
       const worldData = worldDataRef();
-      const layerSources = worldData?.layerSources?.[layerKey];
-
       const selectedLod = getSelectedLodKey(layerKey, scene);
-
-      if (selectedLod && layerSources?.[selectedLod]) {
-        return layerSources[selectedLod];
-      }
-
-      if (layerSources) {
-        const firstAvailable = Object.values(layerSources).find(Boolean);
-        if (firstAvailable) {
-          return firstAvailable;
-        }
-      }
-
-      return fallbackGeometry;
+      return resolveActiveLayerSourceData({
+        layerSources: worldData?.layerSources,
+        layerId: layerKey,
+        layerTemporalState: layerStateRef()?.layerTemporal,
+        stateKey: selectedLod,
+        fallbackValue: fallbackGeometry,
+      });
     }
 
     function createSceneAdapter(scene, contextOverride = overlayContext) {
@@ -568,13 +651,19 @@ function createEarthTextureStore() {
       const graticuleStroke = withOpacity(graticuleColor, graticuleOpacity);
       const equatorStroke = withOpacity(graticuleColor, Math.min(graticuleOpacity * 2, 1));
 
-      adapter.strokeGeometry(graticule, graticuleStroke, graticuleWidth, {
-        maxStepDegrees: 1,
-      });
+      if (shouldRenderStroke({ width: graticuleWidth, opacity: graticuleOpacity })) {
+        adapter.strokeGeometry(graticule, graticuleStroke, graticuleWidth, {
+          maxStepDegrees: 1,
+        });
+      }
 
-      adapter.strokeGeometry(equator, equatorStroke, Math.max(graticuleWidth * 1.65, graticuleWidth + 0.3), {
-        maxStepDegrees: 1,
-      });
+      const equatorWidth = Math.max(graticuleWidth * 1.65, graticuleWidth + 0.3);
+      const equatorOpacity = Math.min(graticuleOpacity * 2, 1);
+      if (shouldRenderStroke({ width: equatorWidth, opacity: equatorOpacity })) {
+        adapter.strokeGeometry(equator, equatorStroke, equatorWidth, {
+          maxStepDegrees: 1,
+        });
+      }
     }
 
     function renderTissotLayer(scene) {
@@ -613,9 +702,61 @@ function createEarthTextureStore() {
       const borderStroke = borderColor.startsWith("#")
         ? `${borderColor}${Math.round(borderOpacity * 255).toString(16).padStart(2, "0")}`
         : borderColor;
-      adapter.strokeGeometry(bordersGeometry, borderStroke, borderWidth, {
-        maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
+      if (shouldRenderStroke({ width: borderWidth, opacity: borderOpacity })) {
+        adapter.strokeGeometry(bordersGeometry, borderStroke, borderWidth, {
+          maxStepDegrees: adapter.kind === "interrupted" ? 0.75 : 1,
+        });
+      }
+    }
+
+    function renderOlympicsLayer(scene) {
+      if (!layerStateRef().olympics) {
+        return;
+      }
+
+      const adapter = createSceneAdapter(scene);
+
+      if (!adapter.isReady || !adapter.canRenderLayer("land")) {
+        return;
+      }
+
+      const olympicsGeometry = adapter.resolveGeometry("olympics", getLayerGeometry("olympics", scene, null));
+      if (!olympicsGeometry) {
+        return;
+      }
+      const groupedByMedal = groupFeaturesByProperty(olympicsGeometry, "medal");
+      const renderOptions = {
+        maxStepDegrees: adapter.kind === "interrupted" ? 0.9 : 1.2,
+      };
+      const medalStyles = {
+        gold: getLayerPointCircleStyle("olympics", {
+          fillColor: "#D4AF37",
+          strokeColor: "#FFF6D5",
+        }),
+        silver: getLayerPointCircleStyle("olympics", {
+          fillColor: "#B8C2CC",
+          strokeColor: "#F8FBFF",
+        }),
+        bronze: getLayerPointCircleStyle("olympics", {
+          fillColor: "#B87333",
+          strokeColor: "#F6DFC7",
+        }),
+        unknown: getLayerPointCircleStyle("olympics"),
+      };
+
+      ["gold", "silver", "bronze"].forEach((medalKey) => {
+        renderPointCircleLayer(
+          adapter,
+          groupedByMedal.get(medalKey) ?? null,
+          medalStyles[medalKey],
+          renderOptions,
+        );
       });
+
+      const unknownGeometry = groupedByMedal.get("unknown");
+      if (unknownGeometry) {
+        renderPointCircleLayer(adapter, unknownGeometry, medalStyles.unknown, renderOptions);
+      }
     }
 
     function renderEmpiresLayer(scene, options = {}) {
@@ -632,9 +773,12 @@ function createEarthTextureStore() {
         .filter((empireKey) => Boolean(layerStateRef()?.[empireKey]))
         .map((empireKey) => ({
           empireKey,
-          geometry: worldDataRef()?.layerSources?.empires?.[empireKey]?.[selectedEmpireQuality]
-            ?? worldDataRef()?.layerSources?.empires?.[empireKey]?.high
-            ?? worldDataRef()?.layerSources?.empires?.[empireKey]?.canonical,
+          geometry: resolveActiveLayerSourceData({
+            layerSources: worldDataRef()?.layerSources,
+            layerId: empireKey,
+            layerTemporalState: layerStateRef()?.layerTemporal,
+            stateKey: selectedEmpireQuality,
+          }),
           style: layerStyles[empireKey] ?? null,
         }))
         .filter(({ geometry }) => Boolean(geometry));
@@ -689,7 +833,9 @@ function createEarthTextureStore() {
             const strokeB = Number.parseInt(strokeHex.slice(4, 6), 16);
 
             adapter.fillGeometry(geometry, `rgba(${fillR}, ${fillG}, ${fillB}, ${fillOpacity})`, "evenodd", areaFillOptions);
-            adapter.strokeGeometry(geometry, `rgba(${strokeR}, ${strokeG}, ${strokeB}, ${strokeOpacity})`, strokeWidth, areaStrokeOptions);
+            if (shouldRenderStroke({ width: strokeWidth, opacity: strokeOpacity })) {
+              adapter.strokeGeometry(geometry, `rgba(${strokeR}, ${strokeG}, ${strokeB}, ${strokeOpacity})`, strokeWidth, areaStrokeOptions);
+            }
           });
         },
       });
@@ -742,6 +888,7 @@ function createEarthTextureStore() {
       renderers: [
         renderFallbackLayer,
         renderEmpiresLayer,
+        renderOlympicsLayer,
         renderGraticuleLayer,
         renderTissotLayer,
         renderBordersLayer,

@@ -33,6 +33,15 @@
 - Favor derived layout over duplicated constants and structural relationships over matching magic numbers.
 - Use shared design tokens, composable UI primitives, and constraint-driven UI when building linked controls so consistency is encoded in the structure instead of remembered manually.
 - Allow intentional structural coupling when it preserves consistency between related controls, but keep the coupling explicit and inspectable.
+- For layer panel architecture, "shared" means same structural source code, not just matching visuals or behavior.
+- All layers should ultimately come from the same shared layer row/shell structure.
+- Layer expandability should be derived from the shared layer definition shape:
+  - child rows
+  - rows
+  - body section
+- Do not treat a new layer as needing bespoke shell HTML, bespoke chevron wiring, or bespoke expand/collapse logic just because it has controls.
+- If a new layer cannot be added through the same layer structure used by other layers, stop and treat that as a structural refactor need, not a normal feature addition.
+- Row definitions should also ultimately come from one source of truth; if a row change requires edits in both `layers-registry.js` and `index.html`, treat that as an architectural gap rather than the desired steady state.
 
 ## Git / Remote Notes
 - Current primary branch: `main`
@@ -103,6 +112,27 @@
   - make empire render the same way as other non-satellite layers
   - use that as the first proof of a true shared layer model
   - revisit satellite later as a raster-backed layer under the same scene/layer contract
+
+## Temporal Layer Direction
+- Time should be a property of layer data, not a tectonics-specific frontend system.
+- Any layer can be effectively static or temporal depending on how many geometry states exist in its data.
+- The renderer should stay dumb:
+  - resolve active geometry/features for the current time
+  - render them like any other layer
+- Source/master temporal data and served/runtime temporal data should be treated as separate concerns.
+- Prefer one logical runtime artifact per layer, even if source preprocessing uses many files.
+- First temporal-layer proof should use a simple non-tectonics dataset (currently: Olympic medals by athlete birthplace).
+- Current real source candidate:
+  - `data/sources/olympicsgonuts/1996+`
+  - source pages expose a consistent per-year CSV set from `1996` through `2024`
+  - canonical input should be `*_medalists_all.csv`
+  - `*_missing_place_of_birth.csv` should be treated as coverage diagnostics, not the primary runtime input
+- Current OlympicsGoNUTS read:
+  - schema is stable across `1996` through `2024`
+  - the main files already contain `lat` / `lon`, athlete identity, medal, sport, event, delegation, country, and birthplace fields
+  - this is good enough to build the first generic temporal layer adapter without Olympics-specific frontend code
+- Detailed contract draft lives in:
+  - `docs/temporal-layer-data.md`
 
 ## Empire Layer State Model
 - `layerState.empires` is category visibility, not the canonical source of child preference truth.

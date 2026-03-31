@@ -40,6 +40,9 @@
   - `layer` is one row type
   - sliders, colors, dropdowns, and similar controls are row types
   - if nesting is needed, prefer child rows over bespoke container concepts
+- For layer panel structure in `layers`, "shared" means same structural source code, not merely similar behavior.
+- Do not add layer-specific shell markup, layer-specific chevron handling, or layer-specific expand/collapse controller paths when a layer can be expressed through the shared layer-row structure.
+- Expandability for a layer should be derived from shared layer definition structure such as child rows, rows, or a body section, not introduced as a one-off special case for that layer.
 - Do not invent a new component pattern, alternate DOM structure, or parallel interaction model when an equivalent working pattern already exists in the codebase.
 - When extending an existing UI pattern to new data, copy the proven pattern first and only change the identifiers, labels, and state bindings required for the new item.
 - Before implementing a new UI interaction in `layers`, identify the exact existing file and section it should mirror, and use that as the implementation template.
@@ -58,6 +61,7 @@
 - If the quickest available fix is a containment hack rather than a structural fix, say so explicitly before applying it.
 - If the user is asking a question, answer the question first and do not make code changes unless they explicitly ask for an edit or clearly direct implementation. A question is not implicit permission to modify files.
 - If the user uses `?`, treat that as a strong signal they are asking a question, not granting permission to edit.
+- Strict rule: if the user's prompt includes `?`, do not make any code or file changes in that turn.
 - Temporary on-screen debug UI in `layers` should default to a floating top-left position and should avoid covering primary controls like refresh, layer menu, projection pill, or month controls unless the user asks otherwise.
 - Debug overlays in `layers` must be sized and positioned conservatively on first pass:
   - cap width so they do not drift into the top-center or top-right control zones
