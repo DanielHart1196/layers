@@ -67,6 +67,9 @@ function createAppState({
       scale: 1,
     },
     ui: createDefaultUiState(),
+    selection: {
+      feature: null,
+    },
     styles: {
       earth: createDefaultEarthStyleState(),
       borders: createDefaultBorderStyleState(),

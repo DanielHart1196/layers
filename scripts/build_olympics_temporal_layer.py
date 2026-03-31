@@ -8,6 +8,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from feature_ids import build_feature_id
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "data" / "sources" / "olympicsgonuts"
@@ -40,7 +42,7 @@ def load_missing_count(year: int) -> int:
         return max(sum(1 for _ in handle) - 1, 0)
 
 
-def build_feature(year: int, row: dict[str, str]) -> dict[str, object] | None:
+def build_feature(year: int, row: dict[str, str], feature_index: int) -> dict[str, object] | None:
     lon = parse_float(row.get("lon"))
     lat = parse_float(row.get("lat"))
     if lon is None or lat is None:
@@ -80,10 +82,18 @@ def build_feature(year: int, row: dict[str, str]) -> dict[str, object] | None:
         "nuts3Id": clean_value(row.get("nuts3_id")),
         "nuts3Name": clean_value(row.get("nuts3_name")),
     }
+    geometry = {"type": "Point", "coordinates": [lon, lat]}
 
     return {
         "type": "Feature",
-        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+        "id": build_feature_id(
+            layer_id="olympic-medals-birthplace",
+            time_key=year,
+            feature_index=feature_index,
+            properties=properties,
+            geometry=geometry,
+        ),
+        "geometry": geometry,
         "properties": properties,
     }
 
@@ -126,8 +136,8 @@ def main() -> int:
         with source_path.open("r", encoding="utf-8", newline="") as handle:
             reader = csv.DictReader(handle)
             skipped_for_missing_coordinates = 0
-            for row in reader:
-                feature = build_feature(year, row)
+            for row_index, row in enumerate(reader):
+                feature = build_feature(year, row, row_index)
                 if feature is None:
                     skipped_for_missing_coordinates += 1
                     continue

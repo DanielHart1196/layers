@@ -551,6 +551,17 @@ function createSliderRow({
       ],
       bodySectionId: "olympicsLayerControls",
       renderSource: "olympics",
+      pointOrder: {
+        renderMode: "ordered",
+        groupBy: "medal",
+        groupOrder: ["bronze", "silver", "gold", "unknown"],
+        featureOrder: [
+          { property: "athleteName", direction: "asc" },
+          { property: "eventName", direction: "asc" },
+          { property: "delegationName", direction: "asc" },
+          { field: "id", direction: "asc" },
+        ],
+      },
     },
     graticule: {
       id: "graticule",

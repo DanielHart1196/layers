@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from area_metrics import geometry_area_km2
+
 
 ROOT = Path(__file__).resolve().parents[1]
 EMPIRE_SOURCES = {
@@ -125,30 +127,58 @@ def write_payload(path, payload):
     path.write_text(f"{json.dumps(payload, indent=2)}\n", encoding="utf-8")
 
 
+def enrich_feature_properties(feature, extra_properties=None):
+    extra_properties = extra_properties or {}
+    geometry = feature["geometry"]
+    derived_area_km2 = round(geometry_area_km2(geometry))
+    return {
+        **feature,
+        "properties": {
+            **feature.get("properties", {}),
+            "derivedAreaKm2": derived_area_km2,
+            **extra_properties,
+        },
+    }
+
+
 def main():
     for empire_key, source_path in EMPIRE_SOURCES.items():
         source = json.loads(source_path.read_text(encoding="utf-8"))
         base_name = source_path.stem
         tolerances = EMPIRE_TOLERANCES[empire_key]
 
+        enriched_source = {
+            **source,
+            "features": [
+                enrich_feature_properties(
+                    feature,
+                    {"empireKey": empire_key},
+                )
+                for feature in source["features"]
+            ],
+        }
+        write_payload(source_path, enriched_source)
+
         for quality, tolerance in tolerances.items():
             output_path = source_path.with_name(f"{base_name}.{quality}.geojson")
             features = []
-            for feature in source["features"]:
-                simplified_feature = {
-                    **feature,
-                    "properties": {
-                        **feature.get("properties", {}),
+            for feature in enriched_source["features"]:
+                simplified_geometry = simplify_geometry(feature["geometry"], tolerance)
+                simplified_feature = enrich_feature_properties(
+                    {
+                        **feature,
+                        "geometry": simplified_geometry,
+                    },
+                    {
                         "empireKey": empire_key,
                         "quality": quality,
                         "simplifyToleranceDegrees": tolerance,
                     },
-                    "geometry": simplify_geometry(feature["geometry"], tolerance),
-                }
+                )
                 features.append(simplified_feature)
 
             payload = {
-                **source,
+                **enriched_source,
                 "features": features,
             }
             write_payload(output_path, payload)

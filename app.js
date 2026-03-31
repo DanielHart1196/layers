@@ -100,6 +100,11 @@ const layerPanelScroll = document.querySelector(".layer-panel-scroll");
 const layerMenuToggle = document.getElementById("layerMenuToggle");
 const symbolScaleWebButton = document.getElementById("symbolScaleWebButton");
 const symbolScalePrintButton = document.getElementById("symbolScalePrintButton");
+const featureInspector = document.getElementById("featureInspector");
+const featureInspectorEyebrow = document.getElementById("featureInspectorEyebrow");
+const featureInspectorTitle = document.getElementById("featureInspectorTitle");
+const featureInspectorSubtitle = document.getElementById("featureInspectorSubtitle");
+const featureInspectorFields = document.getElementById("featureInspectorFields");
 const layerPanelClose = document.getElementById("layerPanelClose");
 const layerPanelScrollbar = document.getElementById("layerPanelScrollbar");
 const layerPanelScrollbarThumb = document.getElementById("layerPanelScrollbarThumb");
@@ -191,6 +196,9 @@ const MAX_CUSTOM_BORDER_COLORS = 10;
 const BOOT_STAGE_POSTER_STORAGE_KEY = "atlas.bootViewportPoster";
 let sharedCustomColors = [];
 let symbolScaleMode = "web";
+let getRenderedPointFeatures = () => [];
+let getRenderedAreaFeatures = () => [];
+let clearRenderedPointFeatures = () => {};
 const flatProjectionPanOffsets = {
   "natural-earth-ii": { x: 0, y: 0 },
   "goode-homolosine": { x: 0, y: 0 },
@@ -218,6 +226,7 @@ const temporalState = appState.temporal;
 const layerTemporalState = temporalState.layers;
 const projectionState = appState.projection;
 const zoomState = appState.zoom;
+const selectionState = appState.selection;
 const uiState = appState.ui;
 const earthStyleState = appState.styles.earth;
 const borderStyleState = appState.styles.borders;
@@ -719,6 +728,7 @@ async function init() {
       earthStyle: earthStyleState,
       layerStyles: layerStyleState,
       symbolScaleMode,
+      selection: selectionState,
       isInteracting: uiState.isInteracting,
     }),
     earthTextureRef: () => earthTextureImage,
@@ -728,6 +738,9 @@ async function init() {
   });
   overlayLayerRenderers = overlayLayerManager.renderers;
   empireLayerRenderer = overlayLayerManager.empireRenderer ?? null;
+  getRenderedPointFeatures = overlayLayerManager.getRenderedPointFeatures ?? (() => []);
+  getRenderedAreaFeatures = overlayLayerManager.getRenderedAreaFeatures ?? (() => []);
+  clearRenderedPointFeatures = overlayLayerManager.clearRenderedFeatureState ?? (() => {});
   if (layerState.earth) {
     await refreshEarthTexture();
   }
@@ -761,6 +774,7 @@ async function init() {
   enableProjectionControls();
   enableProjectionWheel();
   enableTemporalControls();
+  enableFeatureSelection();
   window.addEventListener("resize", handleResize);
 }
 
@@ -1192,6 +1206,7 @@ function drawEarthPass(scenes) {
 function drawOverlayPass(scenes) {
   const viewDimensions = getViewDimensions(projectionState.selectedProjection);
   overlayContext.clearRect(0, 0, viewDimensions.width, viewDimensions.height);
+  clearRenderedPointFeatures();
 
   scenes.forEach((scene) => {
     withSceneClip(scene, () => {
@@ -1917,6 +1932,187 @@ function drawForEmpireSublayerToggle() {
 
 function drawForEmpireQuality() {
   drawAtlas(["overlay", "poster"]);
+}
+
+function clearFeatureSelection() {
+  if (!selectionState.feature) {
+    return;
+  }
+
+  selectionState.feature = null;
+  syncFeatureInspector();
+  drawAtlas(["overlay", "poster"]);
+}
+
+function findTopmostRenderedPointFeature(event) {
+  const canvasRect = overlayCanvas.getBoundingClientRect();
+  const pointerX = event.clientX - canvasRect.left;
+  const pointerY = event.clientY - canvasRect.top;
+  const pointFeatures = getRenderedPointFeatures();
+
+  for (let index = pointFeatures.length - 1; index >= 0; index -= 1) {
+    const entry = pointFeatures[index];
+    const dx = pointerX - entry.screenCenter[0];
+    const dy = pointerY - entry.screenCenter[1];
+    if ((dx * dx) + (dy * dy) <= (entry.radius * entry.radius)) {
+      return entry;
+    }
+  }
+
+  return null;
+}
+
+function isPointInPolygonRing(point, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    const intersects = ((yi > point[1]) !== (yj > point[1]))
+      && (point[0] < ((xj - xi) * (point[1] - yi)) / ((yj - yi) || 1e-12) + xi);
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function isPointInPolygonGeometry(point, geometry) {
+  if (!geometry) {
+    return false;
+  }
+
+  if (geometry.type === "Polygon") {
+    const [outerRing, ...holes] = geometry.coordinates ?? [];
+    if (!outerRing || !isPointInPolygonRing(point, outerRing)) {
+      return false;
+    }
+    return !holes.some((ring) => isPointInPolygonRing(point, ring));
+  }
+
+  if (geometry.type === "MultiPolygon") {
+    return (geometry.coordinates ?? []).some((polygon) => (
+      isPointInPolygonGeometry(point, { type: "Polygon", coordinates: polygon })
+    ));
+  }
+
+  return false;
+}
+
+function findTopmostRenderedAreaFeature(event) {
+  const canvasRect = overlayCanvas.getBoundingClientRect();
+  const point = [event.clientX - canvasRect.left, event.clientY - canvasRect.top];
+  const areaFeatures = getRenderedAreaFeatures();
+
+  for (let index = areaFeatures.length - 1; index >= 0; index -= 1) {
+    const entry = areaFeatures[index];
+    const worldPoint = entry.adapter?.invertPoint?.(point);
+    if (!worldPoint) {
+      continue;
+    }
+
+    if (isPointInPolygonGeometry(worldPoint, entry.feature?.geometry)) {
+      return entry;
+    }
+  }
+
+  return null;
+}
+
+function enableFeatureSelection() {
+  stage.addEventListener("click", (event) => {
+    if (isWithinInteractiveUi(event.target)) {
+      return;
+    }
+
+    const hit = findTopmostRenderedPointFeature(event);
+    const resolvedHit = hit ?? findTopmostRenderedAreaFeature(event);
+    if (!resolvedHit) {
+      clearFeatureSelection();
+      return;
+    }
+
+    selectionState.feature = {
+      layerId: resolvedHit.layerId,
+      featureId: resolvedHit.featureId,
+      geometryType: resolvedHit.feature?.geometry?.type ?? null,
+      properties: resolvedHit.feature?.properties ?? null,
+    };
+    syncFeatureInspector();
+    drawAtlas(["overlay", "poster"]);
+  });
+}
+
+function setFeatureInspectorFields(entries = []) {
+  if (!featureInspectorFields) {
+    return;
+  }
+
+  featureInspectorFields.replaceChildren();
+  entries.forEach(([label, value]) => {
+    if (value == null || value === "") {
+      return;
+    }
+
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = String(value);
+    featureInspectorFields.append(dt, dd);
+  });
+}
+
+function syncFeatureInspector() {
+  if (
+    !(featureInspector instanceof HTMLElement) ||
+    !(featureInspectorEyebrow instanceof HTMLElement) ||
+    !(featureInspectorTitle instanceof HTMLElement) ||
+    !(featureInspectorSubtitle instanceof HTMLElement)
+  ) {
+    return;
+  }
+
+  const selectedFeature = selectionState.feature;
+  if (!selectedFeature) {
+    featureInspector.hidden = true;
+    featureInspectorEyebrow.textContent = "";
+    featureInspectorTitle.textContent = "";
+    featureInspectorSubtitle.textContent = "";
+    setFeatureInspectorFields([]);
+    return;
+  }
+
+  const props = selectedFeature.properties ?? {};
+  const layerLabel = selectedFeature.layerId === "olympics"
+    ? "Olympic Medal"
+    : selectedFeature.layerId ?? "Feature";
+  const title = props.athleteName
+    ?? props.name
+    ?? props.label
+    ?? selectedFeature.featureId
+    ?? "Selected feature";
+  const subtitleParts = [];
+  if (props.medal) {
+    subtitleParts.push(props.medal);
+  }
+  if (props.eventName) {
+    subtitleParts.push(props.eventName);
+  }
+
+  featureInspector.hidden = false;
+  featureInspectorEyebrow.textContent = layerLabel;
+  featureInspectorTitle.textContent = title;
+  featureInspectorSubtitle.textContent = subtitleParts.join(" · ");
+  setFeatureInspectorFields([
+    ["Year", props.year],
+    ["Area", props.derivedAreaKm2 ? `${Number(props.derivedAreaKm2).toLocaleString()} km²` : null],
+    ["Delegation", props.delegationName],
+    ["Country", props.countryName],
+    ["Sport", props.sport],
+    ["Birthplace", props.birthplaceName],
+    ["Sex", props.sex],
+  ]);
 }
 
 function normalizeHexColor(value) {

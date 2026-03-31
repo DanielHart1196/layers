@@ -12177,6 +12177,7 @@
         "sourcePath": "https://www.arcgis.com/home/item.html?id=1bb885a34b44491eb06c5681dd009d11",
         "confidence": "unknown",
         "notes": "Greatest extent from University of Minnesota ArcGIS Major Empires service.",
+        "derivedAreaKm2": 28405925,
         "empireKey": "mongol",
         "quality": "high",
         "simplifyToleranceDegrees": 0.02

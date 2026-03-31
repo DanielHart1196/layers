@@ -15,6 +15,7 @@
         "sourcePath": "data/raw/roman_empire_ad_117_extent",
         "confidence": "unknown",
         "notes": "Normalized from 112 source polygons in the raw shapefile set.",
+        "derivedAreaKm2": 4907168,
         "empireKey": "roman",
         "quality": "high",
         "simplifyToleranceDegrees": 0.02

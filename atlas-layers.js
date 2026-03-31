@@ -9,7 +9,7 @@ import {
 } from "./atlas-core.js";
 import { createFlatMapRenderer } from "./atlas-earth.js";
 import { createAdapter } from "./atlas-adapters.js";
-import { getEmpireSublayerIds } from "./layers-registry.js";
+import { getEmpireSublayerIds, getLayerDefinition } from "./layers-registry.js";
 import {
   resolveActiveLayerSourceData,
   resolveLayerSourceData,
@@ -109,6 +109,8 @@ function createEarthTextureStore() {
     const vectorAreaScratchContext = vectorAreaScratchCanvas.getContext("2d");
     const flatMapRenderer = createFlatMapRenderer?.() ?? null;
     const pointFeatureGroupCache = new WeakMap();
+    const renderedPointFeatures = [];
+    const renderedAreaFeatures = [];
     const tissotGeometry = {
       type: "FeatureCollection",
       features: (() => {
@@ -234,6 +236,66 @@ function createEarthTextureStore() {
       }
     }
 
+    function recordRenderedPointFeature(feature, style, options = {}, adapter = null) {
+      const coordinates = feature?.geometry?.type === "Point"
+        ? feature.geometry.coordinates
+        : null;
+      if (!coordinates || !adapter?.projectPoint) {
+        return;
+      }
+
+      const screenCenter = adapter.projectPoint(coordinates);
+      if (!Array.isArray(screenCenter) || screenCenter.length < 2) {
+        return;
+      }
+
+      renderedPointFeatures.push({
+        layerId: options.layerId ?? null,
+        featureId: feature?.id ?? null,
+        feature,
+        screenCenter,
+        radius: resolveSymbolSize(style.pointRadius, options.scene),
+        scene: options.scene,
+      });
+    }
+
+    function recordRenderedAreaFeature(feature, options = {}, adapter = null) {
+      if (!feature || !adapter?.projectPoint) {
+        return;
+      }
+
+      renderedAreaFeatures.push({
+        layerId: options.layerId ?? null,
+        featureId: feature?.id ?? null,
+        feature,
+        adapter,
+        scene: options.scene,
+      });
+    }
+
+    function renderOrderedPointCircleFeatures(adapter, featureCollection, style, options = {}) {
+      if (
+        !featureCollection ||
+        featureCollection.type !== "FeatureCollection" ||
+        !Array.isArray(featureCollection.features)
+      ) {
+        return;
+      }
+
+      featureCollection.features.forEach((feature) => {
+        recordRenderedPointFeature(feature, style, options, adapter);
+        renderPointCircleLayer(
+          adapter,
+          {
+            type: "FeatureCollection",
+            features: [feature],
+          },
+          style,
+          options,
+        );
+      });
+    }
+
     function groupFeaturesByProperty(featureCollection, propertyKey) {
       if (!featureCollection || featureCollection.type !== "FeatureCollection") {
         return new Map();
@@ -262,6 +324,168 @@ function createEarthTextureStore() {
       });
       collectionCache.set(propertyKey, grouped);
       return grouped;
+    }
+
+    function compareOrderedValues(leftValue, rightValue, direction = "asc") {
+      const normalizedDirection = direction === "desc" ? -1 : 1;
+      const leftMissing = leftValue == null || leftValue === "";
+      const rightMissing = rightValue == null || rightValue === "";
+
+      if (leftMissing && rightMissing) {
+        return 0;
+      }
+      if (leftMissing) {
+        return 1;
+      }
+      if (rightMissing) {
+        return -1;
+      }
+
+      const leftNumber = Number(leftValue);
+      const rightNumber = Number(rightValue);
+      const bothNumeric = Number.isFinite(leftNumber) && Number.isFinite(rightNumber);
+      if (bothNumeric) {
+        if (leftNumber === rightNumber) {
+          return 0;
+        }
+        return leftNumber < rightNumber ? -1 * normalizedDirection : 1 * normalizedDirection;
+      }
+
+      const leftText = String(leftValue).toLowerCase();
+      const rightText = String(rightValue).toLowerCase();
+      if (leftText === rightText) {
+        return 0;
+      }
+      return leftText < rightText ? -1 * normalizedDirection : 1 * normalizedDirection;
+    }
+
+    function getFeatureOrderValue(feature, sortRule = {}) {
+      const field = sortRule?.field;
+      if (field === "id") {
+        return feature?.id ?? null;
+      }
+
+      const property = sortRule?.property ?? field;
+      if (!property) {
+        return null;
+      }
+
+      return feature?.properties?.[property] ?? null;
+    }
+
+    function sortFeatureCollection(featureCollection, featureOrder = []) {
+      if (
+        !featureCollection ||
+        featureCollection.type !== "FeatureCollection" ||
+        !Array.isArray(featureCollection.features)
+      ) {
+        return featureCollection;
+      }
+
+      const effectiveFeatureOrder = featureOrder.some((sortRule) => sortRule?.field === "id")
+        ? featureOrder
+        : [...featureOrder, { field: "id", direction: "asc" }];
+
+      return {
+        ...featureCollection,
+        features: [...featureCollection.features].sort((leftFeature, rightFeature) => {
+          for (const sortRule of effectiveFeatureOrder) {
+            const comparison = compareOrderedValues(
+              getFeatureOrderValue(leftFeature, sortRule),
+              getFeatureOrderValue(rightFeature, sortRule),
+              sortRule?.direction,
+            );
+            if (comparison !== 0) {
+              return comparison;
+            }
+          }
+
+          return 0;
+        }),
+      };
+    }
+
+    function getOrderedPointGroups(featureCollection, pointOrder = {}) {
+      const groupBy = pointOrder?.groupBy;
+      const featureOrder = pointOrder?.featureOrder ?? [];
+      const groupOrder = pointOrder?.groupOrder ?? [];
+
+      if (!groupBy) {
+        return [{ key: null, geometry: sortFeatureCollection(featureCollection, featureOrder) }];
+      }
+
+      const grouped = groupFeaturesByProperty(featureCollection, groupBy);
+      const preferredKeys = groupOrder.filter((groupKey) => grouped.has(groupKey));
+      const remainingKeys = [...grouped.keys()]
+        .filter((groupKey) => !preferredKeys.includes(groupKey))
+        .sort((leftKey, rightKey) => compareOrderedValues(leftKey, rightKey, "asc"));
+
+      return [...preferredKeys, ...remainingKeys].map((groupKey) => ({
+        key: groupKey,
+        geometry: sortFeatureCollection(grouped.get(groupKey), featureOrder),
+      }));
+    }
+
+    function renderSelectedFeatureHighlight(scene) {
+      const selectedFeature = layerStateRef()?.selection?.feature;
+      if (!selectedFeature) {
+        return;
+      }
+
+      const selectedPoint = [...renderedPointFeatures]
+        .reverse()
+        .find((entry) => (
+          entry.layerId === selectedFeature.layerId
+          && entry.featureId === selectedFeature.featureId
+          && entry.scene?.projectionKind === scene.projectionKind
+          && JSON.stringify(entry.scene?.center) === JSON.stringify(scene.center)
+        ));
+
+      if (!selectedPoint) {
+        return;
+      }
+
+      overlayContext.save();
+      overlayContext.beginPath();
+      overlayContext.arc(
+        selectedPoint.screenCenter[0],
+        selectedPoint.screenCenter[1],
+        Math.max(selectedPoint.radius + 3, 4),
+        0,
+        Math.PI * 2,
+      );
+      overlayContext.strokeStyle = "rgba(255, 255, 255, 0.95)";
+      overlayContext.lineWidth = 1.5;
+      overlayContext.stroke();
+      overlayContext.restore();
+    }
+
+    function renderSelectedAreaHighlight(scene) {
+      const selectedFeature = layerStateRef()?.selection?.feature;
+      if (!selectedFeature) {
+        return;
+      }
+
+      const selectedArea = [...renderedAreaFeatures]
+        .reverse()
+        .find((entry) => (
+          entry.layerId === selectedFeature.layerId
+          && entry.featureId === selectedFeature.featureId
+          && entry.scene?.projectionKind === scene.projectionKind
+          && JSON.stringify(entry.scene?.center) === JSON.stringify(scene.center)
+        ));
+
+      if (!selectedArea) {
+        return;
+      }
+
+      overlayContext.save();
+      overlayContext.strokeStyle = "rgba(255, 255, 255, 0.95)";
+      overlayContext.lineWidth = 2;
+      selectedArea.adapter.strokeGeometry(selectedArea.feature, overlayContext.strokeStyle, 2, {
+        maxStepDegrees: selectedArea.adapter.kind === "interrupted" ? 0.75 : 1,
+      });
+      overlayContext.restore();
     }
 
     function getSelectedLodKey(layerKey, scene) {
@@ -747,7 +971,9 @@ function createEarthTextureStore() {
       if (!olympicsGeometry) {
         return;
       }
-      const groupedByMedal = groupFeaturesByProperty(olympicsGeometry, "medal");
+      const olympicsDefinition = getLayerDefinition("olympics");
+      const orderedGroups = getOrderedPointGroups(olympicsGeometry, olympicsDefinition?.pointOrder);
+      const pointRenderMode = olympicsDefinition?.pointOrder?.renderMode ?? "batched";
       const renderOptions = {
         maxStepDegrees: adapter.kind === "interrupted" ? 0.9 : 1.2,
         scene,
@@ -768,19 +994,20 @@ function createEarthTextureStore() {
         unknown: getLayerPointCircleStyle("olympics"),
       };
 
-      ["bronze", "silver", "gold"].forEach((medalKey) => {
-        renderPointCircleLayer(
-          adapter,
-          groupedByMedal.get(medalKey) ?? null,
-          medalStyles[medalKey],
-          renderOptions,
-        );
-      });
+      orderedGroups.forEach(({ key, geometry }) => {
+        const medalKey = medalStyles[key] ? key : "unknown";
+        if (pointRenderMode === "ordered") {
+          renderOrderedPointCircleFeatures(
+            adapter,
+            geometry ?? null,
+            medalStyles[medalKey],
+            renderOptions,
+          );
+          return;
+        }
 
-      const unknownGeometry = groupedByMedal.get("unknown");
-      if (unknownGeometry) {
-        renderPointCircleLayer(adapter, unknownGeometry, medalStyles.unknown, renderOptions);
-      }
+        renderPointCircleLayer(adapter, geometry ?? null, medalStyles[medalKey], renderOptions);
+      });
     }
 
     function renderEmpiresLayer(scene, options = {}) {
@@ -858,7 +1085,6 @@ function createEarthTextureStore() {
             const strokeR = Number.parseInt(strokeHex.slice(0, 2), 16);
             const strokeG = Number.parseInt(strokeHex.slice(2, 4), 16);
             const strokeB = Number.parseInt(strokeHex.slice(4, 6), 16);
-
             adapter.fillGeometry(geometry, `rgba(${fillR}, ${fillG}, ${fillB}, ${fillOpacity})`, "evenodd", areaFillOptions);
             if (shouldRenderStroke({ width: strokeWidth, opacity: strokeOpacity })) {
               adapter.strokeGeometry(geometry, `rgba(${strokeR}, ${strokeG}, ${strokeB}, ${strokeOpacity})`, strokeWidth, areaStrokeOptions);
@@ -870,6 +1096,18 @@ function createEarthTextureStore() {
       if (!preparedLayer) {
         return;
       }
+
+      const interactionAdapter = createSceneAdapter(scene);
+      empireGeometries.forEach(({ empireKey, geometry }) => {
+        const features = geometry?.type === "FeatureCollection"
+          ? geometry.features
+          : geometry?.type === "Feature"
+            ? [geometry]
+            : [];
+        features.forEach((feature) => {
+          recordRenderedAreaFeature(feature, { layerId: empireKey, scene }, interactionAdapter);
+        });
+      });
 
       const targetContext = options.contextOverride ?? overlayContext;
       targetContext.save();
@@ -904,6 +1142,16 @@ function createEarthTextureStore() {
     }
 
     return {
+      clearRenderedFeatureState() {
+        renderedPointFeatures.length = 0;
+        renderedAreaFeatures.length = 0;
+      },
+      getRenderedPointFeatures() {
+        return renderedPointFeatures;
+      },
+      getRenderedAreaFeatures() {
+        return renderedAreaFeatures;
+      },
       prewarmProjectedRaster(scene) {
         const image = earthTextureRef();
         if (!image || !scene) {
@@ -916,6 +1164,8 @@ function createEarthTextureStore() {
         renderFallbackLayer,
         renderEmpiresLayer,
         renderOlympicsLayer,
+        renderSelectedFeatureHighlight,
+        renderSelectedAreaHighlight,
         renderGraticuleLayer,
         renderTissotLayer,
         renderBordersLayer,
