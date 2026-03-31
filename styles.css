@@ -242,6 +242,59 @@ body:not(.is-earth-enabled) .month-overlay {
   pointer-events: none;
 }
 
+.symbol-scale-toggle {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 18px;
+  background: rgba(255, 251, 245, 0.82);
+  box-shadow: 0 16px 32px rgba(7, 31, 43, 0.14);
+  backdrop-filter: blur(14px);
+}
+
+.symbol-scale-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: rgba(15, 36, 48, 0.72);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.symbol-scale-button.is-active {
+  background: rgba(15, 36, 48, 0.1);
+  color: rgba(15, 36, 48, 0.92);
+}
+
+.symbol-scale-button:hover,
+.symbol-scale-button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.symbol-scale-button:focus-visible {
+  outline: 2px solid rgba(176, 108, 44, 0.85);
+  outline-offset: 2px;
+}
+
 .layer-ui {
   position: fixed;
   top: var(--layer-ui-top);

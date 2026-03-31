@@ -98,6 +98,8 @@ const overlaySvg = document.querySelector(".atlas-overlay");
 const layerPanel = document.querySelector(".layer-panel");
 const layerPanelScroll = document.querySelector(".layer-panel-scroll");
 const layerMenuToggle = document.getElementById("layerMenuToggle");
+const symbolScaleWebButton = document.getElementById("symbolScaleWebButton");
+const symbolScalePrintButton = document.getElementById("symbolScalePrintButton");
 const layerPanelClose = document.getElementById("layerPanelClose");
 const layerPanelScrollbar = document.getElementById("layerPanelScrollbar");
 const layerPanelScrollbarThumb = document.getElementById("layerPanelScrollbarThumb");
@@ -188,6 +190,7 @@ const VIEW_STATE_STORAGE_KEY = "atlas.view.state";
 const MAX_CUSTOM_BORDER_COLORS = 10;
 const BOOT_STAGE_POSTER_STORAGE_KEY = "atlas.bootViewportPoster";
 let sharedCustomColors = [];
+let symbolScaleMode = "web";
 const flatProjectionPanOffsets = {
   "natural-earth-ii": { x: 0, y: 0 },
   "goode-homolosine": { x: 0, y: 0 },
@@ -329,6 +332,24 @@ function renderProjectionSwitcher(offset = 0) {
   });
 }
 
+function syncSymbolScaleToggleUi() {
+  symbolScaleWebButton?.classList.toggle("is-active", symbolScaleMode === "web");
+  symbolScaleWebButton?.setAttribute("aria-pressed", String(symbolScaleMode === "web"));
+  symbolScalePrintButton?.classList.toggle("is-active", symbolScaleMode === "print");
+  symbolScalePrintButton?.setAttribute("aria-pressed", String(symbolScaleMode === "print"));
+}
+
+function setSymbolScaleMode(nextMode) {
+  const normalizedMode = nextMode === "print" ? "print" : "web";
+  if (symbolScaleMode === normalizedMode) {
+    return;
+  }
+
+  symbolScaleMode = normalizedMode;
+  syncSymbolScaleToggleUi();
+  drawAtlas(["overlay", "poster"]);
+}
+
 projectionState.selectedProjection = normalizeProjectionSelection(
   document.documentElement.dataset.bootProjection || projectionState.selectedProjection,
 );
@@ -445,6 +466,7 @@ function syncProjectionSwitcher() {
   uiState.isProjectionSwitcherReady = true;
   projectionSwitcher.classList.add("is-ready");
   renderProjectionSwitcher(0);
+  syncSymbolScaleToggleUi();
 }
 
 function cycleProjection(direction = 1) {
@@ -696,6 +718,7 @@ async function init() {
       graticuleStyle: graticuleStyleState,
       earthStyle: earthStyleState,
       layerStyles: layerStyleState,
+      symbolScaleMode,
       isInteracting: uiState.isInteracting,
     }),
     earthTextureRef: () => earthTextureImage,
@@ -720,6 +743,12 @@ async function init() {
   drawAtlas();
   enableDragging();
   enableZoomControls();
+  symbolScaleWebButton?.addEventListener("click", () => {
+    setSymbolScaleMode("web");
+  });
+  symbolScalePrintButton?.addEventListener("click", () => {
+    setSymbolScaleMode("print");
+  });
   enableLayerPanelToggle();
   enableLayerPanelScrollbar();
   enableExpandableLayoutAutoSync();

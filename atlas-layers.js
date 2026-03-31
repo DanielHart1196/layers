@@ -165,6 +165,20 @@ function createEarthTextureStore() {
       return Number.isFinite(width) && width > 0 && Number.isFinite(opacity) && opacity > 0;
     }
 
+    function resolveSymbolSize(value, scene) {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        return numericValue;
+      }
+
+      const symbolScaleMode = layerStateRef().symbolScaleMode ?? "web";
+      if (symbolScaleMode !== "print") {
+        return numericValue;
+      }
+
+      return numericValue * Math.max(scene?.zoomScale ?? 1, 1);
+    }
+
     function getLayerPointCircleStyle(layerId, overrides = {}) {
       const layerStyle = layerStateRef().layerStyles?.[layerId] ?? {};
       return {
@@ -190,6 +204,9 @@ function createEarthTextureStore() {
         return;
       }
 
+      const resolvedPointRadius = resolveSymbolSize(style.pointRadius, options.scene);
+      const resolvedStrokeWidth = resolveSymbolSize(style.strokeWidth, options.scene);
+
       adapter.fillGeometry(
         geometry,
         withOpacity(style.fillColor, style.fillOpacity),
@@ -197,21 +214,21 @@ function createEarthTextureStore() {
         {
           maxStepDegrees: options.maxStepDegrees,
           minimumStepDegrees: options.minimumStepDegrees,
-          pointRadius: style.pointRadius,
+          pointRadius: resolvedPointRadius,
         },
       );
       if (shouldRenderStroke({
-        width: style.strokeWidth,
+        width: resolvedStrokeWidth,
         opacity: style.strokeOpacity,
       })) {
         adapter.strokeGeometry(
           geometry,
           withOpacity(style.strokeColor, style.strokeOpacity),
-          style.strokeWidth,
+          resolvedStrokeWidth,
           {
             maxStepDegrees: options.maxStepDegrees,
             minimumStepDegrees: options.minimumStepDegrees,
-            pointRadius: style.pointRadius,
+            pointRadius: resolvedPointRadius,
           },
         );
       }
@@ -647,7 +664,10 @@ function createEarthTextureStore() {
       const graticuleStyle = layerStateRef().graticuleStyle ?? {};
       const graticuleColor = graticuleStyle.color ?? "#ffffff";
       const graticuleOpacity = Number.isFinite(graticuleStyle.opacity) ? graticuleStyle.opacity : 0.12;
-      const graticuleWidth = Number.isFinite(graticuleStyle.width) ? graticuleStyle.width : 0.7;
+      const graticuleWidth = resolveSymbolSize(
+        Number.isFinite(graticuleStyle.width) ? graticuleStyle.width : 0.7,
+        scene,
+      );
       const graticuleStroke = withOpacity(graticuleColor, graticuleOpacity);
       const equatorStroke = withOpacity(graticuleColor, Math.min(graticuleOpacity * 2, 1));
 
@@ -698,7 +718,10 @@ function createEarthTextureStore() {
       const borderStyle = layerStateRef().borderStyle ?? {};
       const borderColor = borderStyle.color ?? "#ffffff";
       const borderOpacity = Number.isFinite(borderStyle.opacity) ? borderStyle.opacity : 0.36;
-      const borderWidth = Number.isFinite(borderStyle.width) ? borderStyle.width : 0.8;
+      const borderWidth = resolveSymbolSize(
+        Number.isFinite(borderStyle.width) ? borderStyle.width : 0.8,
+        scene,
+      );
       const borderStroke = borderColor.startsWith("#")
         ? `${borderColor}${Math.round(borderOpacity * 255).toString(16).padStart(2, "0")}`
         : borderColor;
@@ -727,6 +750,7 @@ function createEarthTextureStore() {
       const groupedByMedal = groupFeaturesByProperty(olympicsGeometry, "medal");
       const renderOptions = {
         maxStepDegrees: adapter.kind === "interrupted" ? 0.9 : 1.2,
+        scene,
       };
       const medalStyles = {
         gold: getLayerPointCircleStyle("olympics", {
@@ -744,7 +768,7 @@ function createEarthTextureStore() {
         unknown: getLayerPointCircleStyle("olympics"),
       };
 
-      ["gold", "silver", "bronze"].forEach((medalKey) => {
+      ["bronze", "silver", "gold"].forEach((medalKey) => {
         renderPointCircleLayer(
           adapter,
           groupedByMedal.get(medalKey) ?? null,
@@ -822,7 +846,10 @@ function createEarthTextureStore() {
             const fillOpacity = Number.isFinite(style?.fillOpacity) ? style.fillOpacity : 0.22;
             const strokeColor = style?.strokeColor ?? "#B07825";
             const strokeOpacity = Number.isFinite(style?.strokeOpacity) ? style.strokeOpacity : 0.9;
-            const strokeWidth = Number.isFinite(style?.strokeWidth) ? style.strokeWidth : 1.1;
+            const strokeWidth = resolveSymbolSize(
+              Number.isFinite(style?.strokeWidth) ? style.strokeWidth : 1.1,
+              scene,
+            );
             const fillHex = fillColor.replace('#', '');
             const strokeHex = strokeColor.replace('#', '');
             const fillR = Number.parseInt(fillHex.slice(0, 2), 16);

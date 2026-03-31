@@ -27,6 +27,8 @@
 - Treat the notes, registry, and existing working UI patterns as shared sources of truth, not optional context.
 
 ## Shared UI Architecture
+- Ordering should ultimately be definition-driven too: layer order and row order should come from shared data rather than scattered render/display special cases.
+- Future drag-reorder support should update shared order values, with display order and render order derived from that structure where appropriate.
 - Prefer shared layout primitives for related controls.
 - When two UI elements are meant to stay visually or behaviorally linked, derive them from the same variable, token, or state instead of duplicating values.
 - Prefer a single source of truth for widths, anchors, spacing, control sizes, and other repeated layout constants.
@@ -49,6 +51,12 @@
 - GitHub currently reports a redirect from the lowercase remote URL to:
   - `https://github.com/DanielHart1196/layers.git`
 - If `git push` appears to hang in this environment, verify with a promptless retry before assuming auth is broken.
+
+## Symbol Scaling Notes
+- Current symbol style values like `strokeWidth` and `pointRadius` are authored as base screen-pixel values.
+- In `web` mode, those values are used as-is, so they stay visually fixed in pixels regardless of zoom.
+- In `print` mode, symbol sizes currently scale from the base unzoomed view using `scene.zoomScale`, so the raw px value is effectively anchored to the default zoomed-out baseline.
+- This means the current print-style experiment is zoom-aware, not yet a deeper projection-aware or geodesic symbol model.
 
 ## Current Projection Model
 - `orthographic`, `azimuthal-equidistant`, and `mercator` behave like direct interactive projections.
