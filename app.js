@@ -153,6 +153,7 @@ const projectionPickerValue = document.getElementById("projectionPickerValue");
 const projectionPickerList = document.getElementById("projectionPickerList");
 const projectionOptionButtons = Array.from(document.querySelectorAll("[data-projection-option]"));
 const monthMenuToggle = document.getElementById("monthMenuToggle");
+const projectionMenuToggle = document.getElementById("projectionMenuToggle");
 const monthOverlay = document.querySelector(".month-overlay");
 const monthSlider = document.getElementById("monthSlider");
 const monthButtons = Array.from(document.querySelectorAll(".month-chip"));
@@ -199,6 +200,7 @@ let symbolScaleMode = "web";
 let getRenderedPointFeatures = () => [];
 let getRenderedAreaFeatures = () => [];
 let clearRenderedPointFeatures = () => {};
+const PROJECTION_DEBUG_TOKEN = "projdbg-2026-04-01b";
 const flatProjectionPanOffsets = {
   "natural-earth-ii": { x: 0, y: 0 },
   "goode-homolosine": { x: 0, y: 0 },
@@ -460,7 +462,6 @@ function setProjectionWheelOpen(isOpen) {
   projectionWheel.classList.toggle("is-open", uiState.isProjectionWheelOpen);
   projectionWheel.setAttribute("aria-hidden", uiState.isProjectionWheelOpen ? "false" : "true");
   projectionSwitcher.setAttribute("aria-expanded", uiState.isProjectionWheelOpen ? "true" : "false");
-
   if (uiState.isProjectionWheelOpen) {
     syncProjectionWheelPosition();
     centerProjectionWheelOnProjection(projectionState.selectedProjection, "auto");
@@ -606,58 +607,6 @@ function syncMobileMonthChrome() {
   if (!monthsEnabled || (isMobileViewport && isZoomedOut)) {
     setMonthOverlayOpen(false);
   }
-
-  syncProjectionSwitcherMorph();
-}
-
-function syncProjectionSwitcherMorph() {
-  if (!projectionSwitcher) {
-    return;
-  }
-
-  if (!mobileLayerMenuMediaQuery.matches) {
-    projectionSwitcher.style.removeProperty("--projection-switcher-width");
-    projectionSwitcher.style.removeProperty("--projection-switcher-height");
-    projectionSwitcher.style.removeProperty("--projection-switcher-padding-x");
-    projectionSwitcher.style.removeProperty("--projection-switcher-padding-y");
-    projectionSwitcher.style.removeProperty("--projection-switcher-radius");
-    projectionSwitcher.style.removeProperty("--projection-switcher-shift-x");
-    projectionSwitcher.style.removeProperty("--projection-switcher-shift-y");
-    projectionSwitcher.style.removeProperty("--projection-switcher-track-opacity");
-    projectionSwitcher.style.removeProperty("--projection-switcher-icon-opacity");
-    renderProjectionSwitcher(0);
-    return;
-  }
-
-  const liveProgress = clamp((zoomState.scale - 1) / 0.35, 0, 1);
-  const progress = uiState.isInteracting
-    ? liveProgress
-    : (liveProgress >= 0.5 ? 1 : 0);
-  const viewportWidth = Math.max(window.innerWidth || 0, 1);
-  const startCenterX = viewportWidth / 2;
-  const endCenterX = viewportWidth - 18 - 24;
-  const shiftX = (endCenterX - startCenterX) * progress;
-  const expandedWidth = Number.parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue("--projection-switcher-mobile-expanded-width"),
-  ) || 276;
-  const width = expandedWidth - ((expandedWidth - 48) * progress);
-  const height = 46 + (2 * progress);
-  const paddingX = 16 * (1 - progress);
-  const paddingY = 11 * (1 - progress);
-  const radius = 999 - ((999 - 16) * progress);
-  const trackOpacity = 1 - progress;
-  const iconOpacity = progress;
-
-  projectionSwitcher.style.setProperty("--projection-switcher-width", `${width}px`);
-  projectionSwitcher.style.setProperty("--projection-switcher-height", `${height}px`);
-  projectionSwitcher.style.setProperty("--projection-switcher-padding-x", `${paddingX}px`);
-  projectionSwitcher.style.setProperty("--projection-switcher-padding-y", `${paddingY}px`);
-  projectionSwitcher.style.setProperty("--projection-switcher-radius", `${radius}px`);
-  projectionSwitcher.style.setProperty("--projection-switcher-shift-x", `${shiftX}px`);
-  projectionSwitcher.style.setProperty("--projection-switcher-shift-y", "0px");
-  projectionSwitcher.style.setProperty("--projection-switcher-track-opacity", `${trackOpacity}`);
-  projectionSwitcher.style.setProperty("--projection-switcher-icon-opacity", `${iconOpacity}`);
-  renderProjectionSwitcher(0);
 }
 
 function enableMonthMenuToggle() {
@@ -3060,6 +3009,10 @@ function enableProjectionWheel() {
     setProjectionWheelOpen(!uiState.isProjectionWheelOpen);
   });
 
+  projectionMenuToggle?.addEventListener("click", () => {
+    setProjectionWheelOpen(!uiState.isProjectionWheelOpen);
+  });
+
   projectionWheelWindow.addEventListener("scroll", () => {
     if (wheelSelectionLock) {
       return;
@@ -3095,7 +3048,11 @@ function enableProjectionWheel() {
       return;
     }
 
-    if (projectionWheel.contains(target) || projectionSwitcher.contains(target)) {
+    if (
+      projectionWheel.contains(target)
+      || projectionSwitcher.contains(target)
+      || projectionMenuToggle?.contains(target)
+    ) {
       return;
     }
 
