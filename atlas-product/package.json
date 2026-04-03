@@ -1,0 +1,15 @@
+{
+  "name": "atlas-product",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../node_modules/vite/bin/vite.js",
+    "build": "node ../node_modules/vite/bin/vite.js build",
+    "preview": "node ../node_modules/vite/bin/vite.js preview"
+  },
+  "dependencies": {
+    "maplibre-gl": "^5.21.1",
+    "pmtiles": "^4.4.0",
+    "topojson-client": "^3.1.0"
+  }
+}

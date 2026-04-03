@@ -1,0 +1,336 @@
+:root {
+  color-scheme: dark;
+  --bg-0: #091017;
+  --bg-1: #122330;
+  --panel: rgba(8, 18, 26, 0.84);
+  --panel-border: rgba(163, 197, 218, 0.16);
+  --text: #eff7fb;
+  --muted: rgba(239, 247, 251, 0.68);
+  --accent: #78d1ac;
+  --accent-2: #ffd17b;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background: #0b1821;
+  color: var(--text);
+  font-family: "Manrope", system-ui, sans-serif;
+}
+
+.app-shell {
+  width: 100vw;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 0;
+}
+
+h1,
+h2,
+p,
+pre,
+ul {
+  margin: 0;
+}
+
+.map-shell {
+  margin-top: 0;
+}
+
+.map-stage {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: #0b1821;
+}
+
+.map-stage.has-live-map {
+  background: #0b1821;
+}
+
+.map-stage::before {
+  position: absolute;
+  inset: 0;
+}
+
+.map-stage::before {
+  content: "";
+  display: none;
+}
+
+.map-stage.has-live-map::before {
+  opacity: 0;
+}
+
+.mobile-refresh {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+  display: block;
+}
+
+.mobile-refresh.is-open {
+  z-index: 12;
+}
+
+.layer-menu {
+  position: fixed;
+  top: 72px;
+  right: 14px;
+  z-index: 10;
+  display: block;
+}
+
+.layer-menu.is-open {
+  z-index: 12;
+}
+
+.mobile-refresh-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 16px;
+  background: rgba(11, 24, 33, 0.78);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(14px);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+  touch-action: manipulation;
+}
+
+.layer-menu-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease;
+  touch-action: manipulation;
+}
+
+.mobile-refresh-button:hover,
+.mobile-refresh-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 38px rgba(0, 0, 0, 0.24);
+}
+
+.layer-menu-button:hover,
+.layer-menu-button:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.52);
+}
+
+.mobile-refresh-button:focus-visible,
+.mobile-refresh-menu-item:focus-visible,
+.layer-menu-button:focus-visible,
+.layer-menu-row:focus-visible {
+  outline: 2px solid rgba(176, 108, 44, 0.85);
+  outline-offset: 3px;
+}
+
+.mobile-refresh-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(239, 247, 251, 0.88);
+  border-radius: 999px;
+}
+
+.layer-menu-icon {
+  display: inline-grid;
+  gap: 4px;
+}
+
+.layer-menu-icon span {
+  display: block;
+  width: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(239, 247, 251, 0.92);
+}
+
+.mobile-refresh-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 1;
+  min-width: 170px;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  background: rgba(11, 24, 33, 0.94);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+  touch-action: manipulation;
+}
+
+.layer-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 170px;
+  display: grid;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 18px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  overflow: hidden;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.layer-menu-panel.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.layer-menu-row {
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  background: transparent;
+  color: rgba(239, 247, 251, 0.92);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.layer-menu-row:first-child {
+  border-top: 0;
+}
+
+.layer-menu-row-layer {
+  padding-left: calc(14px + (var(--row-depth, 0) * 14px));
+}
+
+.layer-menu-row-layer.is-expandable::after {
+  content: "›";
+  float: right;
+  opacity: 0.8;
+}
+
+.layer-menu-row:hover,
+.layer-menu-row:focus-visible {
+  color: #ffffff;
+}
+
+.layer-menu-row-slider {
+  display: grid;
+  gap: 8px;
+  padding-left: calc(14px + (var(--row-depth, 0) * 14px));
+  cursor: default;
+}
+
+.layer-menu-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.layer-menu-row-label,
+.layer-menu-row-value {
+  display: block;
+  color: rgba(239, 247, 251, 0.92);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.layer-menu-row-value {
+  color: rgba(239, 247, 251, 0.7);
+}
+
+.layer-menu-slider {
+  width: 100%;
+  margin: 0;
+  accent-color: rgba(239, 247, 251, 0.92);
+  background: transparent;
+}
+
+.mobile-refresh-menu.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.mobile-refresh-menu-item {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(239, 247, 251, 0.92);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.mobile-refresh-menu-item:hover,
+.mobile-refresh-menu-item:focus-visible {
+  background: rgba(154, 210, 255, 0.08);
+  border-color: rgba(154, 210, 255, 0.34);
+}
+
+@media (max-width: 800px) {
+  .mobile-refresh {
+    top: 12px;
+    right: 12px;
+  }
+
+  .layer-menu {
+    top: 70px;
+    right: 12px;
+  }
+}
