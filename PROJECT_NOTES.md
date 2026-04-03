@@ -233,10 +233,37 @@
   - build-time normalization for fill/stroke semantics
   - runtime LOD selection from validated assets
   - canonical vector assets reserved for export-quality output
-- Recent `atlas-product` finding:
+
+## Atlas Product Runtime Findings
+- Recent `atlas-product` work clarified an important renderer boundary:
   - for globe runtime rendering in MapLibre, large static fills and global linework were more reliable when served as tiled vector sources than as direct raw GeoJSON layers
-  - keep canonical lon/lat vectors as the source of truth, but bias screen/runtime display toward tiled delivery for heavy global layers
-  - direct vectors still make sense for editable overlays and export-grade canonical assets
+  - switching heavy land and empire fills onto tiled vector delivery removed a visible seam/dual-opacity artifact class that persisted on raw globe GeoJSON fills
+  - graticule-like global linework showed a similar renderer sensitivity on raw GeoJSON and was moved to tiled vector delivery for the same reason
+- Treat this as a runtime rendering rule, not a source-of-truth rule:
+  - canonical lon/lat vectors remain the authoritative data model
+  - runtime screen delivery for heavy global layers should bias toward tiled vector sources
+  - editable overlays and export-grade canonical assets should remain direct vector data unless there is a specific reason to tile them
+
+## MapLibre Role
+- Current `atlas-product` direction:
+  - MapLibre is a strong fit for the interactive screen globe shell
+  - MapLibre is a strong fit for tiled vector fills and linework used as runtime display layers
+  - MapLibre is not the default place to prove raw globe rendering of very large direct GeoJSON fills or global linework
+- Practical split:
+  - heavy static global fills: tiled
+  - heavy static global lines: usually tiled
+  - editable/user vectors: direct
+  - print/export canonical assets: direct vectors derived from the validated source asset pipeline
+
+## Runtime Data Default
+- For `atlas-product` screen rendering, prefer this default data model:
+  - canonical source asset in lon/lat GeoJSON
+  - runtime tiled delivery for heavy global layers
+  - shared layer/row schema above that delivery choice
+- The current local `atlasvt://` protocol path in `atlas-product` is a valid transitional runtime tiling path:
+  - useful for proving the renderer architecture
+  - useful before a full PMTiles production pipeline exists
+- Long-term production direction is still self-hosted PMTiles or another stable tiled delivery format under our control, not ad hoc runtime-only tiling forever
 
 ## Mobile UI Behavior
 - Hamburger menu is mobile-only and positioned on the right side.
