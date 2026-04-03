@@ -10,6 +10,7 @@
   "dependencies": {
     "maplibre-gl": "^5.21.1",
     "pmtiles": "^4.4.0",
+    "polygon-clipping": "^0.15.7",
     "topojson-client": "^3.1.0"
   }
 }

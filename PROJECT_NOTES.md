@@ -233,6 +233,10 @@
   - build-time normalization for fill/stroke semantics
   - runtime LOD selection from validated assets
   - canonical vector assets reserved for export-quality output
+- Recent `atlas-product` finding:
+  - for globe runtime rendering in MapLibre, large static fills and global linework were more reliable when served as tiled vector sources than as direct raw GeoJSON layers
+  - keep canonical lon/lat vectors as the source of truth, but bias screen/runtime display toward tiled delivery for heavy global layers
+  - direct vectors still make sense for editable overlays and export-grade canonical assets
 
 ## Mobile UI Behavior
 - Hamburger menu is mobile-only and positioned on the right side.
@@ -272,6 +276,8 @@
 - Do not casually reintroduce empire polygon LOD switching.
 - The previous naive Roman empire simplification introduced topology/fill regressions and wrong-looking colors at low zoom.
 - If empire performance work is revisited, prefer projection/render-path optimizations over naive polygon simplification.
+- Do not default large globe fills or global graticule-like linework back to raw GeoJSON MapLibre layers without a specific reason.
+- The current safer runtime default for heavy global layers is tiled vector delivery; treat raw direct GeoJSON on globe as an exception path that needs justification.
 
 ## Editing Guidance
 - After JS edits, run `node --check` on changed files.

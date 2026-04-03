@@ -41,6 +41,7 @@ function validatePmtilesManifest(manifest) {
 function createMaplibreScreenRuntime({
   pmtilesManifest = [],
   viewState = null,
+  initialLayerState = {},
   getRuntimeVectors = () => [],
 } = {}) {
   let mapInstance = null;
@@ -101,6 +102,7 @@ function createMaplibreScreenRuntime({
       container,
       manifest: pmtilesManifest,
       viewState,
+      initialLayerState,
     });
   }
 

@@ -23,13 +23,16 @@ async function bootstrapApplication() {
   const printRenderer = createPrintRendererAdapter();
   const projections = getProjectionRegistry();
   const viewState = viewModel.getState();
+  const initialLayerState = layerModel.getState();
   const screenRuntime = createMaplibreScreenRuntime({
     pmtilesManifest,
     viewState,
+    initialLayerState,
     getRuntimeVectors: () => editableStore.getCollections(),
   });
 
   screenRuntime.mount(document.getElementById("mapStage"));
+
   enableRefreshControls({
     wrapper: document.getElementById("mobileRefresh"),
     button: document.getElementById("mobileRefreshButton"),
@@ -45,7 +48,7 @@ async function bootstrapApplication() {
   const rerenderLayerMenu = renderLayerMenuRows({
     panel: document.getElementById("layerMenuPanel"),
     layerModel,
-    onSliderInput: (row, nextValue) => {
+    onRowInput: (row, nextValue) => {
       const update = layerModel.setRowValue(row, nextValue);
       if (!update) {
         return;

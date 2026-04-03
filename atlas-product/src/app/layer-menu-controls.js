@@ -4,6 +4,18 @@ function setLayerMenuOpen(wrapper, panel, button, isOpen) {
   button?.setAttribute("aria-expanded", String(isOpen));
 }
 
+function syncLayerMenuMaxHeight(wrapper, panel, button) {
+  if (!wrapper || !panel || !button) {
+    return;
+  }
+
+  const buttonRect = button.getBoundingClientRect();
+  const wrapperRect = wrapper.getBoundingClientRect();
+  const panelTop = wrapperRect.top + buttonRect.height + 10;
+  const availableHeight = Math.max(120, window.innerHeight - panelTop - 12);
+  panel.style.maxHeight = `${availableHeight}px`;
+}
+
 function enableLayerMenuControls({
   wrapper,
   button,
@@ -23,6 +35,7 @@ function enableLayerMenuControls({
   panel.addEventListener("click", stopPropagation);
 
   button.addEventListener("click", () => {
+    syncLayerMenuMaxHeight(wrapper, panel, button);
     setLayerMenuOpen(wrapper, panel, button, !panel.classList.contains("is-open"));
   });
 
@@ -47,6 +60,14 @@ function enableLayerMenuControls({
     if (event.key === "Escape" && panel.classList.contains("is-open")) {
       setLayerMenuOpen(wrapper, panel, button, false);
     }
+  });
+
+  window.addEventListener("resize", () => {
+    if (!panel.classList.contains("is-open")) {
+      return;
+    }
+
+    syncLayerMenuMaxHeight(wrapper, panel, button);
   });
 }
 

@@ -2,7 +2,7 @@ function createViewModel() {
   const state = {
     projectionId: "globe",
     center: { longitude: 0, latitude: 0 },
-    zoom: 0.45,
+    zoom: 1.1,
     bearing: 0,
     pitch: 0,
     print: {
