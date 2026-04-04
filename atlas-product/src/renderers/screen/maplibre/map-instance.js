@@ -99,6 +99,19 @@ const EMPIRE_LINE_LAYER_IDS = {
   mongol: MONGOL_LINE_LAYER_ID,
   british: BRITISH_LINE_LAYER_ID,
 };
+const PARENT_LAYER_IDS = {
+  ocean: "earth",
+  australia: "earth",
+  countriesLand: "earth",
+  graticules: "earth",
+  transportRail: "transport",
+  olympicsGold: "olympics",
+  olympicsSilver: "olympics",
+  olympicsBronze: "olympics",
+  roman: "empires",
+  mongol: "empires",
+  british: "empires",
+};
 const LINE_LAYER_IDS = {
   transportRail: TRANSPORT_RAIL_LINE_LAYER_ID,
   outline: OSM_OUTLINE_LINE_LAYER_ID,
@@ -237,6 +250,19 @@ function updateScaleOverlay(map, overlay) {
 
 function getLogicalLayerBundles() {
   return {
+    __root__: {
+      transport: [TRANSPORT_RAIL_LINE_LAYER_ID],
+      countries: [COUNTRY_FILL_LAYER_ID, COUNTRY_LINE_LAYER_ID],
+      olympics: [OLYMPICS_GOLD_LAYER_ID, OLYMPICS_SILVER_LAYER_ID, OLYMPICS_BRONZE_LAYER_ID],
+      empires: [
+        ROMAN_FILL_LAYER_ID,
+        ROMAN_LINE_LAYER_ID,
+        MONGOL_FILL_LAYER_ID,
+        MONGOL_LINE_LAYER_ID,
+        BRITISH_FILL_LAYER_ID,
+        BRITISH_LINE_LAYER_ID,
+      ],
+    },
     earth: {
       land: [OSM_LAND_FILL_LAYER_ID],
       outline: [OSM_OUTLINE_LINE_LAYER_ID],
@@ -401,16 +427,17 @@ function getLayoutVisibility(layerState, layerId) {
   return getLayerStyleValue(layerState, layerId, "visible", true) ? "visible" : "none";
 }
 
-function getEmpireLayoutVisibility(layerState, layerId) {
-  const groupVisible = getLayerStyleValue(layerState, "empires", "visible", true);
-  const layerVisible = getLayerStyleValue(layerState, layerId, "visible", true);
-  return groupVisible && layerVisible ? "visible" : "none";
-}
+function getInheritedLayoutVisibility(layerState, layerId) {
+  let currentLayerId = layerId;
 
-function getOlympicsLayoutVisibility(layerState, layerId) {
-  const groupVisible = getLayerStyleValue(layerState, "olympics", "visible", true);
-  const layerVisible = getLayerStyleValue(layerState, layerId, "visible", true);
-  return groupVisible && layerVisible ? "visible" : "none";
+  while (currentLayerId) {
+    if (!getLayerStyleValue(layerState, currentLayerId, "visible", true)) {
+      return "none";
+    }
+    currentLayerId = PARENT_LAYER_IDS[currentLayerId] ?? null;
+  }
+
+  return "visible";
 }
 
 function getOlympicsYear(layerState) {
@@ -647,7 +674,7 @@ async function attachAustraliaOutlineLayer(map, layerState, manifest) {
       type: "line",
       source: sourceId,
       layout: {
-        visibility: getLayoutVisibility(layerState, "australia"),
+        visibility: getInheritedLayoutVisibility(layerState, "australia"),
       },
       paint: {
         "line-color": getLayerStyleValue(layerState, "australia", "lineColor", DEFAULT_OUTLINE_LINE_COLOR),
@@ -680,7 +707,7 @@ async function attachAustraliaFillLayer(map, layerState, manifest) {
       type: "fill",
       source: sourceId,
       layout: {
-        visibility: getLayoutVisibility(layerState, "australia"),
+        visibility: getInheritedLayoutVisibility(layerState, "australia"),
       },
       paint: {
         "fill-color": getLayerStyleValue(layerState, "australia", "fillColor", DEFAULT_LAND_FILL_COLOR),
@@ -740,7 +767,7 @@ async function attachCountriesLandLayers(map, layerState) {
     type: "fill",
     source: COUNTRIES_LAND_SOURCE_ID,
     layout: {
-      visibility: getLayoutVisibility(layerState, "countriesLand"),
+      visibility: getInheritedLayoutVisibility(layerState, "countriesLand"),
     },
     paint: {
       "fill-color": getLayerStyleValue(layerState, "countriesLand", "fillColor", DEFAULT_LAND_FILL_COLOR),
@@ -753,7 +780,7 @@ async function attachCountriesLandLayers(map, layerState) {
     type: "line",
     source: COUNTRIES_LAND_SOURCE_ID,
     layout: {
-      visibility: getLayoutVisibility(layerState, "countriesLand"),
+      visibility: getInheritedLayoutVisibility(layerState, "countriesLand"),
     },
     paint: {
       "line-color": getLayerStyleValue(layerState, "countriesLand", "lineColor", DEFAULT_OUTLINE_LINE_COLOR),
@@ -894,7 +921,7 @@ async function attachOlympicsLayers(map, layerState) {
       source: OLYMPICS_SOURCE_ID,
       filter: ["==", ["get", "medal"], medal],
       layout: {
-        visibility: getOlympicsLayoutVisibility(layerState, filterLayerId),
+        visibility: getInheritedLayoutVisibility(layerState, filterLayerId),
       },
       paint: {
         "circle-radius": getOlympicsPointRadius(layerState),
@@ -932,7 +959,7 @@ async function attachTransportRailLayer(map, layerState) {
     layout: {
       "line-cap": "round",
       "line-join": "round",
-      visibility: getLayoutVisibility(layerState, "transportRail"),
+      visibility: getInheritedLayoutVisibility(layerState, "transportRail"),
     },
     paint: {
       "line-color": getLayerStyleValue(layerState, "transportRail", "lineColor", "#f07a58"),
@@ -958,7 +985,7 @@ async function attachGraticulesLayer(map, layerState) {
     source: GRATICULES_SOURCE_ID,
     "source-layer": GRATICULES_TILE_SOURCE_LAYER,
     layout: {
-      visibility: getLayoutVisibility(layerState, "graticules"),
+      visibility: getInheritedLayoutVisibility(layerState, "graticules"),
     },
     paint: {
       "line-color": getLayerStyleValue(layerState, "graticules", "lineColor", DEFAULT_GRATICULE_LINE_COLOR),
@@ -1030,7 +1057,7 @@ function attachEmpireLayer(map, {
     source: fillSourceId,
     ...(fillSourceLayer ? { "source-layer": fillSourceLayer } : {}),
     layout: {
-      visibility: getEmpireLayoutVisibility(layerState, layerId),
+      visibility: getInheritedLayoutVisibility(layerState, layerId),
     },
     paint: {
       "fill-color": getLayerStyleValue(layerState, layerId, "fillColor", fallbackColor),
@@ -1051,7 +1078,7 @@ function attachEmpireLayer(map, {
     source: outlineSourceId,
     "source-layer": outlineSourceLayer,
     layout: {
-      visibility: getEmpireLayoutVisibility(layerState, layerId),
+      visibility: getInheritedLayoutVisibility(layerState, layerId),
     },
     paint: {
       "line-color": getLayerStyleValue(layerState, layerId, "lineColor", lineColor),
@@ -1155,7 +1182,7 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
   });
   map.on("load", () => {
     if (map.getLayer("atlas-water")) {
-      map.setLayoutProperty("atlas-water", "visibility", getLayoutVisibility(layerState, "ocean"));
+      map.setLayoutProperty("atlas-water", "visibility", getInheritedLayoutVisibility(layerState, "ocean"));
       map.setPaintProperty(
         "atlas-water",
         "background-color",
@@ -1177,6 +1204,7 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         await attachMongolEmpireLayer(map, layerState);
         await attachBritishEmpireLayer(map, layerState);
         await attachOlympicsLayers(map, layerState);
+        applyLogicalLayerOrder(map, "__root__", getLayerStyleValue(layerState, "__root__", "rowOrder", ["earth", "transport", "countries", "olympics", "empires"]));
         applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "australia", "countries-land", "graticules"]));
         applyLogicalLayerOrder(map, "transport", getLayerStyleValue(layerState, "transport", "rowOrder", ["transport-rail"]));
         applyLogicalLayerOrder(map, "olympics", getLayerStyleValue(layerState, "olympics", "rowOrder", ["olympics-gold", "olympics-silver", "olympics-bronze"]));
@@ -1420,7 +1448,38 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         const visibility = value ? "visible" : "none";
 
         if (layerId === "ocean" && map.getLayer("atlas-water")) {
-          map.setLayoutProperty("atlas-water", "visibility", visibility);
+          map.setLayoutProperty("atlas-water", "visibility", getInheritedLayoutVisibility(layerState, "ocean"));
+          return;
+        }
+
+        if (layerId === "earth") {
+          if (map.getLayer("atlas-water")) {
+            map.setLayoutProperty("atlas-water", "visibility", getInheritedLayoutVisibility(layerState, "ocean"));
+          }
+          if (map.getLayer(COUNTRIES_LAND_FILL_LAYER_ID)) {
+            map.setLayoutProperty(COUNTRIES_LAND_FILL_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "countriesLand"));
+          }
+          if (map.getLayer(COUNTRIES_LAND_LINE_LAYER_ID)) {
+            map.setLayoutProperty(COUNTRIES_LAND_LINE_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "countriesLand"));
+          }
+          AUSTRALIA_FILL_LAYER_IDS.forEach((fillLayerId) => {
+            if (map.getLayer(fillLayerId)) {
+              map.setLayoutProperty(fillLayerId, "visibility", getInheritedLayoutVisibility(layerState, "australia"));
+            }
+          });
+          AUSTRALIA_OUTLINE_LINE_LAYER_IDS.forEach((lineLayerId) => {
+            if (map.getLayer(lineLayerId)) {
+              map.setLayoutProperty(lineLayerId, "visibility", getInheritedLayoutVisibility(layerState, "australia"));
+            }
+          });
+          if (map.getLayer(GRATICULES_LINE_LAYER_ID)) {
+            map.setLayoutProperty(GRATICULES_LINE_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "graticules"));
+          }
+          return;
+        }
+
+        if (layerId === "transport" && map.getLayer(TRANSPORT_RAIL_LINE_LAYER_ID)) {
+          map.setLayoutProperty(TRANSPORT_RAIL_LINE_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "transportRail"));
           return;
         }
 
@@ -1435,35 +1494,35 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         }
 
         if (layerId === "transportRail" && map.getLayer(TRANSPORT_RAIL_LINE_LAYER_ID)) {
-          map.setLayoutProperty(TRANSPORT_RAIL_LINE_LAYER_ID, "visibility", visibility);
+          map.setLayoutProperty(TRANSPORT_RAIL_LINE_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "transportRail"));
           return;
         }
 
         if (layerId === "olympics") {
           if (map.getLayer(OLYMPICS_GOLD_LAYER_ID)) {
-            map.setLayoutProperty(OLYMPICS_GOLD_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsGold"));
+            map.setLayoutProperty(OLYMPICS_GOLD_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "olympicsGold"));
           }
           if (map.getLayer(OLYMPICS_SILVER_LAYER_ID)) {
-            map.setLayoutProperty(OLYMPICS_SILVER_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsSilver"));
+            map.setLayoutProperty(OLYMPICS_SILVER_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "olympicsSilver"));
           }
           if (map.getLayer(OLYMPICS_BRONZE_LAYER_ID)) {
-            map.setLayoutProperty(OLYMPICS_BRONZE_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsBronze"));
+            map.setLayoutProperty(OLYMPICS_BRONZE_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "olympicsBronze"));
           }
           return;
         }
 
         if (layerId === "olympicsGold" && map.getLayer(OLYMPICS_GOLD_LAYER_ID)) {
-          map.setLayoutProperty(OLYMPICS_GOLD_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsGold"));
+          map.setLayoutProperty(OLYMPICS_GOLD_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "olympicsGold"));
           return;
         }
 
         if (layerId === "olympicsSilver" && map.getLayer(OLYMPICS_SILVER_LAYER_ID)) {
-          map.setLayoutProperty(OLYMPICS_SILVER_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsSilver"));
+          map.setLayoutProperty(OLYMPICS_SILVER_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "olympicsSilver"));
           return;
         }
 
         if (layerId === "olympicsBronze" && map.getLayer(OLYMPICS_BRONZE_LAYER_ID)) {
-          map.setLayoutProperty(OLYMPICS_BRONZE_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsBronze"));
+          map.setLayoutProperty(OLYMPICS_BRONZE_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "olympicsBronze"));
           return;
         }
 
@@ -1479,10 +1538,10 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
 
         if (layerId === "countriesLand") {
           if (map.getLayer(COUNTRIES_LAND_FILL_LAYER_ID)) {
-            map.setLayoutProperty(COUNTRIES_LAND_FILL_LAYER_ID, "visibility", visibility);
+            map.setLayoutProperty(COUNTRIES_LAND_FILL_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "countriesLand"));
           }
           if (map.getLayer(COUNTRIES_LAND_LINE_LAYER_ID)) {
-            map.setLayoutProperty(COUNTRIES_LAND_LINE_LAYER_ID, "visibility", visibility);
+            map.setLayoutProperty(COUNTRIES_LAND_LINE_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "countriesLand"));
           }
           return;
         }
@@ -1512,31 +1571,31 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         if (layerId === "australia") {
           AUSTRALIA_FILL_LAYER_IDS.forEach((fillLayerId) => {
             if (map.getLayer(fillLayerId)) {
-              map.setLayoutProperty(fillLayerId, "visibility", visibility);
+              map.setLayoutProperty(fillLayerId, "visibility", getInheritedLayoutVisibility(layerState, "australia"));
             }
           });
           AUSTRALIA_OUTLINE_LINE_LAYER_IDS.forEach((lineLayerId) => {
             if (map.getLayer(lineLayerId)) {
-              map.setLayoutProperty(lineLayerId, "visibility", visibility);
+              map.setLayoutProperty(lineLayerId, "visibility", getInheritedLayoutVisibility(layerState, "australia"));
             }
           });
           return;
         }
 
         if (layerId === "graticules" && map.getLayer(GRATICULES_LINE_LAYER_ID)) {
-          map.setLayoutProperty(GRATICULES_LINE_LAYER_ID, "visibility", visibility);
+          map.setLayoutProperty(GRATICULES_LINE_LAYER_ID, "visibility", getInheritedLayoutVisibility(layerState, "graticules"));
           return;
         }
 
         if (layerId === "empires") {
           Object.entries(EMPIRE_FILL_LAYER_IDS).forEach(([empireLayerId, fillLayerId]) => {
             if (map.getLayer(fillLayerId)) {
-              map.setLayoutProperty(fillLayerId, "visibility", getEmpireLayoutVisibility(layerState, empireLayerId));
+              map.setLayoutProperty(fillLayerId, "visibility", getInheritedLayoutVisibility(layerState, empireLayerId));
             }
           });
           Object.entries(EMPIRE_LINE_LAYER_IDS).forEach(([empireLayerId, lineLayerId]) => {
             if (map.getLayer(lineLayerId)) {
-              map.setLayoutProperty(lineLayerId, "visibility", getEmpireLayoutVisibility(layerState, empireLayerId));
+              map.setLayoutProperty(lineLayerId, "visibility", getInheritedLayoutVisibility(layerState, empireLayerId));
             }
           });
           return;
@@ -1544,12 +1603,12 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
 
         const fillLayerId = EMPIRE_FILL_LAYER_IDS[layerId];
         if (fillLayerId && map.getLayer(fillLayerId)) {
-          map.setLayoutProperty(fillLayerId, "visibility", getEmpireLayoutVisibility(layerState, layerId));
+          map.setLayoutProperty(fillLayerId, "visibility", getInheritedLayoutVisibility(layerState, layerId));
         }
 
         const lineLayerId = LINE_LAYER_IDS[layerId];
         if (lineLayerId && map.getLayer(lineLayerId)) {
-          map.setLayoutProperty(lineLayerId, "visibility", getEmpireLayoutVisibility(layerState, layerId));
+          map.setLayoutProperty(lineLayerId, "visibility", getInheritedLayoutVisibility(layerState, layerId));
         }
         return;
       }

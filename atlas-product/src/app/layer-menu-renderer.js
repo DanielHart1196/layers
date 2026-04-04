@@ -484,13 +484,13 @@ function createRowHeader(labelText, valueText = null, className, options = {}) {
   };
 }
 
-function createLayerRow(definition, state, parentId, onToggleExpanded, onToggleVisibility, reorderApi, dragState) {
+function createLayerRow(definition, state, parentId, inheritedHidden, onToggleExpanded, onToggleVisibility, reorderApi, dragState) {
   const row = document.createElement("div");
   row.className = "layer-menu-row layer-menu-row-layer";
   const expandStateKey = definition.layerId ?? definition.id;
   const hasChildren = Array.isArray(definition.rows) && definition.rows.length > 0;
   const hasVisibility = Boolean(definition.layerId);
-  const isReorderable = Boolean(parentId && definition.layerId && definition.layerId !== "ocean");
+  const isReorderable = Boolean(parentId && definition.layerId && definition.id !== "ocean" && definition.id !== "earth");
   const { header, label, chevron, grabber } = createRowHeader(definition.label, null, "layer-menu-row-header", {
     grabber: isReorderable,
     labelButton: hasVisibility || !hasChildren,
@@ -513,7 +513,7 @@ function createLayerRow(definition, state, parentId, onToggleExpanded, onToggleV
   }
 
   if (hasVisibility) {
-    row.classList.toggle("is-hidden", state?.visible === false);
+    row.classList.toggle("is-hidden", inheritedHidden || state?.visible === false);
     label.addEventListener("click", (event) => {
       event.stopPropagation();
       onToggleVisibility(definition.layerId);
@@ -1028,7 +1028,7 @@ function createAppearanceFillRow({ id, label, kind }) {
   };
 }
 
-function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, appearanceState, depth = 0, parentId = null) {
+function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, appearanceState, depth = 0, parentId = null, inheritedHidden = false) {
   const fragment = document.createDocumentFragment();
   const state = layerModel.getState();
 
@@ -1072,12 +1072,22 @@ function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reord
       return;
     }
 
-    const layerRow = createLayerRow(row, state[rowStateKey], parentId, onToggleExpanded, onToggleVisibility, reorderApi, reorderApi.dragState);
+    const layerRow = createLayerRow(
+      row,
+      state[rowStateKey],
+      parentId,
+      inheritedHidden,
+      onToggleExpanded,
+      onToggleVisibility,
+      reorderApi,
+      reorderApi.dragState,
+    );
     layerRow.style.setProperty("--row-depth", String(depth));
     fragment.append(layerRow);
 
     if (childRows.length && state[rowStateKey]?.expanded) {
-      fragment.append(buildRows(childRows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, appearanceState, depth + 1, row.id));
+      const nextInheritedHidden = inheritedHidden || (row.type === "layer" && state[rowStateKey]?.visible === false);
+      fragment.append(buildRows(childRows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, appearanceState, depth + 1, row.id, nextInheritedHidden));
     }
   });
 
@@ -1227,7 +1237,7 @@ function renderLayerMenuRows({
 
     panel.append(
       buildRows(
-        layerModel.getRootRows(),
+        reorderApi.getOrderedRows(layerModel.getRootParentId()),
         layerModel,
         onToggleExpanded,
         onToggleVisibility,
@@ -1235,7 +1245,7 @@ function renderLayerMenuRows({
         onPanelRowInput,
         appearanceState,
         0,
-        null,
+        layerModel.getRootParentId(),
       ),
     );
   }

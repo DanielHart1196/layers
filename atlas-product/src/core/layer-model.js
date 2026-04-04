@@ -1,5 +1,6 @@
 function createLayerModel() {
   const STORAGE_KEY = "atlas.layerState.v1";
+  const ROOT_PARENT_ID = "__root__";
   const SHARED_COLOR_STORAGE_KEY = "atlas.colors.customColors";
   const SHARED_COLOR_PRESETS = ["#000000", "#FFFFFF", "#d94b4b", "#e58a2b", "#e5c84a", "#5b8c5a", "#4b6ed9", "#8c5bd6"];
 
@@ -95,8 +96,10 @@ function createLayerModel() {
     earth: {
       id: "earth",
       label: "Earth",
-      kind: "group",
+      type: "layer",
+      layerId: "earth",
       defaultExpanded: true,
+      pinnedOrder: "start",
       rows: [
         {
           id: "ocean",
@@ -264,9 +267,9 @@ function createLayerModel() {
     },
     transport: {
       id: "transport",
-      layerId: "transport",
       label: "Transport",
-      kind: "group",
+      type: "layer",
+      layerId: "transport",
       defaultExpanded: true,
       rows: [
         {
@@ -364,9 +367,9 @@ function createLayerModel() {
     },
     empires: {
       id: "empires",
+      type: "layer",
       layerId: "empires",
       label: "Empires",
-      kind: "group",
       defaultExpanded: true,
       rows: [
         {
@@ -460,9 +463,19 @@ function createLayerModel() {
     indexRowDefinitions(rootDefinition.rows);
   });
 
-  function getOrderableChildRows(parentId) {
+  function getParentRows(parentId) {
+    if (parentId === ROOT_PARENT_ID) {
+      return ROOT_ROW_IDS
+        .map((id) => layerDefinitions[id])
+        .filter(Boolean);
+    }
+
     const parent = rowDefinitionsById.get(parentId) ?? layerDefinitions[parentId];
-    return (parent?.rows ?? []).filter((row) => row.hidden !== true);
+    return parent?.rows ?? [];
+  }
+
+  function getOrderableChildRows(parentId) {
+    return getParentRows(parentId).filter((row) => row.hidden !== true);
   }
 
   function getDefaultChildOrder(parentId) {
@@ -470,12 +483,10 @@ function createLayerModel() {
   }
 
   function normalizeChildRowOrder(parentId, candidateOrder = null) {
-    const parent = rowDefinitionsById.get(parentId) ?? layerDefinitions[parentId];
-    if (!parent?.rows?.length) {
+    const orderableRows = getOrderableChildRows(parentId);
+    if (!orderableRows.length) {
       return [];
     }
-
-    const orderableRows = getOrderableChildRows(parentId);
     const rowIds = orderableRows.map((row) => row.id);
     const pinnedStartIds = orderableRows
       .filter((row) => row.pinnedOrder === "start")
@@ -502,18 +513,11 @@ function createLayerModel() {
 
   function buildDefaultLayerState() {
     const state = {
+      [ROOT_PARENT_ID]: {
+        rowOrder: getDefaultChildOrder(ROOT_PARENT_ID),
+      },
       earth: {
-        expanded: layerDefinitions.earth.defaultExpanded,
         rowOrder: getDefaultChildOrder("earth"),
-      },
-      transport: {
-        expanded: layerDefinitions.transport.defaultExpanded,
-        rowOrder: getDefaultChildOrder("transport"),
-      },
-      empires: {
-        expanded: layerDefinitions.empires.defaultExpanded,
-        rowOrder: getDefaultChildOrder("empires"),
-        visible: true,
       },
     };
 
@@ -528,10 +532,13 @@ function createLayerModel() {
       if (row?.type === "layer") {
         const layerRecord = ensureLayerState(row.layerId);
         if (typeof layerRecord.expanded !== "boolean") {
-          layerRecord.expanded = false;
+          layerRecord.expanded = Boolean(row.defaultExpanded);
         }
         if (typeof layerRecord.visible !== "boolean") {
           layerRecord.visible = true;
+        }
+        if (Array.isArray(row.rows) && row.rows.length && !Array.isArray(layerRecord.rowOrder)) {
+          layerRecord.rowOrder = getDefaultChildOrder(row.id);
         }
         row.rows?.forEach(applyRowDefaults);
         return;
@@ -570,8 +577,10 @@ function createLayerModel() {
   }
 
   const layerState = hydrateLayerState();
+  layerState[ROOT_PARENT_ID].rowOrder = normalizeChildRowOrder(ROOT_PARENT_ID, layerState[ROOT_PARENT_ID]?.rowOrder);
   layerState.earth.rowOrder = normalizeChildRowOrder("earth", layerState.earth?.rowOrder);
   layerState.transport.rowOrder = normalizeChildRowOrder("transport", layerState.transport?.rowOrder);
+  layerState.olympics.rowOrder = normalizeChildRowOrder("olympics", layerState.olympics?.rowOrder);
   layerState.empires.rowOrder = normalizeChildRowOrder("empires", layerState.empires?.rowOrder);
 
   function hydrateLayerState() {
@@ -639,12 +648,15 @@ function createLayerModel() {
   }
 
   function getRootRows() {
-    return ROOT_ROW_IDS.map((id) => layerDefinitions[id]);
+    return getChildRows(ROOT_PARENT_ID);
+  }
+
+  function getRootParentId() {
+    return ROOT_PARENT_ID;
   }
 
   function getChildRows(parentId) {
-    const parent = rowDefinitionsById.get(parentId) ?? layerDefinitions[parentId];
-    if (!parent?.rows?.length) {
+    if (!getParentRows(parentId).length) {
       return [];
     }
 
@@ -738,8 +750,7 @@ function createLayerModel() {
   }
 
   function reorderChildRow(parentId, rowId, targetRowId, placement = "before") {
-    const parent = layerDefinitions[parentId];
-    if (!parent?.rows?.length) {
+    if (!getParentRows(parentId).length) {
       return null;
     }
 
@@ -767,8 +778,7 @@ function createLayerModel() {
   }
 
   function setChildRowOrder(parentId, nextOrder) {
-    const parent = layerDefinitions[parentId];
-    if (!parent?.rows?.length || !Array.isArray(nextOrder)) {
+    if (!getParentRows(parentId).length || !Array.isArray(nextOrder)) {
       return null;
     }
 
@@ -789,6 +799,7 @@ function createLayerModel() {
     getChildRows,
     getDefinitions,
     getRootRows,
+    getRootParentId,
     getRowValue,
     getState,
     normalizeChildRowOrder,

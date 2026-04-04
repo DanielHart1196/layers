@@ -37,6 +37,10 @@
 - Allow intentional structural coupling when it preserves consistency between related controls, but keep the coupling explicit and inspectable.
 - For layer panel architecture, "shared" means same structural source code, not just matching visuals or behavior.
 - All layers should ultimately come from the same shared layer row/shell structure.
+- In `atlas-product`, top-level categories like `Earth`, `Transport`, and `Empires` should be modeled as normal shared layer rows, not a separate weaker `group` concept.
+- `Earth` is a deliberate exception in top-level ordering:
+  - it stays pinned first in the panel
+  - but it still renders as the visual base underneath the other top-level groups
 - Layer expandability should be derived from the shared layer definition shape:
   - child rows
   - rows
