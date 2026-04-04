@@ -9,6 +9,7 @@
     "build:countries:dissolved-land": "node ./scripts/build-countries-dissolved-land-geojson.mjs",
     "build:countries:split": "node ./scripts/build-country-geojson-splits.mjs",
     "build:natural-earth:land": "node ./scripts/build-natural-earth-land-geojson.mjs",
+    "build:olympics:latest": "node ./scripts/build-olympics-latest-geojson.mjs",
     "build:land:50m:pmtiles": "node ./scripts/build-land-50m-pmtiles.mjs",
     "build:africa:pmtiles": "node ./scripts/build-africa-pmtiles.mjs",
     "build:osm-land": "node ./scripts/build-osm-land-runtime.mjs",

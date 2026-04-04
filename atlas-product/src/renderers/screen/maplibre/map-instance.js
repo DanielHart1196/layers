@@ -15,6 +15,10 @@ const COUNTRY_TILE_SOURCE_LAYER = "countries";
 const COUNTRY_FILL_LAYER_ID = "atlas-country-vector-fill";
 const COUNTRY_LINE_LAYER_ID = "atlas-country-vector-line";
 const COUNTRY_VECTOR_URL = "/data/external-countries.geojson";
+const OLYMPICS_SOURCE_ID = "atlas-olympics";
+const OLYMPICS_GOLD_LAYER_ID = "atlas-olympics-gold";
+const OLYMPICS_SILVER_LAYER_ID = "atlas-olympics-silver";
+const OLYMPICS_BRONZE_LAYER_ID = "atlas-olympics-bronze";
 const OSM_LAND_SOURCE_ID = "atlas-osm-land";
 const OSM_LAND_TILE_SOURCE_ID = "atlas-osm-land-tiles";
 const OSM_LAND_TILE_SOURCE_LAYER = "land-fill";
@@ -239,6 +243,11 @@ function getLogicalLayerBundles() {
       victoria: [VICTORIA_FILL_LAYER_ID, ...VICTORIA_OUTLINE_LINE_LAYER_IDS],
       graticules: [GRATICULES_LINE_LAYER_ID],
     },
+    olympics: {
+      "olympics-gold": [OLYMPICS_GOLD_LAYER_ID],
+      "olympics-silver": [OLYMPICS_SILVER_LAYER_ID],
+      "olympics-bronze": [OLYMPICS_BRONZE_LAYER_ID],
+    },
     empires: {
       roman: [ROMAN_FILL_LAYER_ID, ROMAN_LINE_LAYER_ID],
       mongol: [MONGOL_FILL_LAYER_ID, MONGOL_LINE_LAYER_ID],
@@ -389,6 +398,21 @@ function getEmpireLayoutVisibility(layerState, layerId) {
   const groupVisible = getLayerStyleValue(layerState, "empires", "visible", true);
   const layerVisible = getLayerStyleValue(layerState, layerId, "visible", true);
   return groupVisible && layerVisible ? "visible" : "none";
+}
+
+function getOlympicsLayoutVisibility(layerState, layerId) {
+  const groupVisible = getLayerStyleValue(layerState, "olympics", "visible", true);
+  const layerVisible = getLayerStyleValue(layerState, layerId, "visible", true);
+  return groupVisible && layerVisible ? "visible" : "none";
+}
+
+function getOlympicsYear(layerState) {
+  const selectedYear = Number(getLayerStyleValue(layerState, "olympics", "selectedYear", 2024));
+  return Number.isFinite(selectedYear) ? selectedYear : 2024;
+}
+
+function getOlympicsVectorUrl(layerState) {
+  return `/data/temporal/olympic-medals-birthplace.${getOlympicsYear(layerState)}.geojson`;
 }
 
 function geometryToMultiPolygonCoordinates(geometry) {
@@ -833,6 +857,46 @@ async function attachCountriesVectorLayer(map, layerState) {
   });
 }
 
+async function attachOlympicsLayers(map, layerState) {
+  if (map.getSource(OLYMPICS_SOURCE_ID)) {
+    [OLYMPICS_GOLD_LAYER_ID, OLYMPICS_SILVER_LAYER_ID, OLYMPICS_BRONZE_LAYER_ID].forEach((layerId) => {
+      if (map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+    });
+    map.removeSource(OLYMPICS_SOURCE_ID);
+  }
+
+  map.addSource(OLYMPICS_SOURCE_ID, {
+    type: "geojson",
+    data: getOlympicsVectorUrl(layerState),
+  });
+
+  [
+    ["olympicsGold", OLYMPICS_GOLD_LAYER_ID, "gold", "#D4AF37", "#FFF6D5"],
+    ["olympicsSilver", OLYMPICS_SILVER_LAYER_ID, "silver", "#B8C2CC", "#F8FBFF"],
+    ["olympicsBronze", OLYMPICS_BRONZE_LAYER_ID, "bronze", "#B87333", "#F6DFC7"],
+  ].forEach(([filterLayerId, layerId, medal, color, stroke]) => {
+    map.addLayer({
+      id: layerId,
+      type: "circle",
+      source: OLYMPICS_SOURCE_ID,
+      filter: ["==", ["get", "medal"], medal],
+      layout: {
+        visibility: getOlympicsLayoutVisibility(layerState, filterLayerId),
+      },
+      paint: {
+        "circle-radius": 3.5,
+        "circle-color": color,
+        "circle-opacity": 0.92,
+        "circle-stroke-color": stroke,
+        "circle-stroke-width": 1,
+        "circle-stroke-opacity": 0.95,
+      },
+    });
+  });
+}
+
 function buildLineWidthExpression(weightPx) {
   return Math.max(0, Number(weightPx) || 0);
 }
@@ -1033,13 +1097,13 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
     const message = event?.error?.message ?? event?.error?.toString?.() ?? "unknown";
     console.error("MapLibre map error.", message, event?.error);
   });
-  map.on("zoomstart", () => {
+  map.on("movestart", () => {
     showScaleOverlay();
   });
-  map.on("zoom", () => {
+  map.on("move", () => {
     showScaleOverlay();
   });
-  map.on("zoomend", () => {
+  map.on("moveend", () => {
     showScaleOverlay();
     hideScaleOverlaySoon();
   });
@@ -1070,7 +1134,9 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         await attachRomanEmpireLayer(map, layerState);
         await attachMongolEmpireLayer(map, layerState);
         await attachBritishEmpireLayer(map, layerState);
+        await attachOlympicsLayers(map, layerState);
         applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "australia", "countries-land", "graticules"]));
+        applyLogicalLayerOrder(map, "olympics", getLayerStyleValue(layerState, "olympics", "rowOrder", ["olympics-gold", "olympics-silver", "olympics-bronze"]));
         applyLogicalLayerOrder(map, "empires", getLayerStyleValue(layerState, "empires", "rowOrder", ["roman", "mongol", "british"]));
       } catch (error) {
         console.error("Failed to attach ordered atlas layers.", error);
@@ -1325,6 +1391,34 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
+        if (layerId === "olympics") {
+          if (map.getLayer(OLYMPICS_GOLD_LAYER_ID)) {
+            map.setLayoutProperty(OLYMPICS_GOLD_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsGold"));
+          }
+          if (map.getLayer(OLYMPICS_SILVER_LAYER_ID)) {
+            map.setLayoutProperty(OLYMPICS_SILVER_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsSilver"));
+          }
+          if (map.getLayer(OLYMPICS_BRONZE_LAYER_ID)) {
+            map.setLayoutProperty(OLYMPICS_BRONZE_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsBronze"));
+          }
+          return;
+        }
+
+        if (layerId === "olympicsGold" && map.getLayer(OLYMPICS_GOLD_LAYER_ID)) {
+          map.setLayoutProperty(OLYMPICS_GOLD_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsGold"));
+          return;
+        }
+
+        if (layerId === "olympicsSilver" && map.getLayer(OLYMPICS_SILVER_LAYER_ID)) {
+          map.setLayoutProperty(OLYMPICS_SILVER_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsSilver"));
+          return;
+        }
+
+        if (layerId === "olympicsBronze" && map.getLayer(OLYMPICS_BRONZE_LAYER_ID)) {
+          map.setLayoutProperty(OLYMPICS_BRONZE_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsBronze"));
+          return;
+        }
+
         if (layerId === "land" && map.getLayer(OSM_LAND_FILL_LAYER_ID)) {
           map.setLayoutProperty(OSM_LAND_FILL_LAYER_ID, "visibility", visibility);
           return;
@@ -1408,6 +1502,14 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         const lineLayerId = LINE_LAYER_IDS[layerId];
         if (lineLayerId && map.getLayer(lineLayerId)) {
           map.setLayoutProperty(lineLayerId, "visibility", getEmpireLayoutVisibility(layerState, layerId));
+        }
+        return;
+      }
+
+      if (layerId === "olympics" && key === "selectedYear") {
+        const olympicsSource = map.getSource(OLYMPICS_SOURCE_ID);
+        if (olympicsSource && "setData" in olympicsSource) {
+          olympicsSource.setData(getOlympicsVectorUrl(layerState));
         }
       }
 

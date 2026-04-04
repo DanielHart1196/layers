@@ -65,6 +65,32 @@ function createLayerModel() {
     };
   }
 
+  function createSliderRow({
+    id,
+    label,
+    layerId,
+    key,
+    min,
+    max,
+    step = 1,
+    valueFormat = null,
+    initialValue,
+  }) {
+    return {
+      id,
+      type: "slider",
+      label,
+      target: { kind: "layer-style", layerId, key },
+      min,
+      max,
+      step,
+      valueFormat,
+      initialState: {
+        [key]: initialValue,
+      },
+    };
+  }
+
   const layerDefinitions = {
     earth: {
       id: "earth",
@@ -260,6 +286,45 @@ function createLayerModel() {
         }),
       ],
     },
+    olympics: {
+      id: "olympics",
+      type: "layer",
+      label: "Olympics",
+      layerId: "olympics",
+      rows: [
+        createSliderRow({
+          id: "olympics-year",
+          label: "Year",
+          layerId: "olympics",
+          key: "selectedYear",
+          min: 1996,
+          max: 2024,
+          step: 4,
+          initialValue: 2024,
+        }),
+        {
+          id: "olympics-gold",
+          type: "layer",
+          label: "Gold",
+          layerId: "olympicsGold",
+          rows: [],
+        },
+        {
+          id: "olympics-silver",
+          type: "layer",
+          label: "Silver",
+          layerId: "olympicsSilver",
+          rows: [],
+        },
+        {
+          id: "olympics-bronze",
+          type: "layer",
+          label: "Bronze",
+          layerId: "olympicsBronze",
+          rows: [],
+        },
+      ],
+    },
     empires: {
       id: "empires",
       layerId: "empires",
@@ -337,7 +402,7 @@ function createLayerModel() {
     },
   };
 
-  const ROOT_ROW_IDS = ["earth", "countries", "empires"];
+  const ROOT_ROW_IDS = ["earth", "countries", "olympics", "empires"];
   const rowDefinitionsById = new Map();
 
   function indexRowDefinitions(rows = []) {
