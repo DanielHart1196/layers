@@ -93,6 +93,7 @@ function createLayerModel() {
           type: "layer",
           label: "Land",
           layerId: "land",
+          hidden: true,
           rows: [
             createFillRow({
               id: "land-fill",
@@ -108,6 +109,7 @@ function createLayerModel() {
           type: "layer",
           label: "Outline",
           layerId: "outline",
+          hidden: true,
           rows: [
             createLineRow({
               id: "outline-line",
@@ -123,6 +125,7 @@ function createLayerModel() {
           type: "layer",
           label: "Japan",
           layerId: "japan",
+          hidden: true,
           rows: [
             createLineRow({
               id: "japan-line",
@@ -160,6 +163,7 @@ function createLayerModel() {
           type: "layer",
           label: "Africa",
           layerId: "africa",
+          hidden: true,
           rows: [
             createFillRow({
               id: "africa-fill",
@@ -171,10 +175,33 @@ function createLayerModel() {
           ],
         },
         {
+          id: "countries-land",
+          type: "layer",
+          label: "Land",
+          layerId: "countriesLand",
+          rows: [
+            createFillRow({
+              id: "countries-land-fill",
+              layerId: "countriesLand",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#6EAA6E",
+            }),
+            createLineRow({
+              id: "countries-land-line",
+              layerId: "countriesLand",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#d9e4da",
+            }),
+          ],
+        },
+        {
           id: "victoria",
           type: "layer",
           label: "Victoria",
           layerId: "victoria",
+          hidden: true,
           rows: [
             createFillRow({
               id: "victoria-fill",
@@ -331,8 +358,13 @@ function createLayerModel() {
     indexRowDefinitions(rootDefinition.rows);
   });
 
+  function getOrderableChildRows(parentId) {
+    const parent = rowDefinitionsById.get(parentId) ?? layerDefinitions[parentId];
+    return (parent?.rows ?? []).filter((row) => row.hidden !== true);
+  }
+
   function getDefaultChildOrder(parentId) {
-    return (layerDefinitions[parentId]?.rows ?? []).map((row) => row.id);
+    return getOrderableChildRows(parentId).map((row) => row.id);
   }
 
   function normalizeChildRowOrder(parentId, candidateOrder = null) {
@@ -341,11 +373,12 @@ function createLayerModel() {
       return [];
     }
 
-    const rowIds = parent.rows.map((row) => row.id);
-    const pinnedStartIds = parent.rows
+    const orderableRows = getOrderableChildRows(parentId);
+    const rowIds = orderableRows.map((row) => row.id);
+    const pinnedStartIds = orderableRows
       .filter((row) => row.pinnedOrder === "start")
       .map((row) => row.id);
-    const pinnedEndIds = parent.rows
+    const pinnedEndIds = orderableRows
       .filter((row) => row.pinnedOrder === "end")
       .map((row) => row.id);
     const movableIds = rowIds.filter((rowId) => !pinnedStartIds.includes(rowId) && !pinnedEndIds.includes(rowId));
@@ -431,6 +464,8 @@ function createLayerModel() {
   }
 
   const layerState = hydrateLayerState();
+  layerState.earth.rowOrder = normalizeChildRowOrder("earth", layerState.earth?.rowOrder);
+  layerState.empires.rowOrder = normalizeChildRowOrder("empires", layerState.empires?.rowOrder);
 
   function hydrateLayerState() {
     const baseState = buildDefaultLayerState();
@@ -506,13 +541,14 @@ function createLayerModel() {
       return [];
     }
 
-    const rowById = new Map(parent.rows.map((row) => [row.id, row]));
+    const visibleRows = getOrderableChildRows(parentId);
+    const rowById = new Map(visibleRows.map((row) => [row.id, row]));
     const persistedOrder = normalizeChildRowOrder(parentId);
     const orderedRows = persistedOrder
       .map((id) => rowById.get(id))
       .filter(Boolean);
 
-    parent.rows.forEach((row) => {
+    visibleRows.forEach((row) => {
       if (!orderedRows.includes(row)) {
         orderedRows.push(row);
       }
@@ -629,7 +665,7 @@ function createLayerModel() {
       return null;
     }
 
-    const allowedIds = parent.rows.map((row) => row.id);
+    const allowedIds = getOrderableChildRows(parentId).map((row) => row.id);
     if (
       nextOrder.length !== allowedIds.length
       || allowedIds.some((rowId) => !nextOrder.includes(rowId))

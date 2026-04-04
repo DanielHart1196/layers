@@ -487,6 +487,7 @@ function createRowHeader(labelText, valueText = null, className, options = {}) {
 function createLayerRow(definition, state, parentId, onToggleExpanded, onToggleVisibility, reorderApi, dragState) {
   const row = document.createElement("div");
   row.className = "layer-menu-row layer-menu-row-layer";
+  const expandStateKey = definition.layerId ?? definition.id;
   const hasChildren = Array.isArray(definition.rows) && definition.rows.length > 0;
   const hasVisibility = Boolean(definition.layerId);
   const isReorderable = Boolean(parentId && definition.layerId && definition.layerId !== "ocean");
@@ -526,7 +527,7 @@ function createLayerRow(definition, state, parentId, onToggleExpanded, onToggleV
 
   chevron?.addEventListener("click", (event) => {
     event.stopPropagation();
-    onToggleExpanded(definition.id);
+    onToggleExpanded(expandStateKey);
   });
 
   if (grabber && isReorderable) {
@@ -542,7 +543,7 @@ function createLayerRow(definition, state, parentId, onToggleExpanded, onToggleV
       ) {
         return;
       }
-      onToggleExpanded(definition.id);
+      onToggleExpanded(expandStateKey);
     });
   }
 
@@ -1032,6 +1033,7 @@ function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reord
   const state = layerModel.getState();
 
   rows.forEach((row) => {
+    const rowStateKey = row.type === "layer" ? (row.layerId ?? row.id) : row.id;
     const childRows = row.id ? reorderApi.getOrderedRows(row.id) : [];
 
     if (row.type === "slider") {
@@ -1070,11 +1072,11 @@ function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reord
       return;
     }
 
-    const layerRow = createLayerRow(row, state[row.id], parentId, onToggleExpanded, onToggleVisibility, reorderApi, reorderApi.dragState);
+    const layerRow = createLayerRow(row, state[rowStateKey], parentId, onToggleExpanded, onToggleVisibility, reorderApi, reorderApi.dragState);
     layerRow.style.setProperty("--row-depth", String(depth));
     fragment.append(layerRow);
 
-    if (childRows.length && state[row.id]?.expanded) {
+    if (childRows.length && state[rowStateKey]?.expanded) {
       fragment.append(buildRows(childRows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, appearanceState, depth + 1, row.id));
     }
   });

@@ -46,6 +46,10 @@ const AFRICA_FILL_TILE_SOURCE_ID = "atlas-africa-fill-tiles";
 const AFRICA_FILL_TILE_SOURCE_LAYER = "land-fill";
 const AFRICA_FILL_LAYER_ID = "atlas-africa-fill";
 const AFRICA_FILL_PMTILES_ID = "africa-fill";
+const COUNTRIES_LAND_SOURCE_ID = "atlas-countries-land";
+const COUNTRIES_LAND_FILL_LAYER_ID = "atlas-countries-land-fill";
+const COUNTRIES_LAND_LINE_LAYER_ID = "atlas-countries-land-line";
+const COUNTRIES_LAND_VECTOR_URL = "/data/world-atlas/countries-dissolved-land.geojson";
 const VICTORIA_TILE_IDS = ["a", "b", "c", "d"];
 const VICTORIA_FILL_SOURCE_ID = "atlas-victoria-fill";
 const VICTORIA_FILL_LAYER_ID = "atlas-victoria-fill";
@@ -92,6 +96,7 @@ const LINE_LAYER_IDS = {
   outline: OSM_OUTLINE_LINE_LAYER_ID,
   japan: JAPAN_OUTLINE_LINE_LAYER_ID,
   australia: AUSTRALIA_OUTLINE_LINE_LAYER_IDS[0],
+  countriesLand: COUNTRIES_LAND_LINE_LAYER_ID,
   victoria: VICTORIA_OUTLINE_LINE_LAYER_IDS[0],
   countries: COUNTRY_LINE_LAYER_ID,
   ...EMPIRE_LINE_LAYER_IDS,
@@ -230,6 +235,7 @@ function getLogicalLayerBundles() {
       japan: [JAPAN_OUTLINE_LINE_LAYER_ID],
       australia: [...AUSTRALIA_FILL_LAYER_IDS, ...AUSTRALIA_OUTLINE_LINE_LAYER_IDS],
       africa: [AFRICA_FILL_LAYER_ID],
+      "countries-land": [COUNTRIES_LAND_FILL_LAYER_ID, COUNTRIES_LAND_LINE_LAYER_ID],
       victoria: [VICTORIA_FILL_LAYER_ID, ...VICTORIA_OUTLINE_LINE_LAYER_IDS],
       graticules: [GRATICULES_LINE_LAYER_ID],
     },
@@ -454,16 +460,6 @@ function ensureProtocol(manifest = []) {
     sourceLayer: COUNTRY_TILE_SOURCE_LAYER,
   });
   registerGeojsonVectorTileSource({
-    id: OSM_LAND_TILE_SOURCE_ID,
-    dataUrl: OSM_LAND_VECTOR_URL,
-    sourceLayer: OSM_LAND_TILE_SOURCE_LAYER,
-  });
-  registerGeojsonVectorTileSource({
-    id: OSM_OUTLINE_TILE_SOURCE_ID,
-    dataUrl: OSM_OUTLINE_VECTOR_URL,
-    sourceLayer: OSM_OUTLINE_TILE_SOURCE_LAYER,
-  });
-  registerGeojsonVectorTileSource({
     id: GRATICULES_TILE_SOURCE_ID,
     dataUrl: GRATICULES_VECTOR_URL,
     sourceLayer: GRATICULES_TILE_SOURCE_LAYER,
@@ -684,6 +680,50 @@ async function attachAfricaFillLayer(map, layerState, manifest) {
     paint: {
       "fill-color": getLayerStyleValue(layerState, "africa", "fillColor", DEFAULT_LAND_FILL_COLOR),
       "fill-opacity": Number(getLayerStyleValue(layerState, "africa", "fillOpacity", 100)) / 100,
+    },
+  });
+}
+
+async function attachCountriesLandLayers(map, layerState) {
+  if (map.getSource(COUNTRIES_LAND_SOURCE_ID)) {
+    if (map.getLayer(COUNTRIES_LAND_LINE_LAYER_ID)) {
+      map.removeLayer(COUNTRIES_LAND_LINE_LAYER_ID);
+    }
+    if (map.getLayer(COUNTRIES_LAND_FILL_LAYER_ID)) {
+      map.removeLayer(COUNTRIES_LAND_FILL_LAYER_ID);
+    }
+    map.removeSource(COUNTRIES_LAND_SOURCE_ID);
+  }
+
+  map.addSource(COUNTRIES_LAND_SOURCE_ID, {
+    type: "geojson",
+    data: COUNTRIES_LAND_VECTOR_URL,
+  });
+
+  map.addLayer({
+    id: COUNTRIES_LAND_FILL_LAYER_ID,
+    type: "fill",
+    source: COUNTRIES_LAND_SOURCE_ID,
+    layout: {
+      visibility: getLayoutVisibility(layerState, "countriesLand"),
+    },
+    paint: {
+      "fill-color": getLayerStyleValue(layerState, "countriesLand", "fillColor", DEFAULT_LAND_FILL_COLOR),
+      "fill-opacity": Number(getLayerStyleValue(layerState, "countriesLand", "fillOpacity", 100)) / 100,
+    },
+  });
+
+  map.addLayer({
+    id: COUNTRIES_LAND_LINE_LAYER_ID,
+    type: "line",
+    source: COUNTRIES_LAND_SOURCE_ID,
+    layout: {
+      visibility: getLayoutVisibility(layerState, "countriesLand"),
+    },
+    paint: {
+      "line-color": getLayerStyleValue(layerState, "countriesLand", "lineColor", DEFAULT_OUTLINE_LINE_COLOR),
+      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "countriesLand", "lineWeight", 1)),
+      "line-opacity": Number(getLayerStyleValue(layerState, "countriesLand", "lineOpacity", 100)) / 100,
     },
   });
 }
@@ -1022,20 +1062,15 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
     }
     void (async () => {
       try {
-        await attachOsmLandFillLayer(map, layerState, manifest);
-        await attachOsmOutlineLayer(map, layerState, manifest);
-        await attachJapanOutlineLayer(map, layerState, manifest);
         await attachAustraliaFillLayer(map, layerState, manifest);
         await attachAustraliaOutlineLayer(map, layerState, manifest);
-        await attachAfricaFillLayer(map, layerState, manifest);
-        await attachVictoriaFillLayers(map, layerState, manifest);
-        await attachVictoriaOutlineLayers(map, layerState, manifest);
+        await attachCountriesLandLayers(map, layerState);
         await attachGraticulesLayer(map, layerState);
         await attachCountriesVectorLayer(map, layerState);
         await attachRomanEmpireLayer(map, layerState);
         await attachMongolEmpireLayer(map, layerState);
         await attachBritishEmpireLayer(map, layerState);
-        applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "land", "outline", "japan", "australia", "africa", "victoria", "graticules"]));
+        applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "australia", "countries-land", "graticules"]));
         applyLogicalLayerOrder(map, "empires", getLayerStyleValue(layerState, "empires", "rowOrder", ["roman", "mongol", "british"]));
       } catch (error) {
         console.error("Failed to attach ordered atlas layers.", error);
@@ -1078,6 +1113,11 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
 
         if (layerId === "africa" && map.getLayer(AFRICA_FILL_LAYER_ID)) {
           map.setPaintProperty(AFRICA_FILL_LAYER_ID, "fill-opacity", Number(value) / 100);
+          return;
+        }
+
+        if (layerId === "countriesLand" && map.getLayer(COUNTRIES_LAND_FILL_LAYER_ID)) {
+          map.setPaintProperty(COUNTRIES_LAND_FILL_LAYER_ID, "fill-opacity", Number(value) / 100);
           return;
         }
 
@@ -1132,6 +1172,11 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
+        if (layerId === "countriesLand" && map.getLayer(COUNTRIES_LAND_FILL_LAYER_ID)) {
+          map.setPaintProperty(COUNTRIES_LAND_FILL_LAYER_ID, "fill-color", String(value));
+          return;
+        }
+
         if (layerId === "victoria" && map.getLayer(VICTORIA_FILL_LAYER_ID)) {
           map.setPaintProperty(VICTORIA_FILL_LAYER_ID, "fill-color", String(value));
           return;
@@ -1173,6 +1218,11 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
+        if (layerId === "countriesLand" && map.getLayer(COUNTRIES_LAND_LINE_LAYER_ID)) {
+          map.setPaintProperty(COUNTRIES_LAND_LINE_LAYER_ID, "line-color", String(value));
+          return;
+        }
+
         const lineLayerId = LINE_LAYER_IDS[layerId];
         if (!lineLayerId || !map.getLayer(lineLayerId)) {
           return;
@@ -1201,6 +1251,11 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
+        if (layerId === "countriesLand" && map.getLayer(COUNTRIES_LAND_LINE_LAYER_ID)) {
+          map.setPaintProperty(COUNTRIES_LAND_LINE_LAYER_ID, "line-opacity", Number(value) / 100);
+          return;
+        }
+
         const lineLayerId = LINE_LAYER_IDS[layerId];
         if (!lineLayerId || !map.getLayer(lineLayerId)) {
           return;
@@ -1226,6 +1281,11 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
               map.setPaintProperty(lineLayerId, "line-width", buildLineWidthExpression(Number(value)));
             }
           });
+          return;
+        }
+
+        if (layerId === "countriesLand" && map.getLayer(COUNTRIES_LAND_LINE_LAYER_ID)) {
+          map.setPaintProperty(COUNTRIES_LAND_LINE_LAYER_ID, "line-width", buildLineWidthExpression(Number(value)));
           return;
         }
 
@@ -1272,6 +1332,16 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
 
         if (layerId === "africa" && map.getLayer(AFRICA_FILL_LAYER_ID)) {
           map.setLayoutProperty(AFRICA_FILL_LAYER_ID, "visibility", visibility);
+          return;
+        }
+
+        if (layerId === "countriesLand") {
+          if (map.getLayer(COUNTRIES_LAND_FILL_LAYER_ID)) {
+            map.setLayoutProperty(COUNTRIES_LAND_FILL_LAYER_ID, "visibility", visibility);
+          }
+          if (map.getLayer(COUNTRIES_LAND_LINE_LAYER_ID)) {
+            map.setLayoutProperty(COUNTRIES_LAND_LINE_LAYER_ID, "visibility", visibility);
+          }
           return;
         }
 

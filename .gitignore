@@ -7,8 +7,9 @@ atlas-product/public/pmtiles/
 atlas-product/public/data/world-atlas/coastlines-split-4326.zip
 atlas-product/public/data/world-atlas/land-polygons-split-4326.zip
 atlas-product/public/data/world-atlas/africa.geojson
-atlas-product/public/data/world-atlas/australia-land-*.geojson
+atlas-product/public/data/world-atlas/south-america-land-*.geojson
 atlas-product/public/data/world-atlas/victoria-land.geojson
+atlas-product/public/data/countries/
 atlas-product/public/data/world-atlas/land-10m.geojson
 atlas-product/public/data/world-atlas/land-50m.geojson
 atlas-product/public/data/world-atlas/osm-land-fill.runtime.geojson
