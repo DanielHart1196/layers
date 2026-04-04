@@ -274,6 +274,24 @@
   - useful for proving the renderer architecture
   - useful before a full PMTiles production pipeline exists
 - Long-term production direction is still self-hosted PMTiles or another stable tiled delivery format under our control, not ad hoc runtime-only tiling forever
+- Current PMTiles screen-rendering findings:
+  - semi-transparent tiled polygon fills can show obvious square seam artifacts aligned to the tile grid, even when the underlying source geometry is correct
+  - this seam class is primarily a runtime tile-boundary / alpha-blending issue, not necessarily a source-detail issue
+  - fully opaque tiled fills avoid most of that seam class
+  - if translucency is still needed for a tiled fill on screen, prefer emulating it by pre-blending the fill color against the current background color rather than relying on live fill alpha in the renderer
+- Regional PMTiles strategy now validated in `atlas-product`:
+  - many smaller high-detail PMTiles archives are a viable alternative to one large regional archive
+  - `Victoria` coastline slices proved that very high detail can stay in small files when the geographic coverage is narrow enough
+  - sliced regional archives should still be exposed as one logical row/layer in the UI; file fragmentation is a runtime delivery concern, not a user-facing layer-model concern
+  - if a regional PMTiles slice still exceeds the desired file-size ceiling, split that specific heavy slice again instead of lowering detail for the whole region
+- Regional fill strategy now validated in `atlas-product`:
+  - for semi-transparent area fills, bounded direct GeoJSON sources can behave better on screen than PMTiles polygon fills
+  - `Victoria` fill and sliced `Australia` fill proved that regional direct-GeoJSON fill can preserve the desired opacity behavior without the square PMTiles seam artifact class
+  - a useful hybrid is:
+    - direct GeoJSON for regional area fill
+    - PMTiles for regional coastline/outline linework
+  - this hybrid keeps one logical layer in the UI while allowing fill and line to use different delivery paths when that produces a better screen result
+  - if a regional polygon-fill GeoJSON already gives the correct land edge, the matching line can come from stroking that same polygon source instead of maintaining a second outline delivery path
 
 ## Mobile UI Behavior
 - Hamburger menu is mobile-only and positioned on the right side.

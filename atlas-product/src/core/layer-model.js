@@ -156,6 +156,43 @@ function createLayerModel() {
           ],
         },
         {
+          id: "africa",
+          type: "layer",
+          label: "Africa",
+          layerId: "africa",
+          rows: [
+            createFillRow({
+              id: "africa-fill",
+              layerId: "africa",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#6EAA6E",
+            }),
+          ],
+        },
+        {
+          id: "victoria",
+          type: "layer",
+          label: "Victoria",
+          layerId: "victoria",
+          rows: [
+            createFillRow({
+              id: "victoria-fill",
+              layerId: "victoria",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#6EAA6E",
+            }),
+            createLineRow({
+              id: "victoria-line",
+              layerId: "victoria",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#d9e4da",
+            }),
+          ],
+        },
+        {
           id: "graticules",
           type: "layer",
           label: "Graticules",

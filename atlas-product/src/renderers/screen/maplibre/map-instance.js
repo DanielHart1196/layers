@@ -19,29 +19,41 @@ const OSM_LAND_SOURCE_ID = "atlas-osm-land";
 const OSM_LAND_TILE_SOURCE_ID = "atlas-osm-land-tiles";
 const OSM_LAND_TILE_SOURCE_LAYER = "land-fill";
 const OSM_LAND_FILL_LAYER_ID = "atlas-osm-land-fill";
-const OSM_LAND_VECTOR_URL = "/data/world-atlas/osm-land-fill.runtime.geojson";
+const OSM_LAND_VECTOR_URL = "/data/world-atlas/land-50m.geojson";
 const OSM_LAND_PMTILES_ID = "osm-land";
 const OSM_OUTLINE_SOURCE_ID = "atlas-osm-outline";
 const OSM_OUTLINE_TILE_SOURCE_ID = "atlas-osm-outline-tiles";
 const OSM_OUTLINE_TILE_SOURCE_LAYER = "coastlines";
 const OSM_OUTLINE_LINE_LAYER_ID = "atlas-osm-outline-line";
-const OSM_OUTLINE_VECTOR_URL = "/data/world-atlas/osm-coastlines.runtime.geojson";
+const OSM_OUTLINE_VECTOR_URL = "/data/world-atlas/osm-coastlines.smooth.geojson";
 const OSM_OUTLINE_PMTILES_ID = "osm-outline";
 const JAPAN_OUTLINE_SOURCE_ID = "atlas-japan-outline";
 const JAPAN_OUTLINE_TILE_SOURCE_ID = "atlas-japan-outline-tiles";
 const JAPAN_OUTLINE_TILE_SOURCE_LAYER = "coastlines";
 const JAPAN_OUTLINE_LINE_LAYER_ID = "atlas-japan-outline-line";
 const JAPAN_OUTLINE_PMTILES_ID = "osm-outline-japan";
-const AUSTRALIA_OUTLINE_SOURCE_ID = "atlas-australia-outline";
-const AUSTRALIA_OUTLINE_TILE_SOURCE_ID = "atlas-australia-outline-tiles";
+const AUSTRALIA_TILE_IDS = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const AUSTRALIA_OUTLINE_TILE_SOURCE_LAYER = "coastlines";
-const AUSTRALIA_OUTLINE_LINE_LAYER_ID = "atlas-australia-outline-line";
-const AUSTRALIA_OUTLINE_PMTILES_ID = "osm-outline-australia";
-const AUSTRALIA_FILL_SOURCE_ID = "atlas-australia-fill";
-const AUSTRALIA_FILL_TILE_SOURCE_ID = "atlas-australia-fill-tiles";
-const AUSTRALIA_FILL_TILE_SOURCE_LAYER = "land-fill";
-const AUSTRALIA_FILL_LAYER_ID = "atlas-australia-fill";
-const AUSTRALIA_FILL_PMTILES_ID = "osm-land-australia";
+const AUSTRALIA_OUTLINE_SOURCE_IDS = AUSTRALIA_TILE_IDS.map((tileId) => `atlas-australia-outline-${tileId}`);
+const AUSTRALIA_OUTLINE_TILE_SOURCE_IDS = AUSTRALIA_TILE_IDS.map((tileId) => `atlas-australia-outline-tiles-${tileId}`);
+const AUSTRALIA_OUTLINE_LINE_LAYER_IDS = AUSTRALIA_TILE_IDS.map((tileId) => `atlas-australia-outline-line-${tileId}`);
+const AUSTRALIA_OUTLINE_PMTILES_IDS = AUSTRALIA_TILE_IDS.map((tileId) => `osm-outline-australia-${tileId}`);
+const AUSTRALIA_FILL_SOURCE_IDS = AUSTRALIA_TILE_IDS.map((tileId) => `atlas-australia-fill-${tileId}`);
+const AUSTRALIA_FILL_LAYER_IDS = AUSTRALIA_TILE_IDS.map((tileId) => `atlas-australia-fill-${tileId}`);
+const AUSTRALIA_FILL_VECTOR_URLS = AUSTRALIA_TILE_IDS.map((tileId) => `/data/world-atlas/australia-land-${tileId}.geojson`);
+const AFRICA_FILL_SOURCE_ID = "atlas-africa-fill";
+const AFRICA_FILL_TILE_SOURCE_ID = "atlas-africa-fill-tiles";
+const AFRICA_FILL_TILE_SOURCE_LAYER = "land-fill";
+const AFRICA_FILL_LAYER_ID = "atlas-africa-fill";
+const AFRICA_FILL_PMTILES_ID = "africa-fill";
+const VICTORIA_TILE_IDS = ["a", "b", "c", "d"];
+const VICTORIA_FILL_SOURCE_ID = "atlas-victoria-fill";
+const VICTORIA_FILL_LAYER_ID = "atlas-victoria-fill";
+const VICTORIA_FILL_VECTOR_URL = "/data/world-atlas/victoria-land.geojson";
+const VICTORIA_OUTLINE_TILE_SOURCE_LAYER = "coastlines";
+const VICTORIA_OUTLINE_PMTILES_IDS = VICTORIA_TILE_IDS.map((tileId) => `osm-outline-victoria-${tileId}`);
+const VICTORIA_OUTLINE_SOURCE_IDS = VICTORIA_TILE_IDS.map((tileId) => `atlas-victoria-outline-${tileId}`);
+const VICTORIA_OUTLINE_LINE_LAYER_IDS = VICTORIA_TILE_IDS.map((tileId) => `atlas-victoria-outline-line-${tileId}`);
 const GRATICULES_SOURCE_ID = "atlas-graticules";
 const GRATICULES_TILE_SOURCE_ID = "atlas-graticules-tiles";
 const GRATICULES_TILE_SOURCE_LAYER = "graticules";
@@ -79,7 +91,8 @@ const EMPIRE_LINE_LAYER_IDS = {
 const LINE_LAYER_IDS = {
   outline: OSM_OUTLINE_LINE_LAYER_ID,
   japan: JAPAN_OUTLINE_LINE_LAYER_ID,
-  australia: AUSTRALIA_OUTLINE_LINE_LAYER_ID,
+  australia: AUSTRALIA_OUTLINE_LINE_LAYER_IDS[0],
+  victoria: VICTORIA_OUTLINE_LINE_LAYER_IDS[0],
   countries: COUNTRY_LINE_LAYER_ID,
   ...EMPIRE_LINE_LAYER_IDS,
   graticules: GRATICULES_LINE_LAYER_ID,
@@ -215,7 +228,9 @@ function getLogicalLayerBundles() {
       land: [OSM_LAND_FILL_LAYER_ID],
       outline: [OSM_OUTLINE_LINE_LAYER_ID],
       japan: [JAPAN_OUTLINE_LINE_LAYER_ID],
-      australia: [AUSTRALIA_FILL_LAYER_ID, AUSTRALIA_OUTLINE_LINE_LAYER_ID],
+      australia: [...AUSTRALIA_FILL_LAYER_IDS, ...AUSTRALIA_OUTLINE_LINE_LAYER_IDS],
+      africa: [AFRICA_FILL_LAYER_ID],
+      victoria: [VICTORIA_FILL_LAYER_ID, ...VICTORIA_OUTLINE_LINE_LAYER_IDS],
       graticules: [GRATICULES_LINE_LAYER_ID],
     },
     empires: {
@@ -329,6 +344,37 @@ function buildWaterBackgroundColor(fillColor, alphaPercent) {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${Number(alphaPercent) / 100})`;
 }
 
+function clampColorChannel(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function rgbToHex({ r, g, b }) {
+  return `#${[r, g, b].map((channel) => clampColorChannel(channel).toString(16).padStart(2, "0")).join("")}`;
+}
+
+function buildOpaqueBlendedFillColor({
+  fillColor,
+  fillOpacityPercent,
+  backgroundColor,
+  backgroundOpacityPercent,
+}) {
+  const fillAlpha = Math.max(0, Math.min(1, Number(fillOpacityPercent) / 100));
+  const backgroundAlpha = Math.max(0, Math.min(1, Number(backgroundOpacityPercent) / 100));
+  const fillRgb = hexToRgb(fillColor, { r: 110, g: 170, b: 110 });
+  const backgroundRgb = hexToRgb(backgroundColor, WATER_BACKGROUND_COLOR);
+  const effectiveBackground = {
+    r: backgroundRgb.r * backgroundAlpha,
+    g: backgroundRgb.g * backgroundAlpha,
+    b: backgroundRgb.b * backgroundAlpha,
+  };
+
+  return rgbToHex({
+    r: fillRgb.r * fillAlpha + effectiveBackground.r * (1 - fillAlpha),
+    g: fillRgb.g * fillAlpha + effectiveBackground.g * (1 - fillAlpha),
+    b: fillRgb.b * fillAlpha + effectiveBackground.b * (1 - fillAlpha),
+  });
+}
+
 function getLayoutVisibility(layerState, layerId) {
   return getLayerStyleValue(layerState, layerId, "visible", true) ? "visible" : "none";
 }
@@ -407,20 +453,16 @@ function ensureProtocol(manifest = []) {
     dataUrl: COUNTRY_VECTOR_URL,
     sourceLayer: COUNTRY_TILE_SOURCE_LAYER,
   });
-  if (!getManifestPmtilesUrl(manifest, OSM_LAND_PMTILES_ID)) {
-    registerGeojsonVectorTileSource({
-      id: OSM_LAND_TILE_SOURCE_ID,
-      dataUrl: OSM_LAND_VECTOR_URL,
-      sourceLayer: OSM_LAND_TILE_SOURCE_LAYER,
-    });
-  }
-  if (!getManifestPmtilesUrl(manifest, OSM_OUTLINE_PMTILES_ID)) {
-    registerGeojsonVectorTileSource({
-      id: OSM_OUTLINE_TILE_SOURCE_ID,
-      dataUrl: OSM_OUTLINE_VECTOR_URL,
-      sourceLayer: OSM_OUTLINE_TILE_SOURCE_LAYER,
-    });
-  }
+  registerGeojsonVectorTileSource({
+    id: OSM_LAND_TILE_SOURCE_ID,
+    dataUrl: OSM_LAND_VECTOR_URL,
+    sourceLayer: OSM_LAND_TILE_SOURCE_LAYER,
+  });
+  registerGeojsonVectorTileSource({
+    id: OSM_OUTLINE_TILE_SOURCE_ID,
+    dataUrl: OSM_OUTLINE_VECTOR_URL,
+    sourceLayer: OSM_OUTLINE_TILE_SOURCE_LAYER,
+  });
   registerGeojsonVectorTileSource({
     id: GRATICULES_TILE_SOURCE_ID,
     dataUrl: GRATICULES_VECTOR_URL,
@@ -508,11 +550,7 @@ async function attachOsmOutlineLayer(map, layerState, manifest) {
     map.removeSource(OSM_OUTLINE_SOURCE_ID);
   }
 
-  map.addSource(OSM_OUTLINE_SOURCE_ID, createRuntimeVectorSourceSpec({
-    manifest,
-    pmtilesId: OSM_OUTLINE_PMTILES_ID,
-    atlasVectorTileId: OSM_OUTLINE_TILE_SOURCE_ID,
-  }));
+  map.addSource(OSM_OUTLINE_SOURCE_ID, createGeojsonVectorSourceSpec(OSM_OUTLINE_TILE_SOURCE_ID));
 
   map.addLayer({
     id: OSM_OUTLINE_LINE_LAYER_ID,
@@ -561,60 +599,153 @@ async function attachJapanOutlineLayer(map, layerState, manifest) {
 }
 
 async function attachAustraliaOutlineLayer(map, layerState, manifest) {
-  if (map.getSource(AUSTRALIA_OUTLINE_SOURCE_ID)) {
-    if (map.getLayer(AUSTRALIA_OUTLINE_LINE_LAYER_ID)) {
-      map.removeLayer(AUSTRALIA_OUTLINE_LINE_LAYER_ID);
+  for (let index = 0; index < AUSTRALIA_TILE_IDS.length; index += 1) {
+    const lineLayerId = AUSTRALIA_OUTLINE_LINE_LAYER_IDS[index];
+    const sourceId = AUSTRALIA_FILL_SOURCE_IDS[index];
+
+    if (map.getLayer(lineLayerId)) {
+      map.removeLayer(lineLayerId);
     }
-    map.removeSource(AUSTRALIA_OUTLINE_SOURCE_ID);
+
+    if (!map.getSource(sourceId)) {
+      continue;
+    }
+
+    map.addLayer({
+      id: lineLayerId,
+      type: "line",
+      source: sourceId,
+      layout: {
+        visibility: getLayoutVisibility(layerState, "australia"),
+      },
+      paint: {
+        "line-color": getLayerStyleValue(layerState, "australia", "lineColor", DEFAULT_OUTLINE_LINE_COLOR),
+        "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "australia", "lineWeight", 1)),
+        "line-opacity": Number(getLayerStyleValue(layerState, "australia", "lineOpacity", 100)) / 100,
+      },
+    });
+  }
+}
+
+async function attachAustraliaFillLayer(map, layerState, manifest) {
+  for (let index = 0; index < AUSTRALIA_TILE_IDS.length; index += 1) {
+    const sourceId = AUSTRALIA_FILL_SOURCE_IDS[index];
+    const fillLayerId = AUSTRALIA_FILL_LAYER_IDS[index];
+
+    if (map.getSource(sourceId)) {
+      if (map.getLayer(fillLayerId)) {
+        map.removeLayer(fillLayerId);
+      }
+      map.removeSource(sourceId);
+    }
+
+    map.addSource(sourceId, {
+      type: "geojson",
+      data: AUSTRALIA_FILL_VECTOR_URLS[index],
+    });
+
+    map.addLayer({
+      id: fillLayerId,
+      type: "fill",
+      source: sourceId,
+      layout: {
+        visibility: getLayoutVisibility(layerState, "australia"),
+      },
+      paint: {
+        "fill-color": getLayerStyleValue(layerState, "australia", "fillColor", DEFAULT_LAND_FILL_COLOR),
+        "fill-opacity": Number(getLayerStyleValue(layerState, "australia", "fillOpacity", 100)) / 100,
+      },
+    });
+  }
+}
+
+async function attachAfricaFillLayer(map, layerState, manifest) {
+  if (map.getSource(AFRICA_FILL_SOURCE_ID)) {
+    if (map.getLayer(AFRICA_FILL_LAYER_ID)) {
+      map.removeLayer(AFRICA_FILL_LAYER_ID);
+    }
+    map.removeSource(AFRICA_FILL_SOURCE_ID);
   }
 
-  map.addSource(AUSTRALIA_OUTLINE_SOURCE_ID, createRuntimeVectorSourceSpec({
+  map.addSource(AFRICA_FILL_SOURCE_ID, createRuntimeVectorSourceSpec({
     manifest,
-    pmtilesId: AUSTRALIA_OUTLINE_PMTILES_ID,
-    atlasVectorTileId: AUSTRALIA_OUTLINE_TILE_SOURCE_ID,
+    pmtilesId: AFRICA_FILL_PMTILES_ID,
+    atlasVectorTileId: AFRICA_FILL_TILE_SOURCE_ID,
   }));
 
   map.addLayer({
-    id: AUSTRALIA_OUTLINE_LINE_LAYER_ID,
-    type: "line",
-    source: AUSTRALIA_OUTLINE_SOURCE_ID,
-    "source-layer": AUSTRALIA_OUTLINE_TILE_SOURCE_LAYER,
+    id: AFRICA_FILL_LAYER_ID,
+    type: "fill",
+    source: AFRICA_FILL_SOURCE_ID,
+    "source-layer": AFRICA_FILL_TILE_SOURCE_LAYER,
     layout: {
-      visibility: getLayoutVisibility(layerState, "australia"),
+      visibility: getLayoutVisibility(layerState, "africa"),
     },
     paint: {
-      "line-color": getLayerStyleValue(layerState, "australia", "lineColor", DEFAULT_OUTLINE_LINE_COLOR),
-      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "australia", "lineWeight", 1)),
-      "line-opacity": Number(getLayerStyleValue(layerState, "australia", "lineOpacity", 100)) / 100,
+      "fill-color": getLayerStyleValue(layerState, "africa", "fillColor", DEFAULT_LAND_FILL_COLOR),
+      "fill-opacity": Number(getLayerStyleValue(layerState, "africa", "fillOpacity", 100)) / 100,
     },
   });
 }
 
-async function attachAustraliaFillLayer(map, layerState, manifest) {
-  if (map.getSource(AUSTRALIA_FILL_SOURCE_ID)) {
-    if (map.getLayer(AUSTRALIA_FILL_LAYER_ID)) {
-      map.removeLayer(AUSTRALIA_FILL_LAYER_ID);
+async function attachVictoriaOutlineLayers(map, layerState, manifest) {
+  for (let index = 0; index < VICTORIA_TILE_IDS.length; index += 1) {
+    const sourceId = VICTORIA_OUTLINE_SOURCE_IDS[index];
+    const lineLayerId = VICTORIA_OUTLINE_LINE_LAYER_IDS[index];
+
+    if (map.getSource(sourceId)) {
+      if (map.getLayer(lineLayerId)) {
+        map.removeLayer(lineLayerId);
+      }
+      map.removeSource(sourceId);
     }
-    map.removeSource(AUSTRALIA_FILL_SOURCE_ID);
+
+    map.addSource(sourceId, createRuntimeVectorSourceSpec({
+      manifest,
+      pmtilesId: VICTORIA_OUTLINE_PMTILES_IDS[index],
+      atlasVectorTileId: `atlas-victoria-outline-tiles-${VICTORIA_TILE_IDS[index]}`,
+    }));
+
+    map.addLayer({
+      id: lineLayerId,
+      type: "line",
+      source: sourceId,
+      "source-layer": VICTORIA_OUTLINE_TILE_SOURCE_LAYER,
+      layout: {
+        visibility: getLayoutVisibility(layerState, "victoria"),
+      },
+      paint: {
+        "line-color": getLayerStyleValue(layerState, "victoria", "lineColor", DEFAULT_OUTLINE_LINE_COLOR),
+        "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "victoria", "lineWeight", 1)),
+        "line-opacity": Number(getLayerStyleValue(layerState, "victoria", "lineOpacity", 100)) / 100,
+      },
+    });
+  }
+}
+
+async function attachVictoriaFillLayers(map, layerState, manifest) {
+  if (map.getSource(VICTORIA_FILL_SOURCE_ID)) {
+    if (map.getLayer(VICTORIA_FILL_LAYER_ID)) {
+      map.removeLayer(VICTORIA_FILL_LAYER_ID);
+    }
+    map.removeSource(VICTORIA_FILL_SOURCE_ID);
   }
 
-  map.addSource(AUSTRALIA_FILL_SOURCE_ID, createRuntimeVectorSourceSpec({
-    manifest,
-    pmtilesId: AUSTRALIA_FILL_PMTILES_ID,
-    atlasVectorTileId: AUSTRALIA_FILL_TILE_SOURCE_ID,
-  }));
+  map.addSource(VICTORIA_FILL_SOURCE_ID, {
+    type: "geojson",
+    data: VICTORIA_FILL_VECTOR_URL,
+  });
 
   map.addLayer({
-    id: AUSTRALIA_FILL_LAYER_ID,
+    id: VICTORIA_FILL_LAYER_ID,
     type: "fill",
-    source: AUSTRALIA_FILL_SOURCE_ID,
-    "source-layer": AUSTRALIA_FILL_TILE_SOURCE_LAYER,
+    source: VICTORIA_FILL_SOURCE_ID,
     layout: {
-      visibility: getLayoutVisibility(layerState, "australia"),
+      visibility: getLayoutVisibility(layerState, "victoria"),
     },
     paint: {
-      "fill-color": getLayerStyleValue(layerState, "australia", "fillColor", DEFAULT_LAND_FILL_COLOR),
-      "fill-opacity": Number(getLayerStyleValue(layerState, "australia", "fillOpacity", 100)) / 100,
+      "fill-color": getLayerStyleValue(layerState, "victoria", "fillColor", DEFAULT_LAND_FILL_COLOR),
+      "fill-opacity": Number(getLayerStyleValue(layerState, "victoria", "fillOpacity", 100)) / 100,
     },
   });
 }
@@ -896,12 +1027,15 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         await attachJapanOutlineLayer(map, layerState, manifest);
         await attachAustraliaFillLayer(map, layerState, manifest);
         await attachAustraliaOutlineLayer(map, layerState, manifest);
+        await attachAfricaFillLayer(map, layerState, manifest);
+        await attachVictoriaFillLayers(map, layerState, manifest);
+        await attachVictoriaOutlineLayers(map, layerState, manifest);
         await attachGraticulesLayer(map, layerState);
         await attachCountriesVectorLayer(map, layerState);
         await attachRomanEmpireLayer(map, layerState);
         await attachMongolEmpireLayer(map, layerState);
         await attachBritishEmpireLayer(map, layerState);
-        applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "land", "outline", "japan", "australia", "graticules"]));
+        applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "land", "outline", "japan", "australia", "africa", "victoria", "graticules"]));
         applyLogicalLayerOrder(map, "empires", getLayerStyleValue(layerState, "empires", "rowOrder", ["roman", "mongol", "british"]));
       } catch (error) {
         console.error("Failed to attach ordered atlas layers.", error);
@@ -927,14 +1061,28 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
       }
       layerState[layerId][key] = value;
 
-        if (key === "fillOpacity") {
+      if (key === "fillOpacity") {
         if (layerId === "land" && map.getLayer(OSM_LAND_FILL_LAYER_ID)) {
           map.setPaintProperty(OSM_LAND_FILL_LAYER_ID, "fill-opacity", Number(value) / 100);
           return;
         }
 
-        if (layerId === "australia" && map.getLayer(AUSTRALIA_FILL_LAYER_ID)) {
-          map.setPaintProperty(AUSTRALIA_FILL_LAYER_ID, "fill-opacity", Number(value) / 100);
+        if (layerId === "australia" && AUSTRALIA_FILL_LAYER_IDS.some((fillLayerId) => map.getLayer(fillLayerId))) {
+          AUSTRALIA_FILL_LAYER_IDS.forEach((fillLayerId) => {
+            if (map.getLayer(fillLayerId)) {
+              map.setPaintProperty(fillLayerId, "fill-opacity", Number(value) / 100);
+            }
+          });
+          return;
+        }
+
+        if (layerId === "africa" && map.getLayer(AFRICA_FILL_LAYER_ID)) {
+          map.setPaintProperty(AFRICA_FILL_LAYER_ID, "fill-opacity", Number(value) / 100);
+          return;
+        }
+
+        if (layerId === "victoria" && map.getLayer(VICTORIA_FILL_LAYER_ID)) {
+          map.setPaintProperty(VICTORIA_FILL_LAYER_ID, "fill-opacity", Number(value) / 100);
           return;
         }
 
@@ -970,8 +1118,22 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
-        if (layerId === "australia" && map.getLayer(AUSTRALIA_FILL_LAYER_ID)) {
-          map.setPaintProperty(AUSTRALIA_FILL_LAYER_ID, "fill-color", String(value));
+        if (layerId === "australia" && AUSTRALIA_FILL_LAYER_IDS.some((fillLayerId) => map.getLayer(fillLayerId))) {
+          AUSTRALIA_FILL_LAYER_IDS.forEach((fillLayerId) => {
+            if (map.getLayer(fillLayerId)) {
+              map.setPaintProperty(fillLayerId, "fill-color", String(value));
+            }
+          });
+          return;
+        }
+
+        if (layerId === "africa" && map.getLayer(AFRICA_FILL_LAYER_ID)) {
+          map.setPaintProperty(AFRICA_FILL_LAYER_ID, "fill-color", String(value));
+          return;
+        }
+
+        if (layerId === "victoria" && map.getLayer(VICTORIA_FILL_LAYER_ID)) {
+          map.setPaintProperty(VICTORIA_FILL_LAYER_ID, "fill-color", String(value));
           return;
         }
 
@@ -1001,9 +1163,27 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         return;
       }
 
-      if (key === "lineColor") {
+        if (key === "lineColor") {
+        if (layerId === "victoria") {
+          VICTORIA_OUTLINE_LINE_LAYER_IDS.forEach((lineLayerId) => {
+            if (map.getLayer(lineLayerId)) {
+              map.setPaintProperty(lineLayerId, "line-color", String(value));
+            }
+          });
+          return;
+        }
+
         const lineLayerId = LINE_LAYER_IDS[layerId];
         if (!lineLayerId || !map.getLayer(lineLayerId)) {
+          return;
+        }
+
+        if (layerId === "australia") {
+          AUSTRALIA_OUTLINE_LINE_LAYER_IDS.forEach((nextLayerId) => {
+            if (map.getLayer(nextLayerId)) {
+              map.setPaintProperty(nextLayerId, "line-color", String(value));
+            }
+          });
           return;
         }
 
@@ -1012,8 +1192,26 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
       }
 
       if (key === "lineOpacity") {
+        if (layerId === "victoria") {
+          VICTORIA_OUTLINE_LINE_LAYER_IDS.forEach((lineLayerId) => {
+            if (map.getLayer(lineLayerId)) {
+              map.setPaintProperty(lineLayerId, "line-opacity", Number(value) / 100);
+            }
+          });
+          return;
+        }
+
         const lineLayerId = LINE_LAYER_IDS[layerId];
         if (!lineLayerId || !map.getLayer(lineLayerId)) {
+          return;
+        }
+
+        if (layerId === "australia") {
+          AUSTRALIA_OUTLINE_LINE_LAYER_IDS.forEach((nextLayerId) => {
+            if (map.getLayer(nextLayerId)) {
+              map.setPaintProperty(nextLayerId, "line-opacity", Number(value) / 100);
+            }
+          });
           return;
         }
 
@@ -1022,8 +1220,26 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
       }
 
       if (key === "lineWeight") {
+        if (layerId === "victoria") {
+          VICTORIA_OUTLINE_LINE_LAYER_IDS.forEach((lineLayerId) => {
+            if (map.getLayer(lineLayerId)) {
+              map.setPaintProperty(lineLayerId, "line-width", buildLineWidthExpression(Number(value)));
+            }
+          });
+          return;
+        }
+
         const lineLayerId = LINE_LAYER_IDS[layerId];
         if (!lineLayerId || !map.getLayer(lineLayerId)) {
+          return;
+        }
+
+        if (layerId === "australia") {
+          AUSTRALIA_OUTLINE_LINE_LAYER_IDS.forEach((nextLayerId) => {
+            if (map.getLayer(nextLayerId)) {
+              map.setPaintProperty(nextLayerId, "line-width", buildLineWidthExpression(Number(value)));
+            }
+          });
           return;
         }
 
@@ -1054,6 +1270,11 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
+        if (layerId === "africa" && map.getLayer(AFRICA_FILL_LAYER_ID)) {
+          map.setLayoutProperty(AFRICA_FILL_LAYER_ID, "visibility", visibility);
+          return;
+        }
+
         if (layerId === "outline" && map.getLayer(OSM_OUTLINE_LINE_LAYER_ID)) {
           map.setLayoutProperty(OSM_OUTLINE_LINE_LAYER_ID, "visibility", visibility);
           return;
@@ -1064,13 +1285,29 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
+        if (layerId === "victoria") {
+          if (map.getLayer(VICTORIA_FILL_LAYER_ID)) {
+            map.setLayoutProperty(VICTORIA_FILL_LAYER_ID, "visibility", visibility);
+          }
+          VICTORIA_OUTLINE_LINE_LAYER_IDS.forEach((lineLayerId) => {
+            if (map.getLayer(lineLayerId)) {
+              map.setLayoutProperty(lineLayerId, "visibility", visibility);
+            }
+          });
+          return;
+        }
+
         if (layerId === "australia") {
-          if (map.getLayer(AUSTRALIA_FILL_LAYER_ID)) {
-            map.setLayoutProperty(AUSTRALIA_FILL_LAYER_ID, "visibility", visibility);
-          }
-          if (map.getLayer(AUSTRALIA_OUTLINE_LINE_LAYER_ID)) {
-            map.setLayoutProperty(AUSTRALIA_OUTLINE_LINE_LAYER_ID, "visibility", visibility);
-          }
+          AUSTRALIA_FILL_LAYER_IDS.forEach((fillLayerId) => {
+            if (map.getLayer(fillLayerId)) {
+              map.setLayoutProperty(fillLayerId, "visibility", visibility);
+            }
+          });
+          AUSTRALIA_OUTLINE_LINE_LAYER_IDS.forEach((lineLayerId) => {
+            if (map.getLayer(lineLayerId)) {
+              map.setLayoutProperty(lineLayerId, "visibility", visibility);
+            }
+          });
           return;
         }
 
@@ -1103,6 +1340,7 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           map.setLayoutProperty(lineLayerId, "visibility", getEmpireLayoutVisibility(layerState, layerId));
         }
       }
+
     },
   };
 }

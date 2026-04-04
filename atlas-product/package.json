@@ -6,11 +6,21 @@
     "dev": "node ../node_modules/vite/bin/vite.js",
     "build": "node ../node_modules/vite/bin/vite.js build",
     "preview": "node ../node_modules/vite/bin/vite.js preview",
+    "build:natural-earth:land": "node ./scripts/build-natural-earth-land-geojson.mjs",
+    "build:land:50m:pmtiles": "node ./scripts/build-land-50m-pmtiles.mjs",
+    "build:africa:pmtiles": "node ./scripts/build-africa-pmtiles.mjs",
     "build:osm-land": "node ./scripts/build-osm-land-runtime.mjs",
+    "build:osm-world:smooth": "node ./scripts/build-osm-world-smooth-runtime.mjs",
     "build:osm-land:pmtiles": "node ./scripts/build-osm-land-pmtiles.mjs",
     "build:osm-land:australia:pmtiles": "node ./scripts/build-osm-land-australia-pmtiles.mjs",
+    "build:osm-land:australia:sliced:geojson": "node ./scripts/build-osm-land-australia-sliced-geojson.mjs",
+    "build:osm-land:australia:sliced:pmtiles": "node ./scripts/build-osm-land-australia-sliced-pmtiles.mjs",
+    "build:osm-land:victoria:geojson": "node ./scripts/build-osm-land-victoria-geojson.mjs",
+    "build:osm-land:victoria:pmtiles": "node ./scripts/build-osm-land-victoria-pmtiles.mjs",
     "build:osm-outline:japan:pmtiles": "node ./scripts/build-osm-outline-japan-pmtiles.mjs",
-    "build:osm-outline:australia:pmtiles": "node ./scripts/build-osm-outline-australia-pmtiles.mjs"
+    "build:osm-outline:australia:pmtiles": "node ./scripts/build-osm-outline-australia-pmtiles.mjs",
+    "build:osm-outline:australia:sliced:pmtiles": "node ./scripts/build-osm-outline-australia-sliced-pmtiles.mjs",
+    "build:osm-outline:victoria:pmtiles": "node ./scripts/build-osm-outline-victoria-pmtiles.mjs"
   },
   "dependencies": {
     "maplibre-gl": "^5.21.1",

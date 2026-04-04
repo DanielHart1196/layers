@@ -27,10 +27,10 @@ function createPmtilesManifest() {
       id: "osm-land",
       kind: "pmtiles",
       role: "earth-land",
-      url: "/pmtiles/osm-land.pmtiles",
+      url: "/pmtiles/land-50m.pmtiles",
       layers: ["land-fill"],
       notes: [
-        "OSM land polygons for Earth -> Land",
+        "50m global land polygons for Earth -> Land PMTiles testing",
       ],
       mutable: false,
     },
@@ -56,28 +56,61 @@ function createPmtilesManifest() {
       ],
       mutable: false,
     },
-    {
-      id: "osm-outline-australia",
+    ...["a", "b", "c", "d", "e", "f", "g", "h"].map((tileId) => ({
+      id: `osm-outline-australia-${tileId}`,
       kind: "pmtiles",
       role: "earth-outline-test",
-      url: "/pmtiles/osm-outline-australia.pmtiles",
+      url: `/pmtiles/osm-outline-australia-${tileId}.pmtiles`,
       layers: ["coastlines"],
       notes: [
-        "Australia-only OSM coastlines for Earth -> Australia fidelity testing",
+        `Australia OSM coastline slice ${tileId.toUpperCase()} for high-detail testing`,
       ],
       mutable: false,
-    },
-    {
-      id: "osm-land-australia",
+    })),
+    ...["a", "b", "c", "d", "e", "f", "g", "h"].map((tileId) => ({
+      id: `osm-land-australia-${tileId}`,
       kind: "pmtiles",
       role: "earth-land-test",
-      url: "/pmtiles/osm-land-australia.pmtiles",
+      url: `/pmtiles/osm-land-australia-${tileId}.pmtiles`,
       layers: ["land-fill"],
       notes: [
-        "Australia-only OSM land polygons for Earth -> Australia fill fidelity testing",
+        `Australia OSM land slice ${tileId.toUpperCase()} for high-detail testing`,
+      ],
+      mutable: false,
+    })),
+    {
+      id: "africa-fill",
+      kind: "pmtiles",
+      role: "earth-land-test",
+      url: "/pmtiles/africa.pmtiles",
+      layers: ["land-fill"],
+      notes: [
+        "Simple Africa polygon PMTiles fill diagnostic",
       ],
       mutable: false,
     },
+    ...["a", "b", "c", "d"].map((tileId) => ({
+      id: `osm-land-victoria-${tileId}`,
+      kind: "pmtiles",
+      role: "earth-land-test",
+      url: `/pmtiles/osm-land-victoria-${tileId}.pmtiles`,
+      layers: ["land-fill"],
+      notes: [
+        `Victoria-only OSM land tile ${tileId.toUpperCase()} for high-detail fill testing`,
+      ],
+      mutable: false,
+    })),
+    ...["a", "b", "c", "d"].map((tileId) => ({
+      id: `osm-outline-victoria-${tileId}`,
+      kind: "pmtiles",
+      role: "earth-outline-test",
+      url: `/pmtiles/osm-outline-victoria-${tileId}.pmtiles`,
+      layers: ["coastlines"],
+      notes: [
+        `Victoria-only OSM coastlines tile ${tileId.toUpperCase()} for high-detail outline testing`,
+      ],
+      mutable: false,
+    })),
   ];
 }
 
