@@ -262,6 +262,32 @@ function createLayerModel() {
         },
       ],
     },
+    transport: {
+      id: "transport",
+      layerId: "transport",
+      label: "Transport",
+      kind: "group",
+      defaultExpanded: true,
+      rows: [
+        {
+          id: "transport-rail",
+          type: "layer",
+          label: "Rail (SA)",
+          layerId: "transportRail",
+          rows: [
+            createLineRow({
+              id: "transport-rail-line",
+              layerId: "transportRail",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#f07a58",
+              defaultOpacity: 92,
+              defaultWeight: 3.5,
+            }),
+          ],
+        },
+      ],
+    },
     countries: {
       id: "countries",
       type: "layer",
@@ -301,6 +327,17 @@ function createLayerModel() {
           max: 2024,
           step: 4,
           initialValue: 2024,
+        }),
+        createSliderRow({
+          id: "olympics-radius",
+          label: "Radius",
+          layerId: "olympics",
+          key: "pointRadius",
+          min: 1,
+          max: 12,
+          step: 0.1,
+          valueFormat: "pixels",
+          initialValue: 3.5,
         }),
         {
           id: "olympics-gold",
@@ -402,7 +439,7 @@ function createLayerModel() {
     },
   };
 
-  const ROOT_ROW_IDS = ["earth", "countries", "olympics", "empires"];
+  const ROOT_ROW_IDS = ["earth", "transport", "countries", "olympics", "empires"];
   const rowDefinitionsById = new Map();
 
   function indexRowDefinitions(rows = []) {
@@ -469,6 +506,10 @@ function createLayerModel() {
         expanded: layerDefinitions.earth.defaultExpanded,
         rowOrder: getDefaultChildOrder("earth"),
       },
+      transport: {
+        expanded: layerDefinitions.transport.defaultExpanded,
+        rowOrder: getDefaultChildOrder("transport"),
+      },
       empires: {
         expanded: layerDefinitions.empires.defaultExpanded,
         rowOrder: getDefaultChildOrder("empires"),
@@ -530,6 +571,7 @@ function createLayerModel() {
 
   const layerState = hydrateLayerState();
   layerState.earth.rowOrder = normalizeChildRowOrder("earth", layerState.earth?.rowOrder);
+  layerState.transport.rowOrder = normalizeChildRowOrder("transport", layerState.transport?.rowOrder);
   layerState.empires.rowOrder = normalizeChildRowOrder("empires", layerState.empires?.rowOrder);
 
   function hydrateLayerState() {

@@ -19,6 +19,9 @@ const OLYMPICS_SOURCE_ID = "atlas-olympics";
 const OLYMPICS_GOLD_LAYER_ID = "atlas-olympics-gold";
 const OLYMPICS_SILVER_LAYER_ID = "atlas-olympics-silver";
 const OLYMPICS_BRONZE_LAYER_ID = "atlas-olympics-bronze";
+const TRANSPORT_RAIL_SOURCE_ID = "atlas-transport-rail";
+const TRANSPORT_RAIL_LINE_LAYER_ID = "atlas-transport-rail-line";
+const TRANSPORT_RAIL_VECTOR_URL = "/data/transport/rail-sa.geojson";
 const OSM_LAND_SOURCE_ID = "atlas-osm-land";
 const OSM_LAND_TILE_SOURCE_ID = "atlas-osm-land-tiles";
 const OSM_LAND_TILE_SOURCE_LAYER = "land-fill";
@@ -97,6 +100,7 @@ const EMPIRE_LINE_LAYER_IDS = {
   british: BRITISH_LINE_LAYER_ID,
 };
 const LINE_LAYER_IDS = {
+  transportRail: TRANSPORT_RAIL_LINE_LAYER_ID,
   outline: OSM_OUTLINE_LINE_LAYER_ID,
   japan: JAPAN_OUTLINE_LINE_LAYER_ID,
   australia: AUSTRALIA_OUTLINE_LINE_LAYER_IDS[0],
@@ -243,6 +247,9 @@ function getLogicalLayerBundles() {
       victoria: [VICTORIA_FILL_LAYER_ID, ...VICTORIA_OUTLINE_LINE_LAYER_IDS],
       graticules: [GRATICULES_LINE_LAYER_ID],
     },
+    transport: {
+      "transport-rail": [TRANSPORT_RAIL_LINE_LAYER_ID],
+    },
     olympics: {
       "olympics-gold": [OLYMPICS_GOLD_LAYER_ID],
       "olympics-silver": [OLYMPICS_SILVER_LAYER_ID],
@@ -266,7 +273,7 @@ function applyLogicalLayerOrder(map, parentId, orderedLayerIds) {
     .flatMap((layerId) => bundles[layerId] ?? [])
     .filter((layerId) => map.getLayer(layerId));
 
-  const anchorBeforeId = parentId === "earth"
+  const anchorBeforeId = (parentId === "earth" || parentId === "transport")
     ? getFirstExistingLayerId(map, [
       COUNTRY_FILL_LAYER_ID,
       COUNTRY_LINE_LAYER_ID,
@@ -413,6 +420,10 @@ function getOlympicsYear(layerState) {
 
 function getOlympicsVectorUrl(layerState) {
   return `/data/temporal/olympic-medals-birthplace.${getOlympicsYear(layerState)}.geojson`;
+}
+
+function getOlympicsPointRadius(layerState) {
+  return Math.max(0, Number(getLayerStyleValue(layerState, "olympics", "pointRadius", 3.5)) || 0);
 }
 
 function geometryToMultiPolygonCoordinates(geometry) {
@@ -886,7 +897,7 @@ async function attachOlympicsLayers(map, layerState) {
         visibility: getOlympicsLayoutVisibility(layerState, filterLayerId),
       },
       paint: {
-        "circle-radius": 3.5,
+        "circle-radius": getOlympicsPointRadius(layerState),
         "circle-color": color,
         "circle-opacity": 0.92,
         "circle-stroke-color": stroke,
@@ -899,6 +910,36 @@ async function attachOlympicsLayers(map, layerState) {
 
 function buildLineWidthExpression(weightPx) {
   return Math.max(0, Number(weightPx) || 0);
+}
+
+async function attachTransportRailLayer(map, layerState) {
+  if (map.getSource(TRANSPORT_RAIL_SOURCE_ID)) {
+    if (map.getLayer(TRANSPORT_RAIL_LINE_LAYER_ID)) {
+      map.removeLayer(TRANSPORT_RAIL_LINE_LAYER_ID);
+    }
+    map.removeSource(TRANSPORT_RAIL_SOURCE_ID);
+  }
+
+  map.addSource(TRANSPORT_RAIL_SOURCE_ID, {
+    type: "geojson",
+    data: TRANSPORT_RAIL_VECTOR_URL,
+  });
+
+  map.addLayer({
+    id: TRANSPORT_RAIL_LINE_LAYER_ID,
+    type: "line",
+    source: TRANSPORT_RAIL_SOURCE_ID,
+    layout: {
+      "line-cap": "round",
+      "line-join": "round",
+      visibility: getLayoutVisibility(layerState, "transportRail"),
+    },
+    paint: {
+      "line-color": getLayerStyleValue(layerState, "transportRail", "lineColor", "#f07a58"),
+      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "transportRail", "lineWeight", 3.5)),
+      "line-opacity": Number(getLayerStyleValue(layerState, "transportRail", "lineOpacity", 92)) / 100,
+    },
+  });
 }
 
 async function attachGraticulesLayer(map, layerState) {
@@ -1130,12 +1171,14 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         await attachAustraliaOutlineLayer(map, layerState, manifest);
         await attachCountriesLandLayers(map, layerState);
         await attachGraticulesLayer(map, layerState);
+        await attachTransportRailLayer(map, layerState);
         await attachCountriesVectorLayer(map, layerState);
         await attachRomanEmpireLayer(map, layerState);
         await attachMongolEmpireLayer(map, layerState);
         await attachBritishEmpireLayer(map, layerState);
         await attachOlympicsLayers(map, layerState);
         applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "australia", "countries-land", "graticules"]));
+        applyLogicalLayerOrder(map, "transport", getLayerStyleValue(layerState, "transport", "rowOrder", ["transport-rail"]));
         applyLogicalLayerOrder(map, "olympics", getLayerStyleValue(layerState, "olympics", "rowOrder", ["olympics-gold", "olympics-silver", "olympics-bronze"]));
         applyLogicalLayerOrder(map, "empires", getLayerStyleValue(layerState, "empires", "rowOrder", ["roman", "mongol", "british"]));
       } catch (error) {
@@ -1391,6 +1434,11 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
+        if (layerId === "transportRail" && map.getLayer(TRANSPORT_RAIL_LINE_LAYER_ID)) {
+          map.setLayoutProperty(TRANSPORT_RAIL_LINE_LAYER_ID, "visibility", visibility);
+          return;
+        }
+
         if (layerId === "olympics") {
           if (map.getLayer(OLYMPICS_GOLD_LAYER_ID)) {
             map.setLayoutProperty(OLYMPICS_GOLD_LAYER_ID, "visibility", getOlympicsLayoutVisibility(layerState, "olympicsGold"));
@@ -1503,6 +1551,15 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         if (lineLayerId && map.getLayer(lineLayerId)) {
           map.setLayoutProperty(lineLayerId, "visibility", getEmpireLayoutVisibility(layerState, layerId));
         }
+        return;
+      }
+
+      if (layerId === "olympics" && key === "pointRadius") {
+        [OLYMPICS_GOLD_LAYER_ID, OLYMPICS_SILVER_LAYER_ID, OLYMPICS_BRONZE_LAYER_ID].forEach((nextLayerId) => {
+          if (map.getLayer(nextLayerId)) {
+            map.setPaintProperty(nextLayerId, "circle-radius", getOlympicsPointRadius(layerState));
+          }
+        });
         return;
       }
 
