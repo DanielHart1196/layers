@@ -239,6 +239,13 @@
   - for globe runtime rendering in MapLibre, large static fills and global linework were more reliable when served as tiled vector sources than as direct raw GeoJSON layers
   - switching heavy land and empire fills onto tiled vector delivery removed a visible seam/dual-opacity artifact class that persisted on raw globe GeoJSON fills
   - graticule-like global linework showed a similar renderer sensitivity on raw GeoJSON and was moved to tiled vector delivery for the same reason
+- Current source-model finding:
+  - the existing country-based world layer is not true landmass data; it is a countries dataset being used as a proxy for land
+  - treat `Countries` as borders/country polygons, not as the long-term source of truth for coastline-derived land area or land outline
+  - if land is split into separate concepts, use:
+    - `Countries` for country polygons / borders
+    - separate coastline-derived `Land area`
+    - separate coastline-derived `Land outline`
 - Treat this as a runtime rendering rule, not a source-of-truth rule:
   - canonical lon/lat vectors remain the authoritative data model
   - runtime screen delivery for heavy global layers should bias toward tiled vector sources
@@ -260,6 +267,9 @@
   - canonical source asset in lon/lat GeoJSON
   - runtime tiled delivery for heavy global layers
   - shared layer/row schema above that delivery choice
+- For global base geography, do not force one dataset to impersonate multiple concepts if it produces the wrong semantics:
+  - country polygons are acceptable for borders / countries
+  - coastline-derived polygons/lines are preferred for landmass area and shoreline outline
 - The current local `atlasvt://` protocol path in `atlas-product` is a valid transitional runtime tiling path:
   - useful for proving the renderer architecture
   - useful before a full PMTiles production pipeline exists

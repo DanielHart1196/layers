@@ -88,29 +88,6 @@ function createLayerModel() {
           ],
         },
         {
-          id: "land",
-          type: "layer",
-          label: "Land",
-          layerId: "land",
-          rows: [
-            createFillRow({
-              id: "land-fill",
-              layerId: "land",
-              storageKey: SHARED_COLOR_STORAGE_KEY,
-              presets: SHARED_COLOR_PRESETS,
-              defaultColor: "#6EAA6E",
-            }),
-            createLineRow({
-              id: "land-line",
-              layerId: "land",
-              storageKey: SHARED_COLOR_STORAGE_KEY,
-              presets: SHARED_COLOR_PRESETS,
-              defaultColor: "#e1efe4",
-              defaultOpacity: 0,
-            }),
-          ],
-        },
-        {
           id: "graticules",
           type: "layer",
           label: "Graticules",
@@ -125,6 +102,29 @@ function createLayerModel() {
             }),
           ],
         },
+      ],
+    },
+    countries: {
+      id: "countries",
+      type: "layer",
+      label: "Countries",
+      layerId: "countries",
+      rows: [
+        createFillRow({
+          id: "countries-fill",
+          layerId: "countries",
+          storageKey: SHARED_COLOR_STORAGE_KEY,
+          presets: SHARED_COLOR_PRESETS,
+          defaultColor: "#6EAA6E",
+        }),
+        createLineRow({
+          id: "countries-line",
+          layerId: "countries",
+          storageKey: SHARED_COLOR_STORAGE_KEY,
+          presets: SHARED_COLOR_PRESETS,
+          defaultColor: "#e1efe4",
+          defaultOpacity: 0,
+        }),
       ],
     },
     empires: {
@@ -203,7 +203,7 @@ function createLayerModel() {
     },
   };
 
-  const ROOT_ROW_IDS = ["earth", "empires"];
+  const ROOT_ROW_IDS = ["earth", "countries", "empires"];
   const rowDefinitionsById = new Map();
 
   function indexRowDefinitions(rows = []) {
@@ -230,14 +230,14 @@ function createLayerModel() {
 
   function buildDefaultLayerState() {
     const state = {
-    earth: {
-      expanded: layerDefinitions.earth.defaultExpanded,
-      rowOrder: getDefaultChildOrder("earth"),
-    },
-    empires: {
-      expanded: layerDefinitions.empires.defaultExpanded,
-      rowOrder: getDefaultChildOrder("empires"),
-    },
+      earth: {
+        expanded: layerDefinitions.earth.defaultExpanded,
+        rowOrder: getDefaultChildOrder("earth"),
+      },
+      empires: {
+        expanded: layerDefinitions.empires.defaultExpanded,
+        rowOrder: getDefaultChildOrder("empires"),
+      },
     };
 
     const ensureLayerState = (layerId) => {
@@ -282,6 +282,10 @@ function createLayerModel() {
     };
 
     Object.values(layerDefinitions).forEach((definition) => {
+      if (definition?.type === "layer") {
+        applyRowDefaults(definition);
+        return;
+      }
       definition.rows?.forEach(applyRowDefaults);
     });
 
@@ -302,6 +306,10 @@ function createLayerModel() {
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== "object") {
         return baseState;
+      }
+
+      if (parsed.land && !parsed.countries) {
+        parsed.countries = parsed.land;
       }
 
       Object.entries(baseState).forEach(([layerId, defaults]) => {

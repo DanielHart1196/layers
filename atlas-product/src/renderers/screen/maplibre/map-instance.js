@@ -50,7 +50,7 @@ const EMPIRE_LINE_LAYER_IDS = {
   british: BRITISH_LINE_LAYER_ID,
 };
 const LINE_LAYER_IDS = {
-  land: LAND_LINE_LAYER_ID,
+  countries: LAND_LINE_LAYER_ID,
   ...EMPIRE_LINE_LAYER_IDS,
   graticules: GRATICULES_LINE_LAYER_ID,
 };
@@ -66,7 +66,6 @@ function getFirstExistingLayerId(map, candidateIds) {
 function getLogicalLayerBundles() {
   return {
     earth: {
-      land: [LAND_FILL_LAYER_ID, LAND_LINE_LAYER_ID],
       graticules: [GRATICULES_LINE_LAYER_ID],
     },
     empires: {
@@ -293,11 +292,11 @@ async function attachLandVectorLayer(map, layerState) {
     source: LAND_SOURCE_ID,
     "source-layer": LAND_TILE_SOURCE_LAYER,
     layout: {
-      visibility: getLayoutVisibility(layerState, "land"),
+      visibility: getLayoutVisibility(layerState, "countries"),
     },
     paint: {
-      "fill-color": getLayerStyleValue(layerState, "land", "fillColor", DEFAULT_LAND_FILL_COLOR),
-      "fill-opacity": Number(getLayerStyleValue(layerState, "land", "fillOpacity", 100)) / 100,
+      "fill-color": getLayerStyleValue(layerState, "countries", "fillColor", DEFAULT_LAND_FILL_COLOR),
+      "fill-opacity": Number(getLayerStyleValue(layerState, "countries", "fillOpacity", 100)) / 100,
     },
   });
 
@@ -307,12 +306,12 @@ async function attachLandVectorLayer(map, layerState) {
     source: LAND_SOURCE_ID,
     "source-layer": LAND_TILE_SOURCE_LAYER,
     layout: {
-      visibility: getLayoutVisibility(layerState, "land"),
+      visibility: getLayoutVisibility(layerState, "countries"),
     },
     paint: {
-      "line-color": getLayerStyleValue(layerState, "land", "lineColor", "#e1efe4"),
-      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "land", "lineWeight", 100)),
-      "line-opacity": Number(getLayerStyleValue(layerState, "land", "lineOpacity", 0)) / 100,
+      "line-color": getLayerStyleValue(layerState, "countries", "lineColor", "#e1efe4"),
+      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "countries", "lineWeight", 100)),
+      "line-opacity": Number(getLayerStyleValue(layerState, "countries", "lineOpacity", 0)) / 100,
     },
   });
 }
@@ -521,7 +520,7 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         await attachRomanEmpireLayer(map, layerState);
         await attachMongolEmpireLayer(map, layerState);
         await attachBritishEmpireLayer(map, layerState);
-        applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "land", "graticules"]));
+        applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "graticules"]));
         applyLogicalLayerOrder(map, "empires", getLayerStyleValue(layerState, "empires", "rowOrder", ["roman", "mongol", "british"]));
       } catch (error) {
         console.error("Failed to attach ordered atlas layers.", error);
@@ -546,7 +545,7 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
       layerState[layerId][key] = value;
 
       if (key === "fillOpacity") {
-        if (layerId === "land" && map.getLayer(LAND_FILL_LAYER_ID)) {
+        if (layerId === "countries" && map.getLayer(LAND_FILL_LAYER_ID)) {
           map.setPaintProperty(LAND_FILL_LAYER_ID, "fill-opacity", Number(value) / 100);
           return;
         }
@@ -573,7 +572,7 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
       }
 
       if (key === "fillColor") {
-        if (layerId === "land" && map.getLayer(LAND_FILL_LAYER_ID)) {
+        if (layerId === "countries" && map.getLayer(LAND_FILL_LAYER_ID)) {
           map.setPaintProperty(LAND_FILL_LAYER_ID, "fill-color", String(value));
           return;
         }
@@ -637,7 +636,7 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
-        if (layerId === "land") {
+        if (layerId === "countries") {
           if (map.getLayer(LAND_FILL_LAYER_ID)) {
             map.setLayoutProperty(LAND_FILL_LAYER_ID, "visibility", visibility);
           }
