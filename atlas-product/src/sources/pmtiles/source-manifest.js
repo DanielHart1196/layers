@@ -23,6 +23,61 @@ function createPmtilesManifest() {
       ],
       mutable: false,
     },
+    {
+      id: "osm-land",
+      kind: "pmtiles",
+      role: "earth-land",
+      url: "/pmtiles/osm-land.pmtiles",
+      layers: ["land-fill"],
+      notes: [
+        "OSM land polygons for Earth -> Land",
+      ],
+      mutable: false,
+    },
+    {
+      id: "osm-outline",
+      kind: "pmtiles",
+      role: "earth-outline",
+      url: "/pmtiles/osm-outline.pmtiles",
+      layers: ["coastlines"],
+      notes: [
+        "OSM coastlines for Earth -> Outline",
+      ],
+      mutable: false,
+    },
+    {
+      id: "osm-outline-japan",
+      kind: "pmtiles",
+      role: "earth-outline-test",
+      url: "/pmtiles/osm-outline-japan.pmtiles",
+      layers: ["coastlines"],
+      notes: [
+        "Japan-only OSM coastlines for Earth -> Japan fidelity testing",
+      ],
+      mutable: false,
+    },
+    {
+      id: "osm-outline-australia",
+      kind: "pmtiles",
+      role: "earth-outline-test",
+      url: "/pmtiles/osm-outline-australia.pmtiles",
+      layers: ["coastlines"],
+      notes: [
+        "Australia-only OSM coastlines for Earth -> Australia fidelity testing",
+      ],
+      mutable: false,
+    },
+    {
+      id: "osm-land-australia",
+      kind: "pmtiles",
+      role: "earth-land-test",
+      url: "/pmtiles/osm-land-australia.pmtiles",
+      layers: ["land-fill"],
+      notes: [
+        "Australia-only OSM land polygons for Earth -> Australia fill fidelity testing",
+      ],
+      mutable: false,
+    },
   ];
 }
 

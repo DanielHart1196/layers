@@ -89,6 +89,73 @@ function createLayerModel() {
           ],
         },
         {
+          id: "land",
+          type: "layer",
+          label: "Land",
+          layerId: "land",
+          rows: [
+            createFillRow({
+              id: "land-fill",
+              layerId: "land",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#6EAA6E",
+            }),
+          ],
+        },
+        {
+          id: "outline",
+          type: "layer",
+          label: "Outline",
+          layerId: "outline",
+          rows: [
+            createLineRow({
+              id: "outline-line",
+              layerId: "outline",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#d9e4da",
+            }),
+          ],
+        },
+        {
+          id: "japan",
+          type: "layer",
+          label: "Japan",
+          layerId: "japan",
+          rows: [
+            createLineRow({
+              id: "japan-line",
+              layerId: "japan",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#d9e4da",
+            }),
+          ],
+        },
+        {
+          id: "australia",
+          type: "layer",
+          label: "Australia",
+          layerId: "australia",
+          rows: [
+            createFillRow({
+              id: "australia-fill",
+              layerId: "australia",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#6EAA6E",
+            }),
+            createLineRow({
+              id: "australia-line",
+              layerId: "australia",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#d9e4da",
+            }),
+          ],
+        },
+        {
           id: "graticules",
           type: "layer",
           label: "Graticules",
@@ -117,6 +184,7 @@ function createLayerModel() {
           storageKey: SHARED_COLOR_STORAGE_KEY,
           presets: SHARED_COLOR_PRESETS,
           defaultColor: "#6EAA6E",
+          defaultOpacity: 0,
         }),
         createLineRow({
           id: "countries-line",
@@ -343,6 +411,21 @@ function createLayerModel() {
 
       if (parsed.land && !parsed.countries) {
         parsed.countries = parsed.land;
+      }
+
+      if (parsed.countries && !parsed.land) {
+        parsed.land = {
+          fillColor: parsed.countries.fillColor,
+          fillOpacity: parsed.countries.fillOpacity,
+          visible: true,
+        };
+        parsed.outline = {
+          visible: true,
+        };
+        parsed.countries = {
+          ...parsed.countries,
+          fillOpacity: 0,
+        };
       }
 
       Object.entries(baseState).forEach(([layerId, defaults]) => {

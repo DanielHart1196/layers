@@ -5,7 +5,12 @@
   "scripts": {
     "dev": "node ../node_modules/vite/bin/vite.js",
     "build": "node ../node_modules/vite/bin/vite.js build",
-    "preview": "node ../node_modules/vite/bin/vite.js preview"
+    "preview": "node ../node_modules/vite/bin/vite.js preview",
+    "build:osm-land": "node ./scripts/build-osm-land-runtime.mjs",
+    "build:osm-land:pmtiles": "node ./scripts/build-osm-land-pmtiles.mjs",
+    "build:osm-land:australia:pmtiles": "node ./scripts/build-osm-land-australia-pmtiles.mjs",
+    "build:osm-outline:japan:pmtiles": "node ./scripts/build-osm-outline-japan-pmtiles.mjs",
+    "build:osm-outline:australia:pmtiles": "node ./scripts/build-osm-outline-australia-pmtiles.mjs"
   },
   "dependencies": {
     "maplibre-gl": "^5.21.1",
