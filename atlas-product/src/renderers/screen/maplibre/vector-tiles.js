@@ -34,7 +34,10 @@ function getRegistryEntry(id) {
   }
 
   if (!entry.tileIndexPromise) {
-    entry.tileIndexPromise = loadJson(entry.dataUrl).then((data) => new GeoJSONVT(data, entry.tileOptions));
+    const dataPromise = entry.data
+      ? Promise.resolve(entry.data)
+      : loadJson(entry.dataUrl);
+    entry.tileIndexPromise = dataPromise.then((data) => new GeoJSONVT(data, entry.tileOptions));
   }
 
   return entry;
@@ -99,14 +102,16 @@ function installAtlasVectorTileProtocol(maplibregl) {
 function registerGeojsonVectorTileSource({
   id,
   dataUrl,
+  data,
   sourceLayer,
   tileOptions = {},
 } = {}) {
-  if (!id || !dataUrl || !sourceLayer) {
-    throw new Error("GeoJSON vector tile source requires id, dataUrl, and sourceLayer.");
+  if (!id || (!dataUrl && !data) || !sourceLayer) {
+    throw new Error("GeoJSON vector tile source requires id, sourceLayer, and either dataUrl or data.");
   }
 
   protocolRegistry.set(id, {
+    data,
     dataUrl,
     sourceLayer,
     tileIndexPromise: null,

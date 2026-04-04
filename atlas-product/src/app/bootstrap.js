@@ -49,6 +49,11 @@ async function bootstrapApplication() {
     panel: document.getElementById("layerMenuPanel"),
     layerModel,
     onRowInput: (row, nextValue) => {
+      if (row?.type === "reorder") {
+        screenRuntime.reorderLayerGroup(row.parentId, nextValue);
+        return;
+      }
+
       const update = layerModel.setRowValue(row, nextValue);
       if (!update) {
         return;

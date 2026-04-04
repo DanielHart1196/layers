@@ -139,35 +139,323 @@ function hideCustomColorRemoveButton(runtime) {
   runtime.deleteColor = null;
 }
 
-function createLayerRowButton(definition, state, onToggleExpanded) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "layer-menu-row layer-menu-row-layer";
-  button.textContent = definition.label;
+function getRenderedLayerRow(parentId, rowId) {
+  return document.querySelector(`.layer-menu-row-layer[data-parent-id="${parentId}"][data-row-id="${rowId}"]`);
+}
 
+function getAdjacentPreviewOrder(rowIds, rowId, direction) {
+  if (!Array.isArray(rowIds) || !rowIds.length || !rowId) {
+    return null;
+  }
+
+  const sourceIndex = rowIds.indexOf(rowId);
+  if (sourceIndex === -1) {
+    return null;
+  }
+
+  const targetIndex = direction === "up" ? sourceIndex - 1 : sourceIndex + 1;
+  if (targetIndex < 0 || targetIndex >= rowIds.length) {
+    return null;
+  }
+
+  const nextOrder = rowIds.slice();
+  const [moved] = nextOrder.splice(sourceIndex, 1);
+  nextOrder.splice(targetIndex, 0, moved);
+  return nextOrder;
+}
+
+function setupPointerReorderGrabber(grabber, parentId, rowId, reorderApi) {
+  let activeGesture = null;
+  let suppressClick = false;
+
+  function cleanupGesture(commit = false) {
+    const gesture = activeGesture;
+    if (!gesture) {
+      return;
+    }
+
+    window.removeEventListener("pointermove", handlePointerMove);
+    window.removeEventListener("pointerup", handlePointerUp);
+    window.removeEventListener("pointercancel", handlePointerCancel);
+    window.removeEventListener("pointerleave", handlePointerCancel);
+    document.body.classList.remove("is-reordering-rows");
+
+    if (gesture.dragging) {
+      if (commit && Array.isArray(gesture.previewOrder)) {
+        reorderApi.onCommit(parentId, gesture.previewOrder);
+      } else {
+        reorderApi.onCancel(parentId);
+      }
+      reorderApi.setDragging(null);
+    }
+
+    if (typeof grabber.releasePointerCapture === "function") {
+      try {
+        if (grabber.hasPointerCapture?.(gesture.pointerId)) {
+          grabber.releasePointerCapture(gesture.pointerId);
+        }
+      } catch {
+        // Ignore release errors from browsers that lose capture during teardown.
+      }
+    }
+
+    if (gesture.dragging) {
+      suppressClick = true;
+      window.setTimeout(() => {
+        suppressClick = false;
+      }, 0);
+    }
+
+    activeGesture = null;
+  }
+
+  function handlePointerMove(event) {
+    const gesture = activeGesture;
+    if (!gesture || event.pointerId !== gesture.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - gesture.startX;
+    const deltaY = event.clientY - gesture.startY;
+
+    if (!gesture.dragging) {
+      if (Math.hypot(deltaX, deltaY) < 6) {
+        return;
+      }
+
+      gesture.dragging = true;
+      document.body.classList.add("is-reordering-rows");
+      reorderApi.setDragging({ parentId, rowId });
+    }
+
+    event.preventDefault();
+
+    const renderedRow = getRenderedLayerRow(parentId, rowId);
+    if (!renderedRow) {
+      return;
+    }
+
+    const rect = renderedRow.getBoundingClientRect();
+    let direction = null;
+    if (event.clientY < rect.top) {
+      direction = "up";
+    } else if (event.clientY > rect.bottom) {
+      direction = "down";
+    }
+
+    if (!direction) {
+      return;
+    }
+
+    const nextPreviewOrder = getAdjacentPreviewOrder(
+      reorderApi.getOrderedRowIds(parentId),
+      rowId,
+      direction,
+    );
+
+    if (!nextPreviewOrder) {
+      return;
+    }
+
+    if (
+      Array.isArray(gesture.previewOrder)
+      && gesture.previewOrder.length === nextPreviewOrder.length
+      && gesture.previewOrder.every((value, index) => value === nextPreviewOrder[index])
+    ) {
+      return;
+    }
+
+    gesture.previewOrder = nextPreviewOrder;
+    reorderApi.onPreview(parentId, nextPreviewOrder);
+  }
+
+  function handlePointerUp(event) {
+    if (!activeGesture || event.pointerId !== activeGesture.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    cleanupGesture(true);
+  }
+
+  function handlePointerCancel(event) {
+    if (!activeGesture || event.pointerId !== activeGesture.pointerId) {
+      return;
+    }
+
+    cleanupGesture(false);
+  }
+
+  grabber.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (suppressClick) {
+      event.preventDefault();
+    }
+  });
+
+  grabber.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 && event.pointerType !== "touch") {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    activeGesture = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      dragging: false,
+      previewOrder: null,
+    };
+
+    if (typeof grabber.setPointerCapture === "function") {
+      try {
+        grabber.setPointerCapture(event.pointerId);
+      } catch {
+        // Ignore capture failures and fall back to window listeners.
+      }
+    }
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: false });
+    window.addEventListener("pointerup", handlePointerUp, { passive: false });
+    window.addEventListener("pointercancel", handlePointerCancel);
+    window.addEventListener("pointerleave", handlePointerCancel);
+  });
+}
+
+function createRowHeader(labelText, valueText = null, className, options = {}) {
+  const header = document.createElement("div");
+  header.className = className;
+
+  const leading = document.createElement("div");
+  leading.className = "layer-menu-row-leading";
+  header.append(leading);
+
+  if (options.grabber) {
+    const grabber = document.createElement("button");
+    grabber.type = "button";
+    grabber.className = "layer-menu-row-grabber";
+    grabber.setAttribute("aria-label", "Reorder row");
+    grabber.innerHTML = "<span></span><span></span>";
+    leading.append(grabber);
+  }
+
+  const label = options.labelButton ? document.createElement("button") : document.createElement("span");
+  label.className = options.labelButton ? "layer-menu-row-toggle" : "layer-menu-row-label";
+  if (options.labelButton) {
+    label.type = "button";
+    const labelTextNode = document.createElement("span");
+    labelTextNode.className = "layer-menu-row-label";
+    labelTextNode.textContent = labelText;
+    label.append(labelTextNode);
+  } else {
+    label.textContent = labelText;
+  }
+  leading.append(label);
+
+  if (options.chevron) {
+    const chevron = options.chevronButton ? document.createElement("button") : document.createElement("span");
+    chevron.className = options.chevronButton ? "layer-menu-row-chevron-button" : "layer-menu-row-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    if (options.chevronButton) {
+      chevron.type = "button";
+    }
+    chevron.textContent = "›";
+    if (options.chevronExpanded) {
+      chevron.classList.add("is-expanded");
+    }
+    header.append(chevron);
+  }
+
+  if (valueText !== null) {
+    const valueLabel = document.createElement("span");
+    valueLabel.className = "layer-menu-row-value";
+    valueLabel.textContent = valueText;
+    header.append(valueLabel);
+  }
+
+  return {
+    header,
+    label,
+    chevron: header.querySelector(".layer-menu-row-chevron, .layer-menu-row-chevron-button"),
+    grabber: header.querySelector(".layer-menu-row-grabber"),
+  };
+}
+
+function createLayerRow(definition, state, parentId, onToggleExpanded, onToggleVisibility, reorderApi, dragState) {
+  const row = document.createElement("div");
+  row.className = "layer-menu-row layer-menu-row-layer";
   const hasChildren = Array.isArray(definition.rows) && definition.rows.length > 0;
+  const hasVisibility = Boolean(definition.layerId);
+  const isReorderable = Boolean(parentId && definition.layerId && definition.layerId !== "ocean");
+  const { header, label, chevron, grabber } = createRowHeader(definition.label, null, "layer-menu-row-header", {
+    grabber: isReorderable,
+    labelButton: hasVisibility || !hasChildren,
+    chevron: hasChildren,
+    chevronButton: hasChildren,
+    chevronExpanded: Boolean(state?.expanded),
+  });
+  row.append(header);
+  if (isReorderable) {
+    row.dataset.rowId = definition.id;
+    row.dataset.parentId = parentId;
+    if (dragState?.parentId === parentId && dragState?.rowId === definition.id) {
+      row.classList.add("is-dragging");
+    }
+  }
+
   if (hasChildren) {
-    button.classList.add("is-expandable");
-    button.setAttribute("aria-expanded", String(Boolean(state?.expanded)));
-    button.addEventListener("click", () => {
+    row.classList.add("is-expandable");
+    row.setAttribute("aria-expanded", String(Boolean(state?.expanded)));
+  }
+
+  if (hasVisibility) {
+    row.classList.toggle("is-hidden", state?.visible === false);
+    label.addEventListener("click", (event) => {
+      event.stopPropagation();
+      onToggleVisibility(definition.layerId);
+    });
+  } else if (!hasChildren) {
+    label.addEventListener("click", (event) => {
+      event.stopPropagation();
       onToggleExpanded(definition.id);
     });
   }
 
-  return button;
+  chevron?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    onToggleExpanded(definition.id);
+  });
+
+  if (grabber && isReorderable) {
+    setupPointerReorderGrabber(grabber, parentId, definition.id, reorderApi);
+  }
+
+  if (hasChildren) {
+    header.addEventListener("click", (event) => {
+      if (
+        event.target?.closest?.(".layer-menu-row-grabber")
+        || event.target?.closest?.(".layer-menu-row-toggle")
+        || event.target?.closest?.(".layer-menu-row-chevron-button")
+      ) {
+        return;
+      }
+      onToggleExpanded(definition.id);
+    });
+  }
+
+  return row;
 }
 
 function createSliderRow(row, value, onInput) {
   const wrapper = document.createElement("label");
   wrapper.className = "layer-menu-row layer-menu-row-slider";
-
-  const label = document.createElement("span");
-  label.className = "layer-menu-row-label";
-  label.textContent = row.label;
-
-  const valueLabel = document.createElement("span");
-  valueLabel.className = "layer-menu-row-value";
-  valueLabel.textContent = formatRowValue(row, value);
+  const { header, valueLabel } = (() => {
+    const { header, label } = createRowHeader(row.label, formatRowValue(row, value), "layer-menu-slider-header");
+    const valueLabel = header.querySelector(".layer-menu-row-value");
+    return { header, label, valueLabel };
+  })();
 
   const input = document.createElement("input");
   input.className = "layer-menu-slider";
@@ -181,10 +469,6 @@ function createSliderRow(row, value, onInput) {
     valueLabel.textContent = formatRowValue(row, nextValue);
     onInput(nextValue);
   });
-
-  const header = document.createElement("div");
-  header.className = "layer-menu-slider-header";
-  header.append(label, valueLabel);
 
   wrapper.append(header, input);
   return wrapper;
@@ -207,19 +491,8 @@ function createOpacitySlider(inputClassName, row, value, onInput) {
 function createSliderBlock({ label, row, value, onInput, className = "" }) {
   const block = document.createElement("div");
   block.className = className ? className : "layer-menu-row-fill-opacity";
-
-  const header = document.createElement("div");
-  header.className = "layer-menu-slider-header";
-
-  const sliderLabel = document.createElement("span");
-  sliderLabel.className = "layer-menu-row-label";
-  sliderLabel.textContent = label;
-
-  const sliderValue = document.createElement("span");
-  sliderValue.className = "layer-menu-row-value";
-  sliderValue.textContent = formatRowValue(row, value);
-
-  header.append(sliderLabel, sliderValue);
+  const { header } = createRowHeader(label, formatRowValue(row, value), "layer-menu-slider-header");
+  const sliderValue = header.querySelector(".layer-menu-row-value");
 
   const slider = createOpacitySlider("layer-menu-slider", row, value, (nextValue) => {
     sliderValue.textContent = formatRowValue(row, nextValue);
@@ -236,19 +509,9 @@ function createColorRow(row, value, onInput, requestRender) {
   let currentHex = normalizeHexColor(value) ?? "#8C6A2A";
   let currentHsv = rgbToHsv(hexToRgb(currentHex));
   const pressRuntime = createColorPressRuntime();
-
-  const header = document.createElement("div");
-  header.className = "layer-menu-color-header";
-
-  const label = document.createElement("span");
-  label.className = "layer-menu-row-label";
-  label.textContent = row.label;
-
-  const valueLabel = document.createElement("span");
-  valueLabel.className = "layer-menu-row-value";
-  valueLabel.textContent = formatRowValue(row, currentHex);
-
-  header.append(label, valueLabel);
+  const persistedUiState = requestRender?.__getColorRowUiState?.(row.id) ?? null;
+  const { header } = createRowHeader(row.label, formatRowValue(row, currentHex), "layer-menu-color-header");
+  const valueLabel = header.querySelector(".layer-menu-row-value");
 
   const swatches = document.createElement("div");
   swatches.className = "layer-menu-color-swatches";
@@ -268,6 +531,14 @@ function createColorRow(row, value, onInput, requestRender) {
     addButton.classList.toggle("is-delete-armed", isDeleteArmed);
     addButton.textContent = isDeleteArmed ? "−" : "+";
     addButton.setAttribute("aria-label", isDeleteArmed ? "Delete saved color" : (isOpen ? "Close color picker" : "Open color picker"));
+  }
+
+  function buildUiState() {
+    return {
+      rowId: row.id,
+      swatchScrollLeft: swatches.scrollLeft,
+      panelOpen: panel.classList.contains("is-open"),
+    };
   }
 
   if (row.storageKey) {
@@ -293,7 +564,7 @@ function createColorRow(row, value, onInput, requestRender) {
         currentHex = normalizeHexColor(color) ?? currentHex;
         currentHsv = rgbToHsv(hexToRgb(currentHex));
         onInput(color);
-        requestRender();
+        requestRender(buildUiState());
       });
       return button;
     }
@@ -317,7 +588,7 @@ function createColorRow(row, value, onInput, requestRender) {
       hideCustomColorRemoveButton(pressRuntime);
       syncAddButtonState();
       onInput(color);
-      requestRender();
+      requestRender(buildUiState());
     });
 
     const startLongPress = () => {
@@ -420,7 +691,7 @@ function createColorRow(row, value, onInput, requestRender) {
       const nextStoredColors = [currentHex, ...storedColors.filter((color) => color !== currentHex)];
       saveStoredColors(row.storageKey, nextStoredColors);
       syncPickerUi();
-      requestRender();
+      requestRender(buildUiState());
       return;
     }
 
@@ -480,7 +751,7 @@ function createColorRow(row, value, onInput, requestRender) {
       saveStoredColors(row.storageKey, nextStoredColors);
       hideCustomColorRemoveButton(pressRuntime);
       syncAddButtonState();
-      requestRender();
+      requestRender(buildUiState());
       return;
     }
 
@@ -506,8 +777,17 @@ function createColorRow(row, value, onInput, requestRender) {
   });
 
   syncPickerUi();
+  if (persistedUiState?.panelOpen) {
+    panel.classList.add("is-open");
+    panel.hidden = false;
+  }
   syncAddButtonState();
   wrapper.append(header, swatches, panel);
+  if (persistedUiState && typeof persistedUiState.swatchScrollLeft === "number") {
+    requestAnimationFrame(() => {
+      swatches.scrollLeft = persistedUiState.swatchScrollLeft;
+    });
+  }
   return wrapper;
 }
 
@@ -606,11 +886,13 @@ function createLineRow(row, value, onInput, requestRender) {
   return wrapper;
 }
 
-function buildRows(rows, layerModel, onToggleExpanded, onRowInput, depth = 0) {
+function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, depth = 0, parentId = null) {
   const fragment = document.createDocumentFragment();
   const state = layerModel.getState();
 
   rows.forEach((row) => {
+    const childRows = row.id ? reorderApi.getOrderedRows(row.id) : [];
+
     if (row.type === "slider") {
       const slider = createSliderRow(row, layerModel.getRowValue(row), (nextValue) => {
         onRowInput(row, nextValue);
@@ -647,12 +929,12 @@ function buildRows(rows, layerModel, onToggleExpanded, onRowInput, depth = 0) {
       return;
     }
 
-    const button = createLayerRowButton(row, state[row.id], onToggleExpanded);
-    button.style.setProperty("--row-depth", String(depth));
-    fragment.append(button);
+    const layerRow = createLayerRow(row, state[row.id], parentId, onToggleExpanded, onToggleVisibility, reorderApi, reorderApi.dragState);
+    layerRow.style.setProperty("--row-depth", String(depth));
+    fragment.append(layerRow);
 
-    if (row.rows?.length && state[row.id]?.expanded) {
-      fragment.append(buildRows(row.rows, layerModel, onToggleExpanded, onRowInput, depth + 1));
+    if (childRows.length && state[row.id]?.expanded) {
+      fragment.append(buildRows(childRows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, depth + 1, row.id));
     }
   });
 
@@ -668,19 +950,74 @@ function renderLayerMenuRows({
     return () => {};
   }
 
-  function render() {
+  const transientColorRowState = new Map();
+  const transientReorderState = new Map();
+  let activeDragState = null;
+
+  function render(nextUiState = null) {
+    if (nextUiState?.rowId) {
+      transientColorRowState.set(nextUiState.rowId, nextUiState);
+    }
     panel.innerHTML = "";
     const onToggleExpanded = (layerId) => {
       layerModel.toggleExpanded(layerId);
       render();
     };
+    const onToggleVisibility = (layerId) => {
+      const nextVisible = layerModel.toggleVisibility(layerId);
+      if (typeof nextVisible === "boolean") {
+        onRowInput({ target: { kind: "layer-style", layerId, key: "visible" } }, nextVisible);
+      }
+      render();
+    };
+    const getOrderedRows = (parentId) => {
+      const previewOrder = transientReorderState.get(parentId);
+      const baseRows = layerModel.getChildRows(parentId);
+      if (!previewOrder?.length) {
+        return baseRows;
+      }
+      const rowById = new Map(baseRows.map((row) => [row.id, row]));
+      return previewOrder.map((rowId) => rowById.get(rowId)).filter(Boolean);
+    };
+    const reorderApi = {
+      dragState: activeDragState,
+      getOrderedRows,
+      getOrderedRowIds: (parentId) => getOrderedRows(parentId).map((row) => row.id),
+      setDragging(nextDragState) {
+        activeDragState = nextDragState;
+        render();
+      },
+      onPreview(parentId, previewOrder) {
+        transientReorderState.set(parentId, previewOrder);
+        render();
+      },
+      onCancel(parentId) {
+        if (transientReorderState.delete(parentId)) {
+          render();
+        }
+      },
+      onCommit(parentId, nextOrder) {
+        transientReorderState.delete(parentId);
+        const committedOrder = layerModel.setChildRowOrder(parentId, nextOrder);
+        if (committedOrder) {
+          onRowInput({ type: "reorder", parentId }, committedOrder);
+        }
+        render();
+      },
+    };
+
     onToggleExpanded.__requestRender = render;
+    onToggleExpanded.__requestRender.__getColorRowUiState = (rowId) => transientColorRowState.get(rowId) ?? null;
     panel.append(
       buildRows(
         layerModel.getRootRows(),
         layerModel,
         onToggleExpanded,
+        onToggleVisibility,
+        reorderApi,
         onRowInput,
+        0,
+        null,
       ),
     );
   }

@@ -1,5 +1,7 @@
 function createLayerModel() {
   const STORAGE_KEY = "atlas.layerState.v1";
+  const SHARED_COLOR_STORAGE_KEY = "atlas.colors.customColors";
+  const SHARED_COLOR_PRESETS = ["#000000", "#FFFFFF", "#d94b4b", "#e58a2b", "#e5c84a", "#5b8c5a", "#4b6ed9", "#8c5bd6"];
 
   function createFillRow({
     id,
@@ -7,6 +9,8 @@ function createLayerModel() {
     layerId,
     storageKey = null,
     presets = [],
+    defaultColor = "#000000",
+    defaultOpacity = 100,
   }) {
     return {
       id,
@@ -20,6 +24,10 @@ function createLayerModel() {
       max: 100,
       step: 1,
       valueFormat: "percent",
+      initialState: {
+        fillColor: defaultColor,
+        fillOpacity: defaultOpacity,
+      },
     };
   }
 
@@ -29,6 +37,9 @@ function createLayerModel() {
     layerId,
     storageKey = null,
     presets = [],
+    defaultColor = "#000000",
+    defaultOpacity = 100,
+    defaultWeight = 100,
   }) {
     return {
       id,
@@ -46,6 +57,11 @@ function createLayerModel() {
       weightMin: 25,
       weightMax: 250,
       weightStep: 1,
+      initialState: {
+        lineColor: defaultColor,
+        lineOpacity: defaultOpacity,
+        lineWeight: defaultWeight,
+      },
     };
   }
 
@@ -65,8 +81,9 @@ function createLayerModel() {
             createFillRow({
               id: "ocean-fill",
               layerId: "ocean",
-              storageKey: "atlas.colors.customColors",
-              presets: ["#000000", "#FFFFFF", "#2C6F92", "#1F5A77", "#3A88B3", "#5B8C5A", "#D9C27A", "#4B6ED9"],
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#2C6F92",
             }),
           ],
         },
@@ -79,8 +96,17 @@ function createLayerModel() {
             createFillRow({
               id: "land-fill",
               layerId: "land",
-              storageKey: "atlas.colors.customColors",
-              presets: ["#000000", "#FFFFFF", "#6EAA6E", "#5B8F5B", "#93C07A", "#D9C27A", "#C84B31", "#4B6ED9"],
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#6EAA6E",
+            }),
+            createLineRow({
+              id: "land-line",
+              layerId: "land",
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#e1efe4",
+              defaultOpacity: 0,
             }),
           ],
         },
@@ -93,8 +119,9 @@ function createLayerModel() {
             createLineRow({
               id: "graticules-line",
               layerId: "graticules",
-              storageKey: "atlas.colors.customColors",
-              presets: ["#000000", "#FFFFFF", "#C8D7E2", "#8FA9BC", "#4B6ED9", "#D9C27A", "#5B8C5A", "#C84B31"],
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#8FA9BC",
             }),
           ],
         },
@@ -115,14 +142,16 @@ function createLayerModel() {
             createFillRow({
               id: "roman-fill",
               layerId: "roman",
-              storageKey: "atlas.colors.customColors",
-              presets: ["#000000", "#FFFFFF", "#d94b4b", "#e58a2b", "#e5c84a", "#5b8c5a", "#4b6ed9", "#8c5bd6"],
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#8c6a2a",
             }),
             createLineRow({
               id: "roman-line",
               layerId: "roman",
-              storageKey: "atlas.colors.customColors",
-              presets: ["#000000", "#FFFFFF", "#c89a42", "#d94b4b", "#e58a2b", "#e5c84a", "#5b8c5a", "#4b6ed9"],
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#c89a42",
             }),
           ],
         },
@@ -135,14 +164,16 @@ function createLayerModel() {
             createFillRow({
               id: "mongol-fill",
               layerId: "mongol",
-              storageKey: "atlas.colors.customColors",
-              presets: ["#000000", "#FFFFFF", "#b85c38", "#d94b4b", "#e58a2b", "#e5c84a", "#5b8c5a", "#4b6ed9"],
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#b85c38",
             }),
             createLineRow({
               id: "mongol-line",
               layerId: "mongol",
-              storageKey: "atlas.colors.customColors",
-              presets: ["#000000", "#FFFFFF", "#d96f44", "#d94b4b", "#e58a2b", "#e5c84a", "#5b8c5a", "#4b6ed9"],
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#d96f44",
             }),
           ],
         },
@@ -155,14 +186,16 @@ function createLayerModel() {
             createFillRow({
               id: "british-fill",
               layerId: "british",
-              storageKey: "atlas.colors.customColors",
-              presets: ["#000000", "#FFFFFF", "#c84b31", "#d94b4b", "#e58a2b", "#e5c84a", "#5b8c5a", "#4b6ed9"],
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#c84b31",
             }),
             createLineRow({
               id: "british-line",
               layerId: "british",
-              storageKey: "atlas.colors.customColors",
-              presets: ["#000000", "#FFFFFF", "#f07a58", "#d94b4b", "#e58a2b", "#e5c84a", "#5b8c5a", "#4b6ed9"],
+              storageKey: SHARED_COLOR_STORAGE_KEY,
+              presets: SHARED_COLOR_PRESETS,
+              defaultColor: "#f07a58",
             }),
           ],
         },
@@ -170,58 +203,95 @@ function createLayerModel() {
     },
   };
 
-  const defaultLayerState = {
+  const ROOT_ROW_IDS = ["earth", "empires"];
+  const rowDefinitionsById = new Map();
+
+  function indexRowDefinitions(rows = []) {
+    rows.forEach((row) => {
+      rowDefinitionsById.set(row.id, row);
+      if (Array.isArray(row.rows) && row.rows.length) {
+        indexRowDefinitions(row.rows);
+      }
+    });
+  }
+
+  ROOT_ROW_IDS.forEach((id) => {
+    const rootDefinition = layerDefinitions[id];
+    if (!rootDefinition) {
+      return;
+    }
+    rowDefinitionsById.set(rootDefinition.id, rootDefinition);
+    indexRowDefinitions(rootDefinition.rows);
+  });
+
+  function getDefaultChildOrder(parentId) {
+    return (layerDefinitions[parentId]?.rows ?? []).map((row) => row.id);
+  }
+
+  function buildDefaultLayerState() {
+    const state = {
     earth: {
       expanded: layerDefinitions.earth.defaultExpanded,
+      rowOrder: getDefaultChildOrder("earth"),
     },
     empires: {
       expanded: layerDefinitions.empires.defaultExpanded,
+      rowOrder: getDefaultChildOrder("empires"),
     },
-    roman: {
-      expanded: true,
-      fillColor: "#8c6a2a",
-      fillOpacity: 100,
-      lineColor: "#c89a42",
-      lineOpacity: 100,
-      lineWeight: 100,
-    },
-    mongol: {
-      expanded: false,
-      fillOpacity: 100,
-      lineColor: "#d96f44",
-      lineOpacity: 100,
-      lineWeight: 100,
-    },
-    british: {
-      expanded: false,
-      fillColor: "#c84b31",
-      fillOpacity: 100,
-      lineColor: "#f07a58",
-      lineOpacity: 100,
-      lineWeight: 100,
-    },
-    ocean: {
-      expanded: false,
-      fillColor: "#2C6F92",
-      fillOpacity: 100,
-    },
-    land: {
-      expanded: false,
-      fillColor: "#6EAA6E",
-      fillOpacity: 100,
-    },
-    graticules: {
-      expanded: false,
-      lineColor: "#8FA9BC",
-      lineOpacity: 100,
-      lineWeight: 100,
-    },
-  };
+    };
+
+    const ensureLayerState = (layerId) => {
+      if (!state[layerId]) {
+        state[layerId] = {};
+      }
+      return state[layerId];
+    };
+
+    const applyRowDefaults = (row) => {
+      if (row?.type === "layer") {
+        const layerRecord = ensureLayerState(row.layerId);
+        if (typeof layerRecord.expanded !== "boolean") {
+          layerRecord.expanded = false;
+        }
+        if (typeof layerRecord.visible !== "boolean") {
+          layerRecord.visible = true;
+        }
+        row.rows?.forEach(applyRowDefaults);
+        return;
+      }
+
+      if (!row?.initialState) {
+        return;
+      }
+
+      const layerId =
+        row.colorTarget?.layerId ??
+        row.opacityTarget?.layerId ??
+        row.weightTarget?.layerId ??
+        row.target?.layerId;
+      if (!layerId) {
+        return;
+      }
+
+      const layerRecord = ensureLayerState(layerId);
+      Object.entries(row.initialState).forEach(([key, value]) => {
+        if (layerRecord[key] === undefined) {
+          layerRecord[key] = value;
+        }
+      });
+    };
+
+    Object.values(layerDefinitions).forEach((definition) => {
+      definition.rows?.forEach(applyRowDefaults);
+    });
+
+    return state;
+  }
 
   const layerState = hydrateLayerState();
 
   function hydrateLayerState() {
-    const baseState = structuredClone(defaultLayerState);
+    const baseState = buildDefaultLayerState();
 
     try {
       const raw = window.localStorage?.getItem(STORAGE_KEY);
@@ -262,7 +332,30 @@ function createLayerModel() {
   }
 
   function getRootRows() {
-    return ["earth", "empires"].map((id) => layerDefinitions[id]);
+    return ROOT_ROW_IDS.map((id) => layerDefinitions[id]);
+  }
+
+  function getChildRows(parentId) {
+    const parent = rowDefinitionsById.get(parentId) ?? layerDefinitions[parentId];
+    if (!parent?.rows?.length) {
+      return [];
+    }
+
+    const rowById = new Map(parent.rows.map((row) => [row.id, row]));
+    const persistedOrder = Array.isArray(layerState[parentId]?.rowOrder)
+      ? layerState[parentId].rowOrder
+      : [];
+    const orderedRows = persistedOrder
+      .map((id) => rowById.get(id))
+      .filter(Boolean);
+
+    parent.rows.forEach((row) => {
+      if (!orderedRows.includes(row)) {
+        orderedRows.push(row);
+      }
+    });
+
+    return orderedRows;
   }
 
   function getDefinitions() {
@@ -327,13 +420,76 @@ function createLayerModel() {
     return record.expanded;
   }
 
+  function toggleVisibility(layerId) {
+    const record = layerState[layerId];
+    if (!record || typeof record.visible !== "boolean") {
+      return null;
+    }
+
+    record.visible = !record.visible;
+    persistLayerState();
+    return record.visible;
+  }
+
+  function reorderChildRow(parentId, rowId, targetRowId, placement = "before") {
+    const parent = layerDefinitions[parentId];
+    if (!parent?.rows?.length) {
+      return null;
+    }
+
+    const currentOrder = getChildRows(parentId).map((row) => row.id);
+    const fromIndex = currentOrder.indexOf(rowId);
+    const targetIndex = currentOrder.indexOf(targetRowId);
+    if (fromIndex === -1 || targetIndex === -1 || rowId === targetRowId) {
+      return null;
+    }
+
+    const nextOrder = currentOrder.slice();
+    const [moved] = nextOrder.splice(fromIndex, 1);
+    let insertIndex = nextOrder.indexOf(targetRowId);
+    if (insertIndex === -1) {
+      return null;
+    }
+    if (placement === "after") {
+      insertIndex += 1;
+    }
+    nextOrder.splice(insertIndex, 0, moved);
+
+    layerState[parentId].rowOrder = nextOrder;
+    persistLayerState();
+    return nextOrder.slice();
+  }
+
+  function setChildRowOrder(parentId, nextOrder) {
+    const parent = layerDefinitions[parentId];
+    if (!parent?.rows?.length || !Array.isArray(nextOrder)) {
+      return null;
+    }
+
+    const allowedIds = parent.rows.map((row) => row.id);
+    if (
+      nextOrder.length !== allowedIds.length
+      || allowedIds.some((rowId) => !nextOrder.includes(rowId))
+    ) {
+      return null;
+    }
+
+    layerState[parentId].rowOrder = nextOrder.slice();
+    persistLayerState();
+    return layerState[parentId].rowOrder.slice();
+  }
+
   return {
+    getChildRows,
     getDefinitions,
     getRootRows,
     getRowValue,
     getState,
+    reorderChildRow,
+    setChildRowOrder,
     setRowValue,
     toggleExpanded,
+    toggleVisibility,
   };
 }
 

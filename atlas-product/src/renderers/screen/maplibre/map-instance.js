@@ -50,6 +50,7 @@ const EMPIRE_LINE_LAYER_IDS = {
   british: BRITISH_LINE_LAYER_ID,
 };
 const LINE_LAYER_IDS = {
+  land: LAND_LINE_LAYER_ID,
   ...EMPIRE_LINE_LAYER_IDS,
   graticules: GRATICULES_LINE_LAYER_ID,
 };
@@ -57,6 +58,50 @@ const WATER_BACKGROUND_COLOR = { r: 44, g: 111, b: 146 };
 const DEFAULT_LAND_FILL_COLOR = "#6EAA6E";
 const DEFAULT_OCEAN_FILL_COLOR = "#2C6F92";
 const DEFAULT_GRATICULE_LINE_COLOR = "#8FA9BC";
+
+function getFirstExistingLayerId(map, candidateIds) {
+  return candidateIds.find((id) => map.getLayer(id)) ?? null;
+}
+
+function getLogicalLayerBundles() {
+  return {
+    earth: {
+      land: [LAND_FILL_LAYER_ID, LAND_LINE_LAYER_ID],
+      graticules: [GRATICULES_LINE_LAYER_ID],
+    },
+    empires: {
+      roman: [ROMAN_FILL_LAYER_ID, ROMAN_LINE_LAYER_ID],
+      mongol: [MONGOL_FILL_LAYER_ID, MONGOL_LINE_LAYER_ID],
+      british: [BRITISH_FILL_LAYER_ID, BRITISH_LINE_LAYER_ID],
+    },
+  };
+}
+
+function applyLogicalLayerOrder(map, parentId, orderedLayerIds) {
+  const bundles = getLogicalLayerBundles()[parentId];
+  if (!bundles) {
+    return;
+  }
+
+  const flattened = orderedLayerIds
+    .flatMap((layerId) => bundles[layerId] ?? [])
+    .filter((layerId) => map.getLayer(layerId));
+
+  const anchorBeforeId = parentId === "earth"
+    ? getFirstExistingLayerId(map, [
+      ROMAN_FILL_LAYER_ID,
+      ROMAN_LINE_LAYER_ID,
+      MONGOL_FILL_LAYER_ID,
+      MONGOL_LINE_LAYER_ID,
+      BRITISH_FILL_LAYER_ID,
+      BRITISH_LINE_LAYER_ID,
+    ])
+    : null;
+
+  for (let index = flattened.length - 1; index >= 0; index -= 1) {
+    map.moveLayer(flattened[index], anchorBeforeId ?? undefined);
+  }
+}
 
 function isRealPmtilesUrl(url) {
   const normalized = String(url ?? "").trim();
@@ -105,6 +150,10 @@ function hexToRgb(value, fallback) {
 function buildWaterBackgroundColor(fillColor, alphaPercent) {
   const rgb = hexToRgb(fillColor, WATER_BACKGROUND_COLOR);
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${Number(alphaPercent) / 100})`;
+}
+
+function getLayoutVisibility(layerState, layerId) {
+  return getLayerStyleValue(layerState, layerId, "visible", true) ? "visible" : "none";
 }
 
 function geometryToMultiPolygonCoordinates(geometry) {
@@ -243,6 +292,9 @@ async function attachLandVectorLayer(map, layerState) {
     type: "fill",
     source: LAND_SOURCE_ID,
     "source-layer": LAND_TILE_SOURCE_LAYER,
+    layout: {
+      visibility: getLayoutVisibility(layerState, "land"),
+    },
     paint: {
       "fill-color": getLayerStyleValue(layerState, "land", "fillColor", DEFAULT_LAND_FILL_COLOR),
       "fill-opacity": Number(getLayerStyleValue(layerState, "land", "fillOpacity", 100)) / 100,
@@ -254,17 +306,13 @@ async function attachLandVectorLayer(map, layerState) {
     type: "line",
     source: LAND_SOURCE_ID,
     "source-layer": LAND_TILE_SOURCE_LAYER,
+    layout: {
+      visibility: getLayoutVisibility(layerState, "land"),
+    },
     paint: {
-      "line-color": "rgba(225, 239, 228, 0.28)",
-      "line-width": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        1, 0.2,
-        3, 0.45,
-        5, 0.8,
-      ],
-      "line-opacity": 0,
+      "line-color": getLayerStyleValue(layerState, "land", "lineColor", "#e1efe4"),
+      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "land", "lineWeight", 100)),
+      "line-opacity": Number(getLayerStyleValue(layerState, "land", "lineOpacity", 0)) / 100,
     },
   });
 }
@@ -296,6 +344,9 @@ async function attachGraticulesLayer(map, layerState) {
     type: "line",
     source: GRATICULES_SOURCE_ID,
     "source-layer": GRATICULES_TILE_SOURCE_LAYER,
+    layout: {
+      visibility: getLayoutVisibility(layerState, "graticules"),
+    },
     paint: {
       "line-color": getLayerStyleValue(layerState, "graticules", "lineColor", DEFAULT_GRATICULE_LINE_COLOR),
       "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "graticules", "lineWeight", 100)),
@@ -333,6 +384,7 @@ function attachEmpireLayer(map, {
   lineColor,
 }) {
   const outlineSourceId = `${sourceId}-outline`;
+  const outlineSourceLayer = `${layerId}-outline`;
 
   if (map.getSource(sourceId)) {
     if (map.getLayer(lineLayerId)) {
@@ -364,21 +416,30 @@ function attachEmpireLayer(map, {
     type: "fill",
     source: fillSourceId,
     ...(fillSourceLayer ? { "source-layer": fillSourceLayer } : {}),
+    layout: {
+      visibility: getLayoutVisibility(layerState, layerId),
+    },
     paint: {
       "fill-color": getLayerStyleValue(layerState, layerId, "fillColor", fallbackColor),
       "fill-opacity": Number(getLayerStyleValue(layerState, layerId, "fillOpacity", 100)) / 100,
     },
   });
 
-  map.addSource(outlineSourceId, {
-    type: "geojson",
+  registerGeojsonVectorTileSource({
+    id: outlineSourceId,
     data: buildEmpireOutlineFeatureCollection(featureCollection),
+    sourceLayer: outlineSourceLayer,
   });
+  map.addSource(outlineSourceId, createGeojsonVectorSourceSpec(outlineSourceId));
 
   map.addLayer({
     id: lineLayerId,
     type: "line",
     source: outlineSourceId,
+    "source-layer": outlineSourceLayer,
+    layout: {
+      visibility: getLayoutVisibility(layerState, layerId),
+    },
     paint: {
       "line-color": getLayerStyleValue(layerState, layerId, "lineColor", lineColor),
       "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, layerId, "lineWeight", 100)),
@@ -442,10 +503,8 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
     console.error("MapLibre map error.", message, event?.error);
   });
   map.on("load", () => {
-    if (typeof map.setProjection === "function") {
-      map.setProjection({ type: "globe" });
-    }
     if (map.getLayer("atlas-water")) {
+      map.setLayoutProperty("atlas-water", "visibility", getLayoutVisibility(layerState, "ocean"));
       map.setPaintProperty(
         "atlas-water",
         "background-color",
@@ -462,6 +521,8 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         await attachRomanEmpireLayer(map, layerState);
         await attachMongolEmpireLayer(map, layerState);
         await attachBritishEmpireLayer(map, layerState);
+        applyLogicalLayerOrder(map, "earth", getLayerStyleValue(layerState, "earth", "rowOrder", ["ocean", "land", "graticules"]));
+        applyLogicalLayerOrder(map, "empires", getLayerStyleValue(layerState, "empires", "rowOrder", ["roman", "mongol", "british"]));
       } catch (error) {
         console.error("Failed to attach ordered atlas layers.", error);
       }
@@ -474,6 +535,9 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
     },
     getMap() {
       return map;
+    },
+    reorderLayerGroup(parentId, orderedLayerIds) {
+      applyLogicalLayerOrder(map, parentId, orderedLayerIds);
     },
     setLayerStyleValue(layerId, key, value) {
       if (!layerState[layerId] || typeof layerState[layerId] !== "object") {
@@ -562,6 +626,41 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
         }
 
         map.setPaintProperty(lineLayerId, "line-width", buildLineWidthExpression(Number(value)));
+        return;
+      }
+
+      if (key === "visible") {
+        const visibility = value ? "visible" : "none";
+
+        if (layerId === "ocean" && map.getLayer("atlas-water")) {
+          map.setLayoutProperty("atlas-water", "visibility", visibility);
+          return;
+        }
+
+        if (layerId === "land") {
+          if (map.getLayer(LAND_FILL_LAYER_ID)) {
+            map.setLayoutProperty(LAND_FILL_LAYER_ID, "visibility", visibility);
+          }
+          if (map.getLayer(LAND_LINE_LAYER_ID)) {
+            map.setLayoutProperty(LAND_LINE_LAYER_ID, "visibility", visibility);
+          }
+          return;
+        }
+
+        if (layerId === "graticules" && map.getLayer(GRATICULES_LINE_LAYER_ID)) {
+          map.setLayoutProperty(GRATICULES_LINE_LAYER_ID, "visibility", visibility);
+          return;
+        }
+
+        const fillLayerId = EMPIRE_FILL_LAYER_IDS[layerId];
+        if (fillLayerId && map.getLayer(fillLayerId)) {
+          map.setLayoutProperty(fillLayerId, "visibility", visibility);
+        }
+
+        const lineLayerId = LINE_LAYER_IDS[layerId];
+        if (lineLayerId && map.getLayer(lineLayerId)) {
+          map.setLayoutProperty(lineLayerId, "visibility", visibility);
+        }
       }
     },
   };
