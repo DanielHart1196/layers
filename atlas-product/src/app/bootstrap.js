@@ -40,11 +40,6 @@ async function bootstrapApplication() {
     hardReloadButton: document.getElementById("hardReloadButton"),
     clearCacheReloadButton: document.getElementById("clearCacheReloadButton"),
   });
-  enableLayerMenuControls({
-    wrapper: document.getElementById("layerMenu"),
-    button: document.getElementById("layerMenuButton"),
-    panel: document.getElementById("layerMenuPanel"),
-  });
   const rerenderLayerMenu = renderLayerMenuRows({
     panel: document.getElementById("layerMenuPanel"),
     layerModel,
@@ -61,6 +56,14 @@ async function bootstrapApplication() {
 
       screenRuntime.setLayerStyleValue(update.layerId, update.key, update.value);
     },
+  });
+  enableLayerMenuControls({
+    wrapper: document.getElementById("layerMenu"),
+    button: document.getElementById("layerMenuButton"),
+    panel: document.getElementById("layerMenuPanel"),
+    appearanceButton: document.getElementById("layerMenuAppearanceButton"),
+    screenButton: document.getElementById("layerMenuScreenButton"),
+    rerenderLayerMenu,
   });
   window.AtlasProduct = {
     layers: layerModel.getDefinitions(),

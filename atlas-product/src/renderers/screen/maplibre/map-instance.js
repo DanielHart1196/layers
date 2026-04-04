@@ -155,6 +155,12 @@ function getLayoutVisibility(layerState, layerId) {
   return getLayerStyleValue(layerState, layerId, "visible", true) ? "visible" : "none";
 }
 
+function getEmpireLayoutVisibility(layerState, layerId) {
+  const groupVisible = getLayerStyleValue(layerState, "empires", "visible", true);
+  const layerVisible = getLayerStyleValue(layerState, layerId, "visible", true);
+  return groupVisible && layerVisible ? "visible" : "none";
+}
+
 function geometryToMultiPolygonCoordinates(geometry) {
   if (!geometry) {
     return [];
@@ -310,22 +316,14 @@ async function attachLandVectorLayer(map, layerState) {
     },
     paint: {
       "line-color": getLayerStyleValue(layerState, "countries", "lineColor", "#e1efe4"),
-      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "countries", "lineWeight", 100)),
+      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "countries", "lineWeight", 1)),
       "line-opacity": Number(getLayerStyleValue(layerState, "countries", "lineOpacity", 0)) / 100,
     },
   });
 }
 
-function buildLineWidthExpression(weightPercent) {
-  const multiplier = Number(weightPercent) / 100;
-  return [
-    "interpolate",
-    ["linear"],
-    ["zoom"],
-    1, 0.45 * multiplier,
-    3, 1 * multiplier,
-    5, 1.8 * multiplier,
-  ];
+function buildLineWidthExpression(weightPx) {
+  return Math.max(0, Number(weightPx) || 0);
 }
 
 async function attachGraticulesLayer(map, layerState) {
@@ -348,7 +346,7 @@ async function attachGraticulesLayer(map, layerState) {
     },
     paint: {
       "line-color": getLayerStyleValue(layerState, "graticules", "lineColor", DEFAULT_GRATICULE_LINE_COLOR),
-      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "graticules", "lineWeight", 100)),
+      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, "graticules", "lineWeight", 1)),
       "line-opacity": Number(getLayerStyleValue(layerState, "graticules", "lineOpacity", 100)) / 100,
     },
   });
@@ -416,7 +414,7 @@ function attachEmpireLayer(map, {
     source: fillSourceId,
     ...(fillSourceLayer ? { "source-layer": fillSourceLayer } : {}),
     layout: {
-      visibility: getLayoutVisibility(layerState, layerId),
+      visibility: getEmpireLayoutVisibility(layerState, layerId),
     },
     paint: {
       "fill-color": getLayerStyleValue(layerState, layerId, "fillColor", fallbackColor),
@@ -437,11 +435,11 @@ function attachEmpireLayer(map, {
     source: outlineSourceId,
     "source-layer": outlineSourceLayer,
     layout: {
-      visibility: getLayoutVisibility(layerState, layerId),
+      visibility: getEmpireLayoutVisibility(layerState, layerId),
     },
     paint: {
       "line-color": getLayerStyleValue(layerState, layerId, "lineColor", lineColor),
-      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, layerId, "lineWeight", 100)),
+      "line-width": buildLineWidthExpression(getLayerStyleValue(layerState, layerId, "lineWeight", 1)),
       "line-opacity": Number(getLayerStyleValue(layerState, layerId, "lineOpacity", 100)) / 100,
     },
   });
@@ -651,14 +649,28 @@ function createMapInstance({ container, manifest = [], viewState, initialLayerSt
           return;
         }
 
+        if (layerId === "empires") {
+          Object.entries(EMPIRE_FILL_LAYER_IDS).forEach(([empireLayerId, fillLayerId]) => {
+            if (map.getLayer(fillLayerId)) {
+              map.setLayoutProperty(fillLayerId, "visibility", getEmpireLayoutVisibility(layerState, empireLayerId));
+            }
+          });
+          Object.entries(EMPIRE_LINE_LAYER_IDS).forEach(([empireLayerId, lineLayerId]) => {
+            if (map.getLayer(lineLayerId)) {
+              map.setLayoutProperty(lineLayerId, "visibility", getEmpireLayoutVisibility(layerState, empireLayerId));
+            }
+          });
+          return;
+        }
+
         const fillLayerId = EMPIRE_FILL_LAYER_IDS[layerId];
         if (fillLayerId && map.getLayer(fillLayerId)) {
-          map.setLayoutProperty(fillLayerId, "visibility", visibility);
+          map.setLayoutProperty(fillLayerId, "visibility", getEmpireLayoutVisibility(layerState, layerId));
         }
 
         const lineLayerId = LINE_LAYER_IDS[layerId];
         if (lineLayerId && map.getLayer(lineLayerId)) {
-          map.setLayoutProperty(lineLayerId, "visibility", visibility);
+          map.setLayoutProperty(lineLayerId, "visibility", getEmpireLayoutVisibility(layerState, layerId));
         }
       }
     },

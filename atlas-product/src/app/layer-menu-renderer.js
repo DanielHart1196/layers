@@ -3,12 +3,28 @@ function formatRowValue(row, value) {
     return `${Number(value) || 0}pt`;
   }
 
+  if (row?.valueFormat === "pixels") {
+    return `${Number(value) || 0}px`;
+  }
+
   if (row?.valueFormat === "percent") {
     return `${Math.round(Number(value) || 0)}%`;
   }
 
   return String(value ?? "");
 }
+
+const SETTINGS_BACKGROUND_STORAGE_KEY = "atlas.layerMenuAppearance.v1";
+const SCREEN_BACKGROUND_STORAGE_KEY = "atlas.screenAppearance.v1";
+const SETTINGS_BACKGROUND_PRESETS = ["#000000", "#FFFFFF", "#d94b4b", "#e58a2b", "#e5c84a", "#5b8c5a", "#4b6ed9", "#8c5bd6"];
+const DEFAULT_SETTINGS_BACKGROUND = {
+  color: "#FFFFFF",
+  opacity: 0,
+};
+const DEFAULT_SCREEN_BACKGROUND = {
+  color: "#000000",
+  opacity: 100,
+};
 
 function normalizeHexColor(value) {
   const normalized = String(value ?? "").trim().replace(/^#*/, "");
@@ -115,6 +131,91 @@ function saveStoredColors(storageKey, colors) {
   }
 
   window.localStorage?.setItem(storageKey, JSON.stringify(colors.slice(0, 10)));
+}
+
+function loadAppearanceState(storageKey, defaults) {
+  try {
+    const raw = window.localStorage?.getItem(storageKey);
+    if (!raw) {
+      return { ...defaults };
+    }
+
+    const parsed = JSON.parse(raw);
+    const nextState = {
+      color: normalizeHexColor(parsed?.color) ?? defaults.color,
+      opacity: Math.max(0, Math.min(100, Number(parsed?.opacity) || 0)),
+    };
+
+    if (storageKey === SCREEN_BACKGROUND_STORAGE_KEY && parsed?.version !== 1) {
+      nextState.opacity = defaults.opacity;
+      saveAppearanceState(storageKey, nextState);
+    }
+
+    return nextState;
+  } catch (_error) {
+    return { ...defaults };
+  }
+}
+
+function saveAppearanceState(storageKey, state) {
+  try {
+    window.localStorage?.setItem(storageKey, JSON.stringify({
+      version: 1,
+      ...state,
+    }));
+  } catch (_error) {
+    // Ignore storage failures and keep the runtime usable.
+  }
+}
+
+function loadSettingsBackgroundState() {
+  return loadAppearanceState(SETTINGS_BACKGROUND_STORAGE_KEY, DEFAULT_SETTINGS_BACKGROUND);
+}
+
+function saveSettingsBackgroundState(state) {
+  saveAppearanceState(SETTINGS_BACKGROUND_STORAGE_KEY, state);
+}
+
+function loadScreenBackgroundState() {
+  return loadAppearanceState(SCREEN_BACKGROUND_STORAGE_KEY, DEFAULT_SCREEN_BACKGROUND);
+}
+
+function saveScreenBackgroundState(state) {
+  saveAppearanceState(SCREEN_BACKGROUND_STORAGE_KEY, state);
+}
+
+function applySettingsBackground(panel, appearanceButton, state) {
+  const rgb = hexToRgb(state?.color ?? DEFAULT_SETTINGS_BACKGROUND.color) ?? hexToRgb(DEFAULT_SETTINGS_BACKGROUND.color);
+  if (!rgb || !panel) {
+    return;
+  }
+
+  const alpha = (Number(state?.opacity) || 0) / 100;
+  const fillColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+  panel.style.backgroundColor = fillColor;
+  appearanceButton?.style.setProperty("--swatch-color", normalizeHexColor(state?.color) ?? DEFAULT_SETTINGS_BACKGROUND.color);
+
+  const layerMenuButton = document.getElementById("layerMenuButton");
+  const refreshButton = document.getElementById("mobileRefreshButton");
+  if (layerMenuButton) {
+    layerMenuButton.style.backgroundColor = fillColor;
+  }
+  if (refreshButton) {
+    refreshButton.style.backgroundColor = fillColor;
+  }
+}
+
+function applyScreenBackground(state, screenButton) {
+  const rgb = hexToRgb(state?.color ?? DEFAULT_SCREEN_BACKGROUND.color) ?? hexToRgb(DEFAULT_SCREEN_BACKGROUND.color);
+  const mapStage = document.getElementById("mapStage");
+  if (!rgb || !mapStage) {
+    return;
+  }
+
+  const alpha = (Number(state?.opacity) || 0) / 100;
+  const fillColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+  mapStage.style.backgroundColor = fillColor;
+  screenButton?.style.setProperty("--swatch-color", normalizeHexColor(state?.color) ?? DEFAULT_SCREEN_BACKGROUND.color);
 }
 
 function createColorPressRuntime() {
@@ -886,7 +987,47 @@ function createLineRow(row, value, onInput, requestRender) {
   return wrapper;
 }
 
-function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, depth = 0, parentId = null) {
+function getDisplayRowValue(row, layerModel, appearanceState) {
+  if (row?.colorTarget?.kind === "settings-background" || row?.opacityTarget?.kind === "settings-background") {
+    return {
+      color: appearanceState.settings.color,
+      opacity: appearanceState.settings.opacity,
+    };
+  }
+
+  if (row?.colorTarget?.kind === "screen-background" || row?.opacityTarget?.kind === "screen-background") {
+    return {
+      color: appearanceState.screen.color,
+      opacity: appearanceState.screen.opacity,
+    };
+  }
+
+  return layerModel.getRowValue(row);
+}
+
+function createAppearanceFillRow({ id, label, kind }) {
+  return {
+    id,
+    type: "fill",
+    label,
+    storageKey: null,
+    presets: SETTINGS_BACKGROUND_PRESETS,
+    min: 0,
+    max: 100,
+    step: 1,
+    valueFormat: "percent",
+    colorTarget: {
+      kind,
+      key: "color",
+    },
+    opacityTarget: {
+      kind,
+      key: "opacity",
+    },
+  };
+}
+
+function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, appearanceState, depth = 0, parentId = null) {
   const fragment = document.createDocumentFragment();
   const state = layerModel.getState();
 
@@ -894,7 +1035,7 @@ function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reord
     const childRows = row.id ? reorderApi.getOrderedRows(row.id) : [];
 
     if (row.type === "slider") {
-      const slider = createSliderRow(row, layerModel.getRowValue(row), (nextValue) => {
+      const slider = createSliderRow(row, getDisplayRowValue(row, layerModel, appearanceState), (nextValue) => {
         onRowInput(row, nextValue);
       });
       slider.style.setProperty("--row-depth", String(depth));
@@ -903,7 +1044,7 @@ function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reord
     }
 
     if (row.type === "color") {
-      const colorRow = createColorRow(row, layerModel.getRowValue(row), (nextValue) => {
+      const colorRow = createColorRow(row, getDisplayRowValue(row, layerModel, appearanceState), (nextValue) => {
         onRowInput(row, nextValue);
       }, onToggleExpanded.__requestRender);
       colorRow.style.setProperty("--row-depth", String(depth));
@@ -912,7 +1053,7 @@ function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reord
     }
 
     if (row.type === "fill") {
-      const fillRow = createFillRow(row, layerModel.getRowValue(row), (syntheticRow, nextValue) => {
+      const fillRow = createFillRow(row, getDisplayRowValue(row, layerModel, appearanceState), (syntheticRow, nextValue) => {
         onRowInput(syntheticRow, nextValue);
       }, onToggleExpanded.__requestRender);
       fillRow.style.setProperty("--row-depth", String(depth));
@@ -921,7 +1062,7 @@ function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reord
     }
 
     if (row.type === "line") {
-      const lineRow = createLineRow(row, layerModel.getRowValue(row), (syntheticRow, nextValue) => {
+      const lineRow = createLineRow(row, getDisplayRowValue(row, layerModel, appearanceState), (syntheticRow, nextValue) => {
         onRowInput(syntheticRow, nextValue);
       }, onToggleExpanded.__requestRender);
       lineRow.style.setProperty("--row-depth", String(depth));
@@ -934,7 +1075,7 @@ function buildRows(rows, layerModel, onToggleExpanded, onToggleVisibility, reord
     fragment.append(layerRow);
 
     if (childRows.length && state[row.id]?.expanded) {
-      fragment.append(buildRows(childRows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, depth + 1, row.id));
+      fragment.append(buildRows(childRows, layerModel, onToggleExpanded, onToggleVisibility, reorderApi, onRowInput, appearanceState, depth + 1, row.id));
     }
   });
 
@@ -955,6 +1096,15 @@ function renderLayerMenuRows({
   let activeDragState = null;
 
   function render(nextUiState = null) {
+    const appearanceState = {
+      settings: loadSettingsBackgroundState(),
+      screen: loadScreenBackgroundState(),
+    };
+    const appearanceButton = document.getElementById("layerMenuAppearanceButton");
+    const screenButton = document.getElementById("layerMenuScreenButton");
+    applySettingsBackground(panel, appearanceButton, appearanceState.settings);
+    applyScreenBackground(appearanceState.screen, screenButton);
+
     if (nextUiState?.rowId) {
       transientColorRowState.set(nextUiState.rowId, nextUiState);
     }
@@ -973,11 +1123,14 @@ function renderLayerMenuRows({
     const getOrderedRows = (parentId) => {
       const previewOrder = transientReorderState.get(parentId);
       const baseRows = layerModel.getChildRows(parentId);
-      if (!previewOrder?.length) {
+      const resolvedOrder = previewOrder?.length
+        ? layerModel.normalizeChildRowOrder(parentId, previewOrder)
+        : layerModel.normalizeChildRowOrder(parentId);
+      if (!resolvedOrder.length) {
         return baseRows;
       }
       const rowById = new Map(baseRows.map((row) => [row.id, row]));
-      return previewOrder.map((rowId) => rowById.get(rowId)).filter(Boolean);
+      return resolvedOrder.map((rowId) => rowById.get(rowId)).filter(Boolean);
     };
     const reorderApi = {
       dragState: activeDragState,
@@ -1008,6 +1161,68 @@ function renderLayerMenuRows({
 
     onToggleExpanded.__requestRender = render;
     onToggleExpanded.__requestRender.__getColorRowUiState = (rowId) => transientColorRowState.get(rowId) ?? null;
+
+    const onPanelRowInput = (row, nextValue) => {
+      const target = row?.target ?? row?.colorTarget ?? row?.opacityTarget ?? row?.weightTarget;
+      if (target?.kind === "settings-background") {
+        const nextState = { ...loadSettingsBackgroundState() };
+        if (target.key === "color") {
+          nextState.color = normalizeHexColor(nextValue) ?? nextState.color;
+        } else if (target.key === "opacity") {
+          nextState.opacity = Math.max(0, Math.min(100, Number(nextValue) || 0));
+        }
+        saveSettingsBackgroundState(nextState);
+        applySettingsBackground(panel, appearanceButton, nextState);
+        return;
+      }
+
+      if (target?.kind === "screen-background") {
+        const nextState = { ...loadScreenBackgroundState() };
+        if (target.key === "color") {
+          nextState.color = normalizeHexColor(nextValue) ?? nextState.color;
+        } else if (target.key === "opacity") {
+          nextState.opacity = Math.max(0, Math.min(100, Number(nextValue) || 0));
+        }
+        saveScreenBackgroundState(nextState);
+        applyScreenBackground(nextState, screenButton);
+        return;
+      }
+
+      onRowInput(row, nextValue);
+    };
+
+    if (panel.dataset.screenRowOpen === "true") {
+      panel.append(
+        buildRows(
+          [createAppearanceFillRow({ id: "screen-background-fill", label: "Background", kind: "screen-background" })],
+          layerModel,
+          onToggleExpanded,
+          onToggleVisibility,
+          reorderApi,
+          onPanelRowInput,
+          appearanceState,
+          0,
+          null,
+        ),
+      );
+    }
+
+    if (panel.dataset.appearanceRowOpen === "true") {
+      panel.append(
+        buildRows(
+          [createAppearanceFillRow({ id: "settings-background-fill", label: "Settings", kind: "settings-background" })],
+          layerModel,
+          onToggleExpanded,
+          onToggleVisibility,
+          reorderApi,
+          onPanelRowInput,
+          appearanceState,
+          0,
+          null,
+        ),
+      );
+    }
+
     panel.append(
       buildRows(
         layerModel.getRootRows(),
@@ -1015,7 +1230,8 @@ function renderLayerMenuRows({
         onToggleExpanded,
         onToggleVisibility,
         reorderApi,
-        onRowInput,
+        onPanelRowInput,
+        appearanceState,
         0,
         null,
       ),

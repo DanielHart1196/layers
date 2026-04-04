@@ -39,7 +39,7 @@ function createLayerModel() {
     presets = [],
     defaultColor = "#000000",
     defaultOpacity = 100,
-    defaultWeight = 100,
+    defaultWeight = 1,
   }) {
     return {
       id,
@@ -53,10 +53,10 @@ function createLayerModel() {
       min: 0,
       max: 100,
       step: 1,
-      valueFormat: "points",
-      weightMin: 25,
-      weightMax: 250,
-      weightStep: 1,
+      valueFormat: "pixels",
+      weightMin: 0,
+      weightMax: 10,
+      weightStep: 0.1,
       initialState: {
         lineColor: defaultColor,
         lineOpacity: defaultOpacity,
@@ -77,6 +77,7 @@ function createLayerModel() {
           type: "layer",
           label: "Ocean",
           layerId: "ocean",
+          pinnedOrder: "start",
           rows: [
             createFillRow({
               id: "ocean-fill",
@@ -129,6 +130,7 @@ function createLayerModel() {
     },
     empires: {
       id: "empires",
+      layerId: "empires",
       label: "Empires",
       kind: "group",
       defaultExpanded: true,
@@ -228,6 +230,36 @@ function createLayerModel() {
     return (layerDefinitions[parentId]?.rows ?? []).map((row) => row.id);
   }
 
+  function normalizeChildRowOrder(parentId, candidateOrder = null) {
+    const parent = rowDefinitionsById.get(parentId) ?? layerDefinitions[parentId];
+    if (!parent?.rows?.length) {
+      return [];
+    }
+
+    const rowIds = parent.rows.map((row) => row.id);
+    const pinnedStartIds = parent.rows
+      .filter((row) => row.pinnedOrder === "start")
+      .map((row) => row.id);
+    const pinnedEndIds = parent.rows
+      .filter((row) => row.pinnedOrder === "end")
+      .map((row) => row.id);
+    const movableIds = rowIds.filter((rowId) => !pinnedStartIds.includes(rowId) && !pinnedEndIds.includes(rowId));
+    const movableOrderSource = Array.isArray(candidateOrder)
+      ? candidateOrder
+      : Array.isArray(layerState[parentId]?.rowOrder)
+        ? layerState[parentId].rowOrder
+        : getDefaultChildOrder(parentId);
+
+    const movableOrdered = movableOrderSource.filter((rowId) => movableIds.includes(rowId));
+    movableIds.forEach((rowId) => {
+      if (!movableOrdered.includes(rowId)) {
+        movableOrdered.push(rowId);
+      }
+    });
+
+    return [...pinnedStartIds, ...movableOrdered, ...pinnedEndIds];
+  }
+
   function buildDefaultLayerState() {
     const state = {
       earth: {
@@ -237,6 +269,7 @@ function createLayerModel() {
       empires: {
         expanded: layerDefinitions.empires.defaultExpanded,
         rowOrder: getDefaultChildOrder("empires"),
+        visible: true,
       },
     };
 
@@ -323,6 +356,10 @@ function createLayerModel() {
             baseState[layerId][key] = persisted[key];
           }
         });
+
+        if (typeof baseState[layerId].lineWeight === "number" && baseState[layerId].lineWeight > 10) {
+          baseState[layerId].lineWeight = Math.max(0, Math.min(10, baseState[layerId].lineWeight / 100));
+        }
       });
     } catch (_error) {
       return baseState;
@@ -350,9 +387,7 @@ function createLayerModel() {
     }
 
     const rowById = new Map(parent.rows.map((row) => [row.id, row]));
-    const persistedOrder = Array.isArray(layerState[parentId]?.rowOrder)
-      ? layerState[parentId].rowOrder
-      : [];
+    const persistedOrder = normalizeChildRowOrder(parentId);
     const orderedRows = persistedOrder
       .map((id) => rowById.get(id))
       .filter(Boolean);
@@ -482,7 +517,7 @@ function createLayerModel() {
       return null;
     }
 
-    layerState[parentId].rowOrder = nextOrder.slice();
+    layerState[parentId].rowOrder = normalizeChildRowOrder(parentId, nextOrder);
     persistLayerState();
     return layerState[parentId].rowOrder.slice();
   }
@@ -493,6 +528,7 @@ function createLayerModel() {
     getRootRows,
     getRowValue,
     getState,
+    normalizeChildRowOrder,
     reorderChildRow,
     setChildRowOrder,
     setRowValue,
